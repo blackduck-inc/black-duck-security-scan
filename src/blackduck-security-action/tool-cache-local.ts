@@ -1,6 +1,7 @@
 import {RetryHelper} from './retry-helper'
 import * as core from '@actions/core'
 import * as io from '@actions/io'
+import {randomUUID as uuidv4} from 'crypto'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as httpm from '@actions/http-client'
@@ -9,7 +10,6 @@ import * as stream from 'stream'
 import * as util from 'util'
 
 import {OutgoingHttpHeaders} from 'http'
-import {v4 as uuidv4} from 'uuid'
 import os from 'os'
 import {NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS} from '../application-constants'
 
