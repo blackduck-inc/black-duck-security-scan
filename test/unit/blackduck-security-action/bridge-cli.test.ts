@@ -7,10 +7,8 @@ import {Socket} from 'net'
 import {validateBridgeUrl} from '../../../src/blackduck-security-action/validators'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as constants from '../../../src/application-constants'
-import {run} from '../../../src/main'
-import {error} from '@actions/core'
 import * as downloadUtility from '../../../src/blackduck-security-action/download-utility'
-import {DownloadFileResponse, extractZipped} from '../../../src/blackduck-security-action/download-utility'
+import {DownloadFileResponse} from '../../../src/blackduck-security-action/download-utility'
 import os from 'os'
 
 const util = require('../../../src/blackduck-security-action/utility')
