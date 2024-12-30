@@ -228,7 +228,7 @@ test('Run blackduck flow with Fix pull request, missing github token - run', asy
   jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
 
   try {
-    const response = await run()
+    await run()
   } catch (error) {
     expect(error).toContain('Missing required github token for fix pull request')
   }
@@ -652,7 +652,6 @@ test('should not upload black duck sca sarif for pr context', async () => {
   Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'true'})
 
   jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
   const downloadFileResp: DownloadFileResponse = {
     filePath: 'C://user/temp/download/',
     fileName: 'C://user/temp/download/bridge-win.zip'
@@ -854,7 +853,6 @@ test('should not upload polaris sarif for pr context', async () => {
   Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
 
   jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
   const downloadFileResp: DownloadFileResponse = {
     filePath: 'C://user/temp/download/',
     fileName: 'C://user/temp/download/bridge-win.zip'
