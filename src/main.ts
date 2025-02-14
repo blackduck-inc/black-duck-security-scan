@@ -55,14 +55,13 @@ export async function run() {
           await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
+          const gitHubClientService = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
           // Upload Black Duck SARIF Report to code scanning tab
           if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCK_UPLOAD_SARIF_REPORT)) {
-            const gitHubClientService = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
             await gitHubClientService.uploadSarifReport(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH)
           }
           // Upload Polaris SARIF Report to code scanning tab
           if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_UPLOAD_SARIF_REPORT)) {
-            const gitHubClientService = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
             await gitHubClientService.uploadSarifReport(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH)
           }
         }

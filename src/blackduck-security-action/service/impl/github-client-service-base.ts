@@ -25,7 +25,7 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
     this.repoName = this.githubRepo !== '' ? this.githubRepo.substring(this.githubRepo.indexOf('/') + 1, this.githubRepo.length).trim() : ''
     this.repoOwner = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY_OWNER] || ''
     this.githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
-    this.githubApiURL = this.githubServerUrl === constants.GITHUB_CLOUD_URL ? constants.GITHUB_CLOUD_API_URL : this.githubServerUrl
+    this.githubApiURL = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
     this.commit_sha = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SHA] || ''
     this.githubRef = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF] || ''
   }
