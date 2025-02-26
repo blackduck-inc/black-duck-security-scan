@@ -23,6 +23,12 @@ export class BridgeToolsParameter {
   private static BD_STATE_FILE_NAME = 'bd_input.json'
   private static SRM_STATE_FILE_NAME = 'srm_input.json'
   private static SRM_STAGE = 'srm'
+  // Sarif file path extract from --out <filename>
+  private static OUTPUT_OPTION = '--out'
+  private static POLARIS_OUTPUT_FILE_NAME = 'polaris_output.json'
+  private static COVERITY_OUTPUT_FILE_NAME = 'coverity_output.json'
+  private static BD_OUTPUT_FILE_NAME = 'bd_output.json'
+  private static SRM_OUTPUT_FILE_NAME = 'srm_output.json'
   // Coverity parameters
   private static COVERITY_STAGE = 'connect'
   static SPACE = ' '
@@ -245,11 +251,13 @@ export class BridgeToolsParameter {
 
     const inputJson = JSON.stringify(polData)
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
+    const outPutFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_OUTPUT_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
+    fs.writeFileSync(outPutFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
+    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.OUTPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(outPutFilePath).concat(BridgeToolsParameter.SPACE)
     return command
   }
 
