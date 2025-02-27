@@ -1,5 +1,6 @@
 import {debug, info, setFailed} from '@actions/core'
-import {cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
+//import {cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
+import {createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
 import {Bridge} from './blackduck-security-action/bridge-cli'
 import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from './application-constants'
@@ -68,7 +69,6 @@ export async function run() {
         }
       }
     }
-    await cleanupTempDir(tempDir)
   }
 }
 

@@ -4,8 +4,7 @@ import {debug, error, info, warning} from '@actions/core'
 import {GITHUB_ENVIRONMENT_VARIABLES, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, MAC_PLATFORM_NAME, LINUX_PLATFORM_NAME, WINDOWS_PLATFORM_NAME} from '../application-constants'
 import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import path from 'path'
-//import {checkIfPathExists, cleanupTempDir, sleep} from './utility'
-import {checkIfPathExists, sleep} from './utility'
+import {checkIfPathExists, cleanupTempDir, sleep} from './utility'
 import * as inputs from './inputs'
 import {DownloadFileResponse, extractZipped, getRemoteFile} from './download-utility'
 import fs, {readFileSync} from 'fs'
@@ -165,7 +164,7 @@ export class Bridge {
       }
     } catch (e) {
       const errorObject = (e as Error).message
-      //await cleanupTempDir(tempDir)
+      await cleanupTempDir(tempDir)
       if (errorObject.includes('404') || errorObject.toLowerCase().includes('invalid url')) {
         let runnerOS = ''
         if (process.env['RUNNER_OS']) {
@@ -239,7 +238,7 @@ export class Bridge {
       return formattedCommand
     } catch (e) {
       const errorObject = e as Error
-      //await cleanupTempDir(tempDir)
+      await cleanupTempDir(tempDir)
       debug(errorObject.stack === undefined ? '' : errorObject.stack.toString())
       return Promise.reject(errorObject.message)
     }
