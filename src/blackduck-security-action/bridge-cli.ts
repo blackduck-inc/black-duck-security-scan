@@ -437,4 +437,9 @@ export class Bridge {
     retryDelay = retryDelay * 2
     return retryDelay
   }
+
+  async getBridgeSarifFilePath(tempDir: string): Promise<string> {
+    const bridgeSarifPath = new BridgeToolsParameter(tempDir)
+    return bridgeSarifPath.getSarifPath()
+  }
 }

@@ -1,6 +1,5 @@
 import {debug, info, setFailed} from '@actions/core'
-//import {cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
-import {createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
+import {cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
 import {Bridge} from './blackduck-security-action/bridge-cli'
 import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from './application-constants'
@@ -15,6 +14,7 @@ export async function run() {
   let formattedCommand = ''
   let isBridgeExecuted = false
   let exitCode
+  let bridgeSarifFilePath = ''
 
   try {
     const sb = new Bridge()
@@ -33,6 +33,7 @@ export async function run() {
       isBridgeExecuted = true
       info('Black Duck Security Action workflow execution completed')
     }
+    bridgeSarifFilePath = await sb.getBridgeSarifFilePath(tempDir)
     return exitCode
   } catch (error) {
     exitCode = getBridgeExitCodeAsNumericValue(error as Error)
@@ -48,7 +49,10 @@ export async function run() {
       if (!isPullRequestEvent() && uploadSarifReportBasedOnExitCode) {
         // Upload Black Duck sarif file as GitHub artifact
         if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE)) {
-          await uploadSarifReportAsArtifact(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
+          if (bridgeSarifFilePath === '') {
+            await uploadSarifReportAsArtifact(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
+          }
+          await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
         }
 
         // Upload Polaris sarif file as GitHub artifact
@@ -69,6 +73,7 @@ export async function run() {
         }
       }
     }
+    await cleanupTempDir(tempDir)
   }
 }
 

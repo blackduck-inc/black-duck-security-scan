@@ -771,4 +771,17 @@ export class BridgeToolsParameter {
     }
     return blackduckDetectData
   }
+
+  getSarifPath(): string {
+    const outPutFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_OUTPUT_FILE_NAME)
+    try {
+      const data = fs.readFileSync(outPutFilePath, 'utf-8')
+      const jsonData = JSON.parse(data)
+      return jsonData?.polaris?.reports?.sarif?.file?.output
+    } catch (error) {
+      const err = error as Error
+      Error(`Error reading or parsing JSON file: ${err.message}`)
+      return err.message
+    }
+  }
 }
