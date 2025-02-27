@@ -66,7 +66,6 @@ export class BridgeToolsParameter {
     }
     debug(`Polaris application name: ${applicationName}`)
     debug(`Polaris project name: ${projectName}`)
-
     const polData: InputData<Polaris> = {
       data: {
         polaris: {
@@ -83,7 +82,6 @@ export class BridgeToolsParameter {
         }
       }
     }
-
     if (inputs.POLARIS_BRANCH_NAME) {
       polData.data.polaris.branch = {name: inputs.POLARIS_BRANCH_NAME}
     }
@@ -253,13 +251,8 @@ export class BridgeToolsParameter {
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
     const outPutFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_OUTPUT_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
-    fs.writeFileSync(outPutFilePath, inputJson)
 
-    debug('Generated state json file at - '.concat(stateFilePath))
-    debug('Generated output json file at - '.concat(outPutFilePath))
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.OUTPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(outPutFilePath).concat(BridgeToolsParameter.SPACE)
-    info('Bridge command with out flag **************************')
-    info(command)
     return command
   }
 
