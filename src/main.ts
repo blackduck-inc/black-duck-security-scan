@@ -7,7 +7,7 @@ import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
-
+import * as fs from 'fs'
 export async function run() {
   info('Black Duck Security Action started...')
   const tempDir = await createTempDir()
@@ -35,6 +35,11 @@ export async function run() {
       info('Black Duck Security Action workflow execution completed')
     }
     info(`Temp Directory******************: ${tempDir}`)
+    const files = fs.readdirSync(tempDir)
+    info(`Files in the temp directory (${tempDir}):`)
+    for (const file of files) {
+      info(file)
+    }
     // Extract bridge sarif file path
     bridgeSarifFilePath = await sb.getBridgePolarisSarifFilePath(formattedCommand)
     info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
