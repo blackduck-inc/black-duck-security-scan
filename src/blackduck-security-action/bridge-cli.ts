@@ -441,6 +441,8 @@ export class Bridge {
   async getBridgePolarisSarifFilePath(formattedCommand: string): Promise<string> {
     info(`Bridge formated command **********************: ${formattedCommand}`)
     const bridgeSarifPath = new BridgeToolsParameter(formattedCommand)
-    return bridgeSarifPath.getSarifFilePath(formattedCommand)
+    const filePth = bridgeSarifPath.getSarifFilePath(formattedCommand)
+    info(`File Path ************: ${filePth}`)
+    return filePth
   }
 }
