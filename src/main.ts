@@ -35,6 +35,7 @@ export async function run() {
     }
     // Extract bridge sarif file path
     bridgeSarifFilePath = await sb.getBridgePolarisSarifFilePath(formattedCommand)
+    debug(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
     return exitCode
   } catch (error) {
     exitCode = getBridgeExitCodeAsNumericValue(error as Error)
@@ -58,7 +59,10 @@ export async function run() {
 
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
-          await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
+          if (bridgeSarifFilePath === '') {
+            await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
+          }
+          await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
           // Upload Black Duck SARIF Report to code scanning tab

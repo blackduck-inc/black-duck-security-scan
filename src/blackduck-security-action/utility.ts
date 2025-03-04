@@ -22,7 +22,7 @@ export async function createTempDir(): Promise<string> {
 }
 
 export async function cleanupTempDir(tempDir: string): Promise<void> {
-  info(tempDir)
+  info(`Temp directory files*********************: ${tempDir}`)
   /*if (tempDir && fs.existsSync(tempDir)) {
     await rmRF(tempDir)
   }*/
