@@ -772,7 +772,9 @@ export class BridgeToolsParameter {
   }
 
   getSarifFilePath(formattedCommandString: string): string {
+    info(`Inside getSarifFilePath **********************: ${formattedCommandString}`)
     try {
+      info(`Inside getSarifFilePath try **********************`)
       const fileName = this.extractOutputFileName(formattedCommandString)
       const data = fs.readFileSync(fileName, 'utf-8')
       const jsonData = JSON.parse(data)
@@ -787,6 +789,7 @@ export class BridgeToolsParameter {
     return ''
   }
   extractOutputFileName(command: string): string {
+    info(`Inside extractOutputFileName **********************`)
     const regex = /--out\s+([^\s]+)/
     const match = command.match(regex)
     return match ? match[1] : ''

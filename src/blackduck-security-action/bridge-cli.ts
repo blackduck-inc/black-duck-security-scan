@@ -439,6 +439,7 @@ export class Bridge {
   }
   // Extract Bridge sarif file path from output generated file
   async getBridgePolarisSarifFilePath(formattedCommand: string): Promise<string> {
+    info(`Bridge formated command **********************: ${formattedCommand}`)
     const bridgeSarifPath = new BridgeToolsParameter(formattedCommand)
     return bridgeSarifPath.getSarifFilePath(formattedCommand)
   }

@@ -29,13 +29,14 @@ export async function run() {
     }
     // Execute bridge command
     exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
+    info(`Bridge executed**********************: ${exitCode}`)
     if (exitCode === 0) {
       isBridgeExecuted = true
       info('Black Duck Security Action workflow execution completed')
     }
     // Extract bridge sarif file path
     bridgeSarifFilePath = await sb.getBridgePolarisSarifFilePath(formattedCommand)
-    debug(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
+    info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
     return exitCode
   } catch (error) {
     exitCode = getBridgeExitCodeAsNumericValue(error as Error)
@@ -59,7 +60,9 @@ export async function run() {
 
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
+          info('Entered Into Polaris Sarif Report Upload ********************')
           if (bridgeSarifFilePath === '') {
+            info('If the file path is empty ********************')
             await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           }
           await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
