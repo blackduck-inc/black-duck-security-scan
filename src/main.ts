@@ -63,9 +63,8 @@ export async function run() {
         const tempDirPath = '${tempDir}'
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
-          info(`Entered Into Polaris Sarif Report Upload ********************:${tempDirPath}`)
           if (bridgeSarifFilePath === '') {
-            info('If the file path is empty ********************')
+            info(`If the file path is empty ******************** : ${bridgeSarifFilePath}`)
             await uploadSarifReportAsArtifact(tempDirPath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           }
           await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
