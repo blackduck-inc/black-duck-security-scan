@@ -34,6 +34,7 @@ export async function run() {
       isBridgeExecuted = true
       info('Black Duck Security Action workflow execution completed')
     }
+    info(`Temp Directory******************: ${tempDir}`)
     // Extract bridge sarif file path
     bridgeSarifFilePath = await sb.getBridgePolarisSarifFilePath(formattedCommand)
     info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
@@ -45,7 +46,6 @@ export async function run() {
   } finally {
     const uploadSarifReportBasedOnExitCode = exitCode === 0 || exitCode === 8
     debug(`Bridge CLI execution completed: ${isBridgeExecuted}`)
-    debug(`Temp Directory******************: ${tempDir}`)
     if (isBridgeExecuted) {
       if (inputs.INCLUDE_DIAGNOSTICS) {
         await uploadDiagnostics()
