@@ -790,8 +790,7 @@ export class BridgeToolsParameter {
   }
   extractOutputFileName(command: string): string {
     info(`Inside extractOutputFileName **********************: ${command}`)
-    const regex = /--out\s+([^\s]+)/
-    const match = command.match(regex)
+    const match = command.match(/--out\s+\/\S+\/(\S+\.json)/)
     const fileName = match ? match[1] : ''
     info(`FileName **********************: ${fileName}`)
     return fileName
