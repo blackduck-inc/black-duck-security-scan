@@ -2,10 +2,10 @@ import * as fs from 'fs'
 import * as os from 'os'
 import path from 'path'
 import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES} from '../application-constants'
-import {rmRF} from '@actions/io'
+//import {rmRF} from '@actions/io'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from '../application-constants'
-import {debug} from '@actions/core'
+import {debug, info} from '@actions/core'
 
 export function cleanUrl(url: string): string {
   if (url && url.endsWith('/')) {
@@ -22,9 +22,10 @@ export async function createTempDir(): Promise<string> {
 }
 
 export async function cleanupTempDir(tempDir: string): Promise<void> {
-  if (tempDir && fs.existsSync(tempDir)) {
+  info(tempDir)
+  /*if (tempDir && fs.existsSync(tempDir)) {
     await rmRF(tempDir)
-  }
+  }*/
 }
 
 export function checkIfGithubHostedAndLinux(): boolean {
