@@ -789,9 +789,11 @@ export class BridgeToolsParameter {
     return ''
   }
   extractOutputFileName(command: string): string {
-    info(`Inside extractOutputFileName **********************`)
+    info(`Inside extractOutputFileName **********************: ${command}`)
     const regex = /--out\s+([^\s]+)/
     const match = command.match(regex)
-    return match ? match[1] : ''
+    const fileName = match ? match[1] : ''
+    info(`FileName **********************: ${fileName}`)
+    return fileName
   }
 }
