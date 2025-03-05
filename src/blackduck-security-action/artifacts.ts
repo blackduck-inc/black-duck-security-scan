@@ -7,6 +7,7 @@ import {info, warning} from '@actions/core'
 import path from 'path'
 import * as artifact from 'actions-artifact-v1'
 import {DefaultArtifactClient} from 'actions-artifact-v2'
+import * as constants from '../application-constants'
 
 export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void> {
   let artifactClient
@@ -65,6 +66,7 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
 export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse> {
   let artifactClient
   let options: artifact.UploadOptions = {}
+  let sarifFilePath = ''
   if (isGitHubCloud()) {
     artifactClient = new DefaultArtifactClient()
   } else {
@@ -73,25 +75,9 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
       continueOnError: true
     } as artifact.UploadOptions
   }
-  const sarifFilePath = userSarifFilePath ? userSarifFilePath : getDefaultSarifReportPath(defaultSarifReportDirectory, true)
+  sarifFilePath = userSarifFilePath || (defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY ? getDefaultSarifReportPath(defaultSarifReportDirectory, true) : defaultSarifReportDirectory)
   info(`Sarif File Path: ${sarifFilePath}`)
   const rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getDefaultSarifReportPath(defaultSarifReportDirectory, false)
   info(`rootDir path: ${rootDir}`)
-  return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
-}
-
-export async function uploadSarifReportAsArtifactFromOutFilePath(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse> {
-  let artifactClient
-  let options: artifact.UploadOptions = {}
-  if (isGitHubCloud()) {
-    artifactClient = new DefaultArtifactClient()
-  } else {
-    artifactClient = artifact.create()
-    options = {
-      continueOnError: true
-    } as artifact.UploadOptions
-  }
-  const sarifFilePath = userSarifFilePath ? userSarifFilePath : defaultSarifReportDirectory
-  const rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : defaultSarifReportDirectory
   return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
 }
