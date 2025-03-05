@@ -57,20 +57,14 @@ export async function run() {
       if (!isPullRequestEvent() && uploadSarifReportBasedOnExitCode) {
         // Upload Black Duck sarif file as GitHub artifact
         if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE)) {
-          if (isNullOrEmptyValue(bridgeSarifFilePath)) {
-            await uploadSarifReportAsArtifact(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
-          } else {
-            await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
-          }
+          const sarifDirectory = isNullOrEmptyValue(bridgeSarifFilePath) ? constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY : bridgeSarifFilePath
+          await uploadSarifReportAsArtifact(sarifDirectory, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
         }
         info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
-          if (isNullOrEmptyValue(bridgeSarifFilePath)) {
-            await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
-          } else {
-            await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
-          }
+          const sarifDirectory = isNullOrEmptyValue(bridgeSarifFilePath) ? constants.POLARIS_SARIF_GENERATOR_DIRECTORY : bridgeSarifFilePath
+          await uploadSarifReportAsArtifact(sarifDirectory, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
           // Upload Black Duck SARIF Report to code scanning tab
