@@ -60,7 +60,7 @@ export async function run() {
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
           if (bridgeSarifFilePath === '') {
-            info(`If the file path is empty ******************** : ${bridgeSarifFilePath}`)
+            info(`If the bridgeSarifFilePath is empty ******************** : ${bridgeSarifFilePath}`)
             await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           }
           await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)

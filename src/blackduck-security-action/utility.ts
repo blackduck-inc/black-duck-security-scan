@@ -2,7 +2,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import path from 'path'
 import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES} from '../application-constants'
-import {rmRF} from '@actions/io'
+//import {rmRF} from '@actions/io'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from '../application-constants'
 import {debug, info} from '@actions/core'
@@ -22,10 +22,15 @@ export async function createTempDir(): Promise<string> {
 }
 
 export async function cleanupTempDir(tempDir: string): Promise<void> {
-  //info(`Temp directory files*********************: ${tempDir}`)
-  if (tempDir && fs.existsSync(tempDir)) {
-    await rmRF(tempDir)
+  info(`Temp directory files*********************: ${tempDir}`)
+  const files = fs.readdirSync(tempDir)
+  info(`Files in the temp directory (${tempDir}):`)
+  for (const file of files) {
+    info(file)
   }
+  // if (tempDir && fs.existsSync(tempDir)) {
+  //   await rmRF(tempDir)
+  // }
 }
 
 export function checkIfGithubHostedAndLinux(): boolean {
@@ -62,7 +67,7 @@ export async function sleep(duration: number): Promise<void> {
 export function getDefaultSarifReportPath(sarifReportDirectory: string, appendFilePath: boolean): string {
   const pwd = getGitHubWorkspaceDir()
   const defaultPtah = !appendFilePath ? path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory) : path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory, constants.SARIF_DEFAULT_FILE_NAME)
-  info(`Default sarif report path: ${defaultPtah}`)
+  info(`Default sarif report path getDefaultSarifReportPath: ${defaultPtah}`)
   return defaultPtah
 }
 
