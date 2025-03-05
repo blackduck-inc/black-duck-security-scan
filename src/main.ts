@@ -69,7 +69,7 @@ export async function run() {
           if (!isNullOrEmptyValue(bridgeSarifFilePath)) {
             await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           } else {
-            await uploadSarifReportAsArtifactFromOutFilePath(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
+            // await uploadSarifReportAsArtifactFromOutFilePath(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           }
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
