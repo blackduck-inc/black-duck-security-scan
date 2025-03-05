@@ -80,7 +80,7 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
   return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
 }
 
-export async function uploadSarifReportAsArtifactToPath(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse> {
+export async function uploadSarifReportAsArtifactFromOutFilePath(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse> {
   let artifactClient
   let options: artifact.UploadOptions = {}
   if (isGitHubCloud()) {

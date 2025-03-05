@@ -4,7 +4,7 @@ import {Bridge} from './blackduck-security-action/bridge-cli'
 import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from './application-constants'
 import * as inputs from './blackduck-security-action/inputs'
-import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
+import {uploadDiagnostics, uploadSarifReportAsArtifact, uploadSarifReportAsArtifactFromOutFilePath} from './blackduck-security-action/artifacts'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
 import * as fs from 'fs'
@@ -60,7 +60,7 @@ export async function run() {
           if (!isNullOrEmptyValue(bridgeSarifFilePath)) {
             await uploadSarifReportAsArtifact(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
           } else {
-            await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
+            await uploadSarifReportAsArtifactFromOutFilePath(bridgeSarifFilePath, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
           }
         }
         info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
@@ -69,7 +69,7 @@ export async function run() {
           if (!isNullOrEmptyValue(bridgeSarifFilePath)) {
             await uploadSarifReportAsArtifact(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           } else {
-            await uploadSarifReportAsArtifact(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
+            await uploadSarifReportAsArtifactFromOutFilePath(bridgeSarifFilePath, inputs.POLARIS_REPORTS_SARIF_FILE_PATH, constants.POLARIS_SARIF_ARTIFACT_NAME)
           }
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
