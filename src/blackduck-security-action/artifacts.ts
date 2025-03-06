@@ -67,6 +67,7 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
   let artifactClient
   let options: artifact.UploadOptions = {}
   let sarifFilePath = ''
+  let rootDir = ''
   if (isGitHubCloud()) {
     artifactClient = new DefaultArtifactClient()
   } else {
@@ -76,6 +77,6 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
     } as artifact.UploadOptions
   }
   sarifFilePath = userSarifFilePath || (defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY ? getDefaultSarifReportPath(defaultSarifReportDirectory, true) : defaultSarifReportDirectory)
-  const rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getDefaultSarifReportPath(defaultSarifReportDirectory, false)
+  rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY ? getDefaultSarifReportPath(defaultSarifReportDirectory, false) : defaultSarifReportDirectory
   return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
 }
