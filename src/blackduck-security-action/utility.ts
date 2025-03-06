@@ -5,7 +5,7 @@ import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES} from '../application-con
 import {rmRF} from '@actions/io'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from '../application-constants'
-import {debug, info} from '@actions/core'
+import {debug} from '@actions/core'
 
 export function cleanUrl(url: string): string {
   if (url && url.endsWith('/')) {
@@ -60,9 +60,7 @@ export async function sleep(duration: number): Promise<void> {
 
 export function getDefaultSarifReportPath(sarifReportDirectory: string, appendFilePath: boolean): string {
   const pwd = getGitHubWorkspaceDir()
-  const defaultPtah = !appendFilePath ? path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory) : path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory, constants.SARIF_DEFAULT_FILE_NAME)
-  info(`Default sarif report path getDefaultSarifReportPath: ${defaultPtah}`)
-  return defaultPtah
+  return !appendFilePath ? path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory) : path.join(pwd, constants.BRIDGE_LOCAL_DIRECTORY, sarifReportDirectory, constants.SARIF_DEFAULT_FILE_NAME)
 }
 
 export function isPullRequestEvent(): boolean {

@@ -7,7 +7,6 @@ import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
-import * as fs from 'fs'
 
 export async function run() {
   info('Black Duck Security Action started...')
@@ -35,13 +34,7 @@ export async function run() {
       info('Black Duck Security Action workflow execution completed')
     }
     // Extract bridge sarif file path
-    bridgeSarifFilePath = await sb.getBridgePolarisSarifFilePath(formattedCommand)
-    info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
-    const files = fs.readdirSync(tempDir)
-    info(`Files in the temp directory (${tempDir}):`)
-    for (const file of files) {
-      info(file)
-    }
+    bridgeSarifFilePath = await sb.getBridgeSarifFilePath(formattedCommand)
     return exitCode
   } catch (error) {
     exitCode = getBridgeExitCodeAsNumericValue(error as Error)
@@ -60,7 +53,6 @@ export async function run() {
           const sarifDirectory = isNullOrEmptyValue(bridgeSarifFilePath) ? constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY : bridgeSarifFilePath
           await uploadSarifReportAsArtifact(sarifDirectory, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME)
         }
-        info(`Bridge sarif file path **********************: ${bridgeSarifFilePath}`)
         // Upload Polaris sarif file as GitHub artifact
         if (inputs.POLARIS_SERVER_URL && parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
           const sarifDirectory = isNullOrEmptyValue(bridgeSarifFilePath) ? constants.POLARIS_SARIF_GENERATOR_DIRECTORY : bridgeSarifFilePath

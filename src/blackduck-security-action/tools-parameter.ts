@@ -772,10 +772,8 @@ export class BridgeToolsParameter {
   }
 
   getSarifFilePath(formattedCommandString: string): string {
-    info(`Inside getSarifFilePath **********************: ${formattedCommandString}`)
     try {
-      info(`Inside getSarifFilePath try **********************`)
-      const fileName = this.extractOutputFileName(formattedCommandString)
+      const fileName = this.extractOutputFile(formattedCommandString)
       const data = fs.readFileSync(fileName, 'utf-8')
       const jsonData = JSON.parse(data)
       if (fileName === 'polaris_output.json') {
@@ -788,12 +786,8 @@ export class BridgeToolsParameter {
     }
     return ''
   }
-  extractOutputFileName(command: string): string {
-    info(`Inside extractOutputFileName **********************: ${command}`)
-    //const match = command.match(/--out\s+\/\S+\/(\S+\.json)/)
+  extractOutputFile(command: string): string {
     const match = command.match(/--out\s+(\S+)/)
-    const fileName = match ? match[1] : ''
-    info(`FileName **********************: ${fileName}`)
-    return fileName
+    return match ? match[1] : ''
   }
 }

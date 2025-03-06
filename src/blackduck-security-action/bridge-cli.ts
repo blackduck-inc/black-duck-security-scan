@@ -437,12 +437,9 @@ export class Bridge {
     retryDelay = retryDelay * 2
     return retryDelay
   }
-  // Extract Bridge sarif file path from output generated file
-  async getBridgePolarisSarifFilePath(formattedCommand: string): Promise<string> {
-    info(`Bridge formated command **********************: ${formattedCommand}`)
+  // Read output file to extract sarif file path
+  async getBridgeSarifFilePath(formattedCommand: string): Promise<string> {
     const bridgeSarifPath = new BridgeToolsParameter(formattedCommand)
-    const filePth = bridgeSarifPath.getSarifFilePath(formattedCommand)
-    info(`File Path ************: ${filePth}`)
-    return filePth
+    return bridgeSarifPath.getSarifFilePath(formattedCommand)
   }
 }
