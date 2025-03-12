@@ -11,7 +11,9 @@ import * as utility from '../../src/blackduck-security-action/utility'
 import {GitHubClientServiceFactory} from '../../src/blackduck-security-action/factory/github-client-service-factory'
 import {GithubClientServiceCloud} from '../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
 import fs from 'fs'
+import * as core from '@actions/core'
 
+jest.mock('@actions/core')
 jest.mock('@actions/io', () => ({
   rmRF: jest.fn()
 }))
@@ -30,6 +32,74 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks()
+})
+
+describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code Information Messages', () => {
+  const setupBlackDuckInputs = (extraInputs: Record<string, any> = {}) => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
+    Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
+    Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'RETURN_STATUS', {value: true})
+    for (const [key, value] of Object.entries(extraInputs)) {
+      Object.defineProperty(inputs, key, {value, writable: true})
+    }
+  }
+
+  const setupMocks = (exitCode: number) => {
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(exitCode)
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
+  }
+
+  afterEach(() => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
+  })
+
+  it('handles successful execution with exitCode === 0', async () => {
+    setupBlackDuckInputs()
+    setupMocks(0)
+    const response = await run()
+
+    expect(response).toBe(0)
+    expect(core.info).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+    expect(core.setOutput).toHaveBeenCalledWith('status', 0)
+    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
+  })
+
+  it('handles issues detected but marked as success with exitCode === 8', async () => {
+    setupBlackDuckInputs({MARK_BUILD_STATUS: 'success'})
+    setupMocks(8)
+    jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
+
+    const response = await run()
+
+    expect(response).toBe(8)
+    expect(core.info).toHaveBeenCalledWith('Marking the build success as configured in the task.')
+    expect(core.setOutput).toHaveBeenCalledWith('status', 8)
+    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
+  })
+
+  it('handles failure case with exitCode === 2', async () => {
+    setupBlackDuckInputs()
+    setupMocks(2)
+
+    const response = await run()
+    expect(response).toBe(2)
+    expect(core.setOutput).toHaveBeenCalledWith('status', 2)
+    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: false')
+  })
 })
 
 test('Not supported flow error - run', async () => {

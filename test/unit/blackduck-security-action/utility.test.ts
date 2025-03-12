@@ -1,4 +1,4 @@
-import {cleanUrl, isBoolean, isPullRequestEvent} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
@@ -67,5 +67,24 @@ describe('isPullRequestEvent', () => {
     process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_EVENT_NAME] = undefined
     const result = isPullRequestEvent()
     expect(result).toEqual(false)
+  })
+})
+
+describe('checkJobResult', () => {
+  it('should return the build status if it is valid', () => {
+    const buildStatus = 'success'
+    const result = checkJobResult(buildStatus)
+    expect(result).toBe(buildStatus)
+  })
+
+  it('should return undefined if the build status is invalid', () => {
+    const buildStatus = 'unstable'
+    const result = checkJobResult(buildStatus)
+    expect(result).toBeUndefined()
+  })
+
+  it('should return undefined if the build status is not provided', () => {
+    const result = checkJobResult()
+    expect(result).toBeUndefined()
   })
 })
