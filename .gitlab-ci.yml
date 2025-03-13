@@ -75,7 +75,7 @@ generate_sbom:
       - main
 
 polaris_bridge:
-  mage: releng/base-gitlab-runner:jdk17-python3.11-git
+  image: releng/base-gitlab-runner:jdk17-python3.11-git
   extends: .polaris_bridge
   stage: analysis
   before_script:
