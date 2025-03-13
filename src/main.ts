@@ -33,7 +33,7 @@ export async function run() {
       isBridgeExecuted = true
       info('Black Duck Security Action workflow execution completed')
     }
-    // Extract bridge sarif file path
+    // Extract bridge sarif file path from output file
     bridgeSarifFilePath = await sb.getBridgeSarifFilePath(formattedCommand)
     return exitCode
   } catch (error) {

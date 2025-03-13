@@ -772,14 +772,23 @@ export class BridgeToolsParameter {
   }
 
   getSarifFilePath(formattedCommandString: string): string {
+    let destFilePath
     try {
-      const fileName = this.extractOutputFile(formattedCommandString)
-      const data = fs.readFileSync(fileName, 'utf-8')
+      const filePath = this.extractOutputFile(formattedCommandString)
+      const data = fs.readFileSync(filePath, 'utf-8')
       const jsonData = JSON.parse(data)
-      if (fileName === 'polaris_output.json') {
-        return jsonData?.polaris?.reports?.sarif?.file?.output
-      } else if (fileName === 'bd_output.json') {
-        return jsonData?.blackducksca?.reports?.sarif?.file?.output
+      if (filePath === 'polaris_output.json') {
+        const sarifFilePath = jsonData?.polaris?.reports?.sarif?.file?.output
+        destFilePath = path.join(this.tempDir, '.blackduc/ontegration/sarif')
+        info('Copying SARIF file to '.concat(destFilePath))
+        fs.promises.copyFile(sarifFilePath, destFilePath)
+        return sarifFilePath
+      } else if (filePath === 'bd_output.json') {
+        const sarifFilePath = jsonData?.blackducksca?.reports?.sarif?.file?.output
+        destFilePath = path.join(this.tempDir, '.blackduc/ontegration/sarif')
+        info('Copying SARIF file to '.concat(destFilePath))
+        fs.promises.copyFile(sarifFilePath, destFilePath)
+        return sarifFilePath
       }
     } catch (error) {
       return `Error reading or parsing JSON file: ${(error as Error).message}`
