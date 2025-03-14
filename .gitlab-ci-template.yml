@@ -12,9 +12,10 @@
 .only:
   only:
     refs:
-      - master
-      - main
-      - /^release-.*$/
+      - fix/polaris-bridge-job-failure
+      # - master
+      # - main
+      # - /^release-.*$/
 
 .except:
   except: [ ]
