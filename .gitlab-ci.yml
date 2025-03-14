@@ -81,7 +81,7 @@ polaris_bridge:
   before_script:
     - |
       apt-get update -y
-      apt-get install -y python3 python3-pip
+      apt-get install -y rsync make jq python3 python3-pip
       export DETECT_ACCURACY_REQUIRED=NONE
 
 pop_blackduck:
