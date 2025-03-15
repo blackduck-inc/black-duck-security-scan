@@ -1,6 +1,5 @@
 import mock = jest.mock
 import {extractZipped, getRemoteFile} from '../../../src/blackduck-security-action/download-utility'
-import {cleanupTempDir, createTempDir} from '../../../src/blackduck-security-action/utility'
 import {tmpdir} from 'os'
 
 const path = require('path')
@@ -8,9 +7,6 @@ mock('path')
 
 const toolCache = require('@actions/tool-cache')
 mock('@actions/tool-cache')
-
-const fs = require('fs')
-mock('fs')
 
 let tempPath = '/temp'
 
@@ -91,7 +87,6 @@ test('Test extractZipped for file name to be empty', () => {
 
   toolCache.extractZip.mockReturnValueOnce('/destination-directory')
 
-  let returnedResponse
   const response = extractZipped('', '/destination-directory')
   expect(response).rejects.toThrowError()
 })
@@ -101,7 +96,6 @@ test('Test extractZipped for destination path to be empty', () => {
 
   toolCache.extractZip.mockReturnValueOnce('/destination-directory')
 
-  let returnedResponse
   const response = extractZipped('file', '')
   expect(response).rejects.toThrowError()
 })
