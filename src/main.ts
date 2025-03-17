@@ -28,9 +28,16 @@ export async function run() {
     }
     // Execute bridge command
     exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
-    isBridgeExecuted = exitCode === 0 || (exitCode === 8 && checkJobResult(inputs.MARK_BUILD_STATUS) === constants.BUILD_STATUS.SUCCESS)
+    if (exitCode === 0) {
+      info('Black Duck Security Action workflow execution completed successfully.')
+      isBridgeExecuted = true
+    } else if (exitCode === 8 && checkJobResult(inputs.MARK_BUILD_STATUS) === constants.BUILD_STATUS.SUCCESS) {
+      info(`Marking the build ${inputs.MARK_BUILD_STATUS} as configured in the task.`)
+      isBridgeExecuted = true
+    }
     info(`Setting output variable ${constants.TASK_RETURN_STATUS} with exit code ${exitCode} and isBridgeExecuted: ${isBridgeExecuted} and MARK_BUILD_STATUS: ${inputs.MARK_BUILD_STATUS} and ${checkJobResult(inputs.MARK_BUILD_STATUS)}`)
-    info(exitCode === 8 && isBridgeExecuted ? `Marking the build ${inputs.MARK_BUILD_STATUS} as configured in the task.` : 'Black Duck Security Action workflow execution completed successfully.')
+    // isBridgeExecuted = exitCode === 0 || (exitCode === 8 && checkJobResult(inputs.MARK_BUILD_STATUS) === constants.BUILD_STATUS.SUCCESS)
+    // info(exitCode === 8 && isBridgeExecuted ? `Marking the build ${inputs.MARK_BUILD_STATUS} as configured in the task.` : 'Black Duck Security Action workflow execution completed successfully.')
     return exitCode
   } catch (error) {
     exitCode = getBridgeExitCodeAsNumericValue(error as Error)
