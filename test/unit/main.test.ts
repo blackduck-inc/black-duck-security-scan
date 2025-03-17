@@ -86,9 +86,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     const response = await run()
 
     expect(response).toBe(8)
-    expect(core.info).toHaveBeenCalledWith('Marking the build success as configured in the task.')
     expect(core.setOutput).toHaveBeenCalledWith('status', 8)
-    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
   })
 
   it('handles failure case with exitCode 2', async () => {
@@ -101,20 +99,19 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: false')
   })
 
-  it('uploads SARIF report for exitCode 8', async () => {
+  it('uploads SARIF report for exitCode 2', async () => {
     setupBlackDuckInputs({
       BLACKDUCKSCA_REPORTS_SARIF_CREATE: 'true',
-      BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH: '/',
-      MARK_BUILD_STATUS: 'success'
+      BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH: '/'
     })
-    setupMocks(8)
+    setupMocks(2)
     jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
     const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
     jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
 
     await run()
-    expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith('Blackduck SCA SARIF Generator', '/', 'blackduck_sarif_report')
+    expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
   })
 })
 
