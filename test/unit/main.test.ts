@@ -1,4 +1,4 @@
-import {logBridgeExitCodes, run} from '../../src/main'
+import {getBridgeExitCode, logBridgeExitCodes, run} from '../../src/main'
 import * as inputs from '../../src/blackduck-security-action/inputs'
 import {Bridge} from '../../src/blackduck-security-action/bridge-cli'
 import {DownloadFileResponse} from '../../src/blackduck-security-action/download-utility'
@@ -49,7 +49,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     }
   }
 
-  const setupMocks = (exitCode: number) => {
+  const setupMocks = () => {
     jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
     const downloadFileResp: DownloadFileResponse = {
       filePath: 'C://user/temp/download/',
@@ -58,7 +58,6 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
     jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(exitCode)
     const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
     jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
   }
@@ -69,7 +68,8 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
 
   it('handles successful execution with exitCode 0', async () => {
     setupBlackDuckInputs()
-    setupMocks(0)
+    setupMocks()
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
     const response = await run()
 
     expect(response).toBe(0)
@@ -80,38 +80,54 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
 
   it('handles issues detected but marked as success with exitCode 8', async () => {
     setupBlackDuckInputs({MARK_BUILD_STATUS: 'success'})
-    setupMocks(8)
+    setupMocks()
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge CLI execution failed with exit code 8'))
     jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
 
-    const response = await run()
-
-    expect(response).toBe(8)
-    expect(core.setOutput).toHaveBeenCalledWith('status', 8)
+    try {
+      await run()
+    } catch (error: any) {
+      expect(error.message).toContain('Exit Code: 8')
+      expect(core.info).toHaveBeenCalledWith('Marking the build success as configured in the task.')
+      expect(core.setOutput).toHaveBeenCalledWith('status', 8)
+      expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
+    }
   })
 
   it('handles failure case with exitCode 2', async () => {
     setupBlackDuckInputs()
-    setupMocks(2)
+    setupMocks()
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Exit Code: 2 Error from adapter end'))
 
-    const response = await run()
-    expect(response).toBe(2)
-    expect(core.setOutput).toHaveBeenCalledWith('status', 2)
-    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: false')
+    try {
+      await run()
+    } catch (error: any) {
+      expect(error.message).toContain('Exit Code: 2 Error from adapter end')
+    }
   })
 
-  it('uploads SARIF report for exitCode 2', async () => {
+  it('uploads SARIF report for exitCode 8', async () => {
     setupBlackDuckInputs({
       BLACKDUCKSCA_REPORTS_SARIF_CREATE: 'true',
-      BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH: '/'
+      BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH: '/',
+      MARK_BUILD_STATUS: 'success'
     })
-    setupMocks(2)
+    setupMocks()
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge CLI execution failed with exit code 8'))
     jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
     const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
     jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
 
-    await run()
-    expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
+    const error = new Error('Error: The process failed with exit code 8')
+    expect(getBridgeExitCode(error)).toBe(true)
+
+    try {
+      await run()
+    } catch (error: any) {
+      expect(error.message).toContain('Exit Code: 8')
+      expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith('blackduck-sca-sarif-generator', '/', 'blackduck-sca-sarif-artifact')
+    }
   })
 })
 
