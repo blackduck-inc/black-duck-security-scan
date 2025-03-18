@@ -7,6 +7,7 @@ import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
+import {EXIT_CODE_ERROR} from './application-constants'
 
 export async function run() {
   info('Black Duck Security Action started...')
@@ -36,7 +37,7 @@ export async function run() {
   } catch (error) {
     const err = error as Error
     exitCode = getBridgeExitCodeAsNumericValue(err)
-    if (exitCode === 8 && checkJobResult(inputs.MARK_BUILD_STATUS) === constants.BUILD_STATUS.SUCCESS) {
+    if (exitCode === constants.EXIT_CODE_ERROR && checkJobResult(inputs.MARK_BUILD_STATUS) === constants.BUILD_STATUS.SUCCESS) {
       info(`Workflow failed! ${logBridgeExitCodes(err.message)}.\nMarking the build ${inputs.MARK_BUILD_STATUS} as configured in the task.`)
       isBridgeExecuted = true
     } else throw error
