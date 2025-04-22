@@ -167,13 +167,14 @@ export function setAllMocks() {
 export function getBridgeDownloadUrl(): string {
   const WINDOWS_PLATFORM = 'win64'
   const LINUX_PLATFORM = 'linux64'
+  const LINUX_ARM_PLATFORM = 'linux_arm'
   const MAC_PLATFORM = 'macosx'
   const osName = process.platform
   let platform = ''
   if (osName === 'darwin') {
     platform = MAC_PLATFORM
   } else if (osName === 'linux') {
-    platform = LINUX_PLATFORM
+    platform = /^(arm.*|aarch.*)$/.test(process.arch) ? LINUX_ARM_PLATFORM : LINUX_PLATFORM
   } else if (osName === 'win32') {
     platform = WINDOWS_PLATFORM
   }

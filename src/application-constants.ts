@@ -20,6 +20,7 @@ export const BRIDGE_CLI_DOWNLOAD_URL_KEY = 'bridgecli_download_url'
 export const BRIDGE_DOWNLOAD_VERSION_KEY = 'synopsys_bridge_download_version'
 export const BRIDGE_CLI_DOWNLOAD_VERSION_KEY = 'bridgecli_download_version'
 export const MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION = '2.1.0'
+export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.4.7'
 
 // Scan Types
 export const COVERITY_KEY = 'coverity'

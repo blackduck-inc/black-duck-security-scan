@@ -358,6 +358,15 @@ test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux', () => 
   expect(response).rejects.toThrowError()
 })
 
+test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux ARM', () => {
+  const sb = new Bridge()
+  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
+  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-2.9.8-linux_arm.zip'})
+
+  const response = sb.downloadBridge('/working_directory')
+  expect(response).rejects.toThrowError()
+})
+
 test('Test without version details from BRIDGE_CLI_DOWNLOAD_URL', () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
