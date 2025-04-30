@@ -1140,6 +1140,33 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     expect(jsonData.data.polaris.policy.badges.create).toBe(false)
   })
 
+  test('Test getFormattedCommandForPolaris - polaris test sca and sast type', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST'})
+    Object.defineProperty(inputs, 'POLARIS_BRANCH_NAME', {value: 'feature1'})
+    Object.defineProperty(inputs, 'POLARIS_TEST_SCA_TYPE', {value: 'SCA-SIGNATURE'})
+    Object.defineProperty(inputs, 'POLARIS_TEST_SAST_TYPE', {value: 'SAST_RAPID'})
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+    expect(jsonData.data.polaris.serverUrl).toContain('server_url')
+    expect(jsonData.data.polaris.accesstoken).toContain('access_token')
+    expect(jsonData.data.polaris.application.name).toContain('POLARIS_APPLICATION_NAME')
+    expect(jsonData.data.polaris.project.name).toContain('POLARIS_PROJECT_NAME')
+    expect(jsonData.data.polaris.assessment.types).toEqual(['SCA', 'SAST'])
+    expect(jsonData.data.polaris.branch.name).toContain('feature1')
+    expect(jsonData.data.polaris.test.sca.type).toContain('SCA-SIGNATURE')
+    expect(jsonData.data.polaris.test.sast.type).toContain('SAST_RAPID')
+  })
+
   it('Test getFormattedCommandForPolaris - badges failure (empty github token)', () => {
     Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
     Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})

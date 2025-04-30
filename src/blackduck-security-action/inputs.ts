@@ -29,6 +29,7 @@ export const POLARIS_PRCOMMENT_SEVERITIES = getInput(constants.POLARIS_PRCOMMENT
 export const POLARIS_BRANCH_NAME = getInput(constants.POLARIS_BRANCH_NAME_KEY)?.trim() || ''
 export const POLARIS_PARENT_BRANCH_NAME = getInput(constants.POLARIS_BRANCH_PARENT_NAME_KEY)?.trim() || ''
 export const POLARIS_TEST_SCA_TYPE = getInput(constants.POLARIS_TEST_SCA_TYPE_KEY)?.trim() || ''
+export const POLARIS_TEST_SAST_TYPE = getInput(constants.POLARIS_TEST_SAST_TYPE_KEY)?.trim() || ''
 export const POLARIS_REPORTS_SARIF_CREATE = getInput(constants.POLARIS_REPORTS_SARIF_CREATE_KEY)?.trim() || ''
 export const POLARIS_REPORTS_SARIF_FILE_PATH = getInput(constants.POLARIS_REPORTS_SARIF_FILE_PATH_KEY)?.trim() || ''
 export const POLARIS_REPORTS_SARIF_SEVERITIES = getInput(constants.POLARIS_REPORTS_SARIF_SEVERITIES_KEY)?.trim() || ''

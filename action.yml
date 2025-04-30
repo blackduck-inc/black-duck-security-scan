@@ -86,6 +86,9 @@ inputs:
   polaris_test_sca_type:
     description: 'Polaris test type to trigger signature scan or package manager scan'
     required: false
+  polaris_test_sast_type:
+    description: 'Polaris test type to trigger sigma rapid scan or full scan'
+    required: false
   polaris_reports_sarif_create:
     description: 'Flag to enable/disable Polaris SARIF report generation'
     required: false
