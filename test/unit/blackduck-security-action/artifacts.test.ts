@@ -74,10 +74,9 @@ describe('uploadSarifReport', () => {
     }
     process.env['GITHUB_SERVER_URL'] = 'https://github.com'
     jest.spyOn(artifact, 'DefaultArtifactClient').mockReturnValue(mockArtifactClient as artifact.ArtifactClient)
-    jest.spyOn(utility, 'getDefaultSarifReportPath').mockReturnValue('mocked-sarif-path')
     jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
 
-    const defaultSarifReportDirectory = '.'
+    const defaultSarifReportDirectory = 'mocked-default-sarif-directory'
     const userSarifFilePath = 'mocked-sarif-path'
     const artifactName = 'mocked-artifact-name'
 

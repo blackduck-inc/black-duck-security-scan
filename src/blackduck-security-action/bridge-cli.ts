@@ -454,4 +454,11 @@ export class Bridge {
     retryDelay = retryDelay * 2
     return retryDelay
   }
+  // Read output file to extract sarif file path
+  async getBridgeSarifFilePath(formattedCommand: string): Promise<string> {
+    const bridgeSarifPath = new BridgeToolsParameter(formattedCommand)
+    const pathName = bridgeSarifPath.getSarifFilePath(formattedCommand)
+    info('Sarif file path extracted from output: '.concat(await pathName))
+    return pathName
+  }
 }

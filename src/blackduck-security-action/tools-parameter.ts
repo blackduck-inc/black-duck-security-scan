@@ -28,6 +28,11 @@ export class BridgeToolsParameter {
   static SPACE = ' '
   // Blackduck parameters
   private static BLACKDUCK_STAGE = 'blackducksca'
+  // Sarif file path extract from --out <filename>
+  private static OUTPUT_OPTION = '--out'
+  private static POLARIS_OUTPUT_FILE_NAME = 'polaris_output.json'
+  private static BD_OUTPUT_FILE_NAME = 'bd_output.json'
+  private static INTEGRATION_DEFAULT_DIRECTORY = '.blackduck/integration'
 
   constructor(tempDir: string) {
     this.tempDir = tempDir
@@ -257,10 +262,11 @@ export class BridgeToolsParameter {
     const inputJson = JSON.stringify(polData)
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
+    const outPutFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_OUTPUT_FILE_NAME)
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
+    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.OUTPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(outPutFilePath).concat(BridgeToolsParameter.SPACE)
     return command
   }
 
@@ -346,7 +352,6 @@ export class BridgeToolsParameter {
 
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.COVERITY_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
-
     debug('Generated state json file at - '.concat(stateFilePath))
 
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.COVERITY_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
@@ -519,10 +524,11 @@ export class BridgeToolsParameter {
 
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.BD_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
+    const outPutFilePath = path.join(this.tempDir, BridgeToolsParameter.BD_OUTPUT_FILE_NAME)
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.BLACKDUCK_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
+    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.BLACKDUCK_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.OUTPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(outPutFilePath).concat(BridgeToolsParameter.SPACE)
     return command
   }
 
@@ -778,5 +784,28 @@ export class BridgeToolsParameter {
       blackduckDetectData.args = inputs.DETECT_ARGS
     }
     return blackduckDetectData
+  }
+  async getSarifFilePath(formattedCommandString: string): Promise<string> {
+    try {
+      const filePath = this.extractOutputFile(formattedCommandString)
+      const fileName = path.basename(filePath)
+      const jsonData = JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+
+      const sarifFilePath = fileName === 'polaris_output.json' ? jsonData?.data?.polaris?.reports?.sarif?.file?.output : fileName === 'bd_output.json' ? jsonData?.data?.blackducksca?.reports?.sarif?.file?.output : ''
+      //const destFilePath = fileName === 'polaris_output.json' ? '.blackduck/integration/PolarisSarifFile' : fileName === 'bd_output.json' ? '.blackduck/integration/BlackduckSarifFile' : ''
+
+      // if (sarifFilePath && destFilePath) {
+      //   await fs.promises.copyFile(sarifFilePath, destFilePath)
+      //   info('Destination File Path contain bridge default path: '.concat(destFilePath))
+      // }
+      return sarifFilePath
+    } catch (error) {
+      return `Error reading or parsing JSON file: ${(error as Error).message}`
+    }
+    return ''
+  }
+  extractOutputFile(command: string): string {
+    const match = command.match(/--out\s+(\S+)/)
+    return match ? match[1] : ''
   }
 }

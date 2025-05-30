@@ -2,7 +2,7 @@ import {HttpClient} from 'typed-rest-client/HttpClient'
 import * as inputs from '../../inputs'
 import * as fs from 'fs'
 import * as zlib from 'zlib'
-import {checkIfPathExists, getDefaultSarifReportPath, sleep} from '../../utility'
+import {checkIfPathExists, sleep} from '../../utility'
 import {debug, info} from '@actions/core'
 import * as constants from '../../../application-constants'
 import {GithubClientServiceInterface} from '../github-client-service-interface'
@@ -39,8 +39,7 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
       return url.replace(/{(\d+)}/g, (match, index) => args[index] || '')
     }
     const endpoint = stringFormat(this.githubApiURL.concat(this.gitHubCodeScanningUrl), this.repoOwner, this.repoName)
-    const sarifFilePath = userSarifFilePath ? userSarifFilePath : getDefaultSarifReportPath(defaultSarifReportDirectory, true)
-
+    const sarifFilePath = userSarifFilePath ? userSarifFilePath : defaultSarifReportDirectory
     if (checkIfPathExists(sarifFilePath)) {
       try {
         const sarifContent = fs.readFileSync(sarifFilePath, 'utf8')

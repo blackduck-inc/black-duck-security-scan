@@ -8,6 +8,7 @@ let polaris_input_file = '/polaris_input.json'
 let coverity_input_file = '/coverity_input.json'
 let blackduck_input_file = '/bd_input.json'
 let srm_input_file = '/srm_input.json'
+import path from 'path'
 
 beforeAll(() => {
   createTempDir().then(path => (tempPath = path))
@@ -1389,4 +1390,25 @@ it('should pass SRM fields and project directory field to bridge', () => {
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
   expect(jsonData.data.project.directory).toBe('SRM_PROJECT_DIRECTORY')
+})
+
+describe('BridgeToolsParameter', () => {
+  let bridge: BridgeToolsParameter
+
+  beforeEach(() => {
+    bridge = new BridgeToolsParameter('/tmp')
+    jest.clearAllMocks()
+  })
+
+  describe('extractOutputFile', () => {
+    it('should extract file path after --out', () => {
+      const cmd = 'run --out /tmp/polaris_output.json'
+      expect(bridge.extractOutputFile(cmd)).toBe('/tmp/polaris_output.json')
+    })
+
+    it('should return empty string if --out not present', () => {
+      const cmd = 'run --input file'
+      expect(bridge.extractOutputFile(cmd)).toBe('')
+    })
+  })
 })
