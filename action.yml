@@ -249,6 +249,12 @@ inputs:
     description: 'Specify the build status if policy violating issues are found.'
     required: false
     default: 'failure'
+  network_ssl_cert_file:
+    description: 'File path to configure the HttpClient to accept a self-signed certificate.'
+    required: false
+  network_ssl_trustAll:
+    description: 'Boolean value to trust all certificates.'
+    required: false
 outputs:
   status:
     description: 'The numeric exit code returned by the Black Duck Security Scan.'

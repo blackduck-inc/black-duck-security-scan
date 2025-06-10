@@ -11,6 +11,7 @@ import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
 import {isBoolean, isPullRequestEvent, parseToBoolean} from './utility'
 import {SRM} from './input-data/srm'
+import {Network} from './input-data/common'
 
 export class BridgeToolsParameter {
   tempDir: string
@@ -63,6 +64,7 @@ export class BridgeToolsParameter {
 
     const polData: InputData<Polaris> = {
       data: {
+        network: {},
         polaris: {
           accesstoken: inputs.POLARIS_ACCESS_TOKEN,
           serverUrl: inputs.POLARIS_SERVER_URL,
@@ -244,6 +246,8 @@ export class BridgeToolsParameter {
       polData.data.detect = {...polData.data.detect, ...detectArgs}
     }
 
+    polData.data.network = this.setNetworkObj()
+
     const inputJson = JSON.stringify(polData)
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
@@ -326,9 +330,7 @@ export class BridgeToolsParameter {
       }
     }
 
-    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
-      covData.data.network = {airGap: parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)}
-    }
+    covData.data.network = this.setNetworkObj()
 
     covData.data.coverity = Object.assign({}, this.setCoverityDetectArgs(), covData.data.coverity)
 
@@ -499,9 +501,7 @@ export class BridgeToolsParameter {
       }
     }
 
-    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
-      blackduckData.data.network = {airGap: parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)}
-    }
+    blackduckData.data.network = this.setNetworkObj()
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
 
@@ -768,5 +768,25 @@ export class BridgeToolsParameter {
       blackduckDetectData.args = inputs.DETECT_ARGS
     }
     return blackduckDetectData
+  }
+
+  private setNetworkObj(): Network {
+    const network: Network = {}
+    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
+      network.airGap = parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)
+    }
+
+    if (!network.ssl) {
+      network.ssl = {}
+    }
+
+    if (inputs.NETWORK_SSL_CERT_FILE) {
+      network.ssl.cert = {file: inputs.NETWORK_SSL_CERT_FILE}
+    }
+
+    if (inputs.NETWORK_SSL_TRUST_ALL) {
+      network.ssl.trustAll = parseToBoolean(inputs.NETWORK_SSL_TRUST_ALL)
+    }
+    return network
   }
 }

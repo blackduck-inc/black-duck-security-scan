@@ -220,6 +220,8 @@ export const INCLUDE_DIAGNOSTICS_KEY = 'include_diagnostics'
 export const BRIDGE_NETWORK_AIRGAP_KEY = 'bridge_network_airgap'
 export const NETWORK_AIRGAP_KEY = 'network_airgap'
 export const DIAGNOSTICS_RETENTION_DAYS_KEY = 'diagnostics_retention_days'
+export const NETWORK_SSL_CERT_FILE_KEY = 'network_ssl_cert_file'
+export const NETWORK_SSL_TRUST_ALL_KEY = 'network_ssl_trustAll'
 
 // Bridge Exit Codes
 export const EXIT_CODE_MAP = new Map<string, string>([

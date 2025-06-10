@@ -1,11 +1,11 @@
 import {GithubData} from './github'
-import {AsyncMode} from './async-mode'
+import {Common, Network} from './common'
 
 export interface Coverity {
   coverity: CoverityConnect
   project?: ProjectData
   github?: GithubData
-  network?: NetworkAirGap
+  network?: Network
 }
 
 export interface ProjectData {
@@ -18,7 +18,7 @@ export interface AutomationData {
   prcomment?: boolean
 }
 
-export interface CoverityConnect extends CoverityDetect, AsyncMode {
+export interface CoverityConnect extends CoverityDetect, Common {
   connect: CoverityData
   install?: {directory: string}
   automation?: AutomationData
@@ -43,10 +43,6 @@ export interface CoverityData {
   project: {name: string}
   stream: {name: string}
   policy?: {view: string}
-}
-
-export interface NetworkAirGap {
-  airGap: boolean
 }
 
 export interface Command {

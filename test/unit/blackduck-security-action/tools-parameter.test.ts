@@ -3,6 +3,7 @@ import {BridgeToolsParameter} from '../../../src/blackduck-security-action/tools
 import mock = jest.mock
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as utility from '../../../src/blackduck-security-action/utility'
+import {NETWORK_SSL_CERT_FILE, NETWORK_SSL_TRUST_ALL} from '../../../src/blackduck-security-action/inputs'
 let tempPath = '/temp'
 let polaris_input_file = '/polaris_input.json'
 let coverity_input_file = '/coverity_input.json'
@@ -72,6 +73,30 @@ test('Test getFormattedCommandForPolaris with default values', () => {
   const jsonData = JSON.parse(jsonString)
   expect(jsonData.data.polaris.application.name).toBe('blackduck-security-action')
   expect(jsonData.data.polaris.project.name).toBe('blackduck-security-action')
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+})
+
+test('Test getFormattedCommandForPolaris with self-signed certificates', () => {
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'sca,sast'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  // Validate the expected values
+  expect(jsonData.data.polaris.application.name).toBe('blackduck-security-action')
+  expect(jsonData.data.polaris.project.name).toBe('blackduck-security-action')
+  expect(jsonData.data.network?.ssl?.cert?.file).toBe('/') // Optional chaining
+  expect(jsonData.data.network?.ssl?.trustAll).toBe(true)
 
   expect(resp).not.toBeNull()
   expect(resp).toContain('--stage polaris')
