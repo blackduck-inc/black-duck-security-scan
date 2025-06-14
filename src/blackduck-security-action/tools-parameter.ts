@@ -177,13 +177,11 @@ export class BridgeToolsParameter {
         info(constants.POLARIS_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS)
       }
     }
-
     if (!isPrEvent) {
       if (parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
         /** Set Polaris SARIF inputs in case of non PR context */
         const sarifReportFilterSeverities: string[] = []
         const sarifReportFilterAssessmentIssuesType: string[] = []
-
         if (inputs.POLARIS_REPORTS_SARIF_SEVERITIES) {
           const filterSeverities = inputs.POLARIS_REPORTS_SARIF_SEVERITIES.split(',')
           for (const sarifSeverity of filterSeverities) {

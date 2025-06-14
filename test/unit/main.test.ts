@@ -125,7 +125,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
       await run()
     } catch (error: any) {
       expect(error.message).toContain('Bridge CLI execution failed with exit code 8')
-      expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith('Blackduck SCA SARIF Generator', '/', 'blackduck_sarif_report_1749123407519')
+      expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith('/blackducksca/sarif', '/', 'blackduck_sarif_report_1749123407519')
     }
   })
 
