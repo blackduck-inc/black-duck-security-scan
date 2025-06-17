@@ -1,6 +1,6 @@
 import {BlackDuckDetect} from './blackduck'
 import {CoverityDetect} from './coverity'
-import {AsyncMode} from './async-mode'
+import {Common} from './common'
 
 export interface SRM {
   srm: SRMData
@@ -9,7 +9,7 @@ export interface SRM {
   detect?: DetectData
 }
 
-export interface SRMData extends AsyncMode {
+export interface SRMData extends Common {
   url: string
   apikey: string
   project?: {id?: string; name?: string}

@@ -1,5 +1,5 @@
 import {Reports} from './reports'
-import {AsyncMode} from './async-mode'
+import {Common, Network} from './common'
 
 export enum BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES {
   ALL = 'ALL',
@@ -13,17 +13,17 @@ export enum BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES {
   UNSPECIFIED = 'UNSPECIFIED'
 }
 
-export interface BlackDuckSCA {
+export interface BlackDuckSCA extends Network {
   blackducksca: BlackDuckSCAData
   detect?: BlackDuckDetect
   project?: {
     directory?: string
   }
   github?: GithubData
-  network?: NetworkAirGap
+  network?: Network
 }
 
-export interface BlackDuckSCAData extends AsyncMode {
+export interface BlackDuckSCAData extends Common {
   url: string
   token: string
   scan?: {full?: boolean; failure?: {severities: BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES[]}}
@@ -75,8 +75,4 @@ export interface BlackDuckFixPrData {
 
 export interface BlackDuckFixPrFilerData {
   severities?: string[]
-}
-
-export interface NetworkAirGap {
-  airGap: boolean
 }

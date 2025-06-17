@@ -77,6 +77,30 @@ test('Test getFormattedCommandForPolaris with default values', () => {
   expect(resp).toContain('--stage polaris')
 })
 
+test('Test getFormattedCommandForPolaris with self-signed certificates', () => {
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'sca,sast'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  // Validate the expected values
+  expect(jsonData.data.polaris.application.name).toBe('blackduck-security-action')
+  expect(jsonData.data.polaris.project.name).toBe('blackduck-security-action')
+  expect(jsonData.data.network?.ssl?.cert?.file).toBe('/') // Optional chaining
+  expect(jsonData.data.network?.ssl?.trustAll).toBe(true)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+})
+
 test('Test missing data error in getFormattedCommandForPolaris', () => {
   Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
   Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})

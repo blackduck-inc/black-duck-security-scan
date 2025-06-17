@@ -29,6 +29,7 @@ beforeEach(() => {
   jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
   jest.spyOn(fs, 'renameSync').mockReturnValue()
   jest.spyOn(utility, 'getRealSystemTime').mockReturnValue('1749123407519') // Mock with a fixed timestamp
+  delete process.env.NODE_EXTRA_CA_CERTS
 })
 
 afterEach(() => {
@@ -1002,4 +1003,82 @@ test('should not upload polaris sarif for pr context', async () => {
   Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
   Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
   Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: null})
+})
+
+describe('SSL Certificate Configuration Tests', () => {
+  test('should set NODE_EXTRA_CA_CERTS when NETWORK_SSL_CERT_FILE is provided and NETWORK_SSL_TRUST_ALL is false', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/cert.pem'})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+
+    expect(response).toEqual(0)
+    expect(process.env.NODE_EXTRA_CA_CERTS).toBe('/path/to/cert.pem')
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: null})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+  })
+
+  test('should not set NODE_EXTRA_CA_CERTS when NETWORK_SSL_TRUST_ALL is true even if NETWORK_SSL_CERT_FILE is provided', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/cert.pem'})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'true'})
+
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+
+    expect(response).toEqual(0)
+    expect(process.env.NODE_EXTRA_CA_CERTS).toBeUndefined()
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: null})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+  })
+
+  test('should not set NODE_EXTRA_CA_CERTS when NETWORK_SSL_CERT_FILE is not provided', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+
+    expect(response).toEqual(0)
+    expect(process.env.NODE_EXTRA_CA_CERTS).toBeUndefined()
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+  })
 })
