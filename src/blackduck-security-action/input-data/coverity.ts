@@ -6,6 +6,7 @@ export interface Coverity {
   project?: ProjectData
   github?: GithubData
   network?: NetworkAirGap
+  bridge?: Bridge
 }
 
 export interface ProjectData {
@@ -51,4 +52,11 @@ export interface NetworkAirGap {
 
 export interface Command {
   command: string
+}
+export interface Bridge {
+  invoked: Invoked
+}
+
+export interface Invoked {
+  from: string
 }
