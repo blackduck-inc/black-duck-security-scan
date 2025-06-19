@@ -143,7 +143,23 @@ export class BridgeToolsParameter {
         polData.data.github = this.getGithubRepoInfo()
       }
     }
+    // Custom Header
+    const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+    const githubHostUrl = githubServerUrl === constants.GITHUB_CLOUD_URL ? '' : githubServerUrl
 
+    info('Github host URl-'.concat(githubHostUrl))
+
+    if (githubHostUrl === null || githubHostUrl === '') {
+      if (polData.data.bridge?.invoked) {
+        polData.data.bridge.invoked.from = 'Integrations-github-cloud'
+        info('Custom Header Information-'.concat(polData.data.bridge.invoked.from))
+      }
+    } else {
+      if (polData.data.bridge?.invoked) {
+        polData.data.bridge.invoked.from = 'Integrations-github-ee'
+        info('Custom Header Information-'.concat(polData.data.bridge.invoked.from))
+      }
+    }
     const isPrEvent = isPullRequestEvent()
     if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED)) {
       if (isPrEvent) {
@@ -243,6 +259,7 @@ export class BridgeToolsParameter {
     }
 
     const inputJson = JSON.stringify(polData)
+    info('Input JSON: '.concat(inputJson))
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
 
@@ -329,7 +346,19 @@ export class BridgeToolsParameter {
     }
 
     covData.data.coverity = Object.assign({}, this.setCoverityDetectArgs(), covData.data.coverity)
+    // Custom Header
+    const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+    const githubHostUrl = githubServerUrl === constants.GITHUB_CLOUD_URL ? '' : githubServerUrl
 
+    if (githubHostUrl === null || githubHostUrl === '') {
+      if (covData.data.bridge?.invoked) {
+        covData.data.bridge.invoked.from = 'Integrations-github-cloud'
+      }
+    } else {
+      if (covData.data.bridge?.invoked) {
+        covData.data.bridge.invoked.from = 'Integrations-github-ee'
+      }
+    }
     const inputJson = JSON.stringify(covData)
 
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.COVERITY_STATE_FILE_NAME)
@@ -502,7 +531,19 @@ export class BridgeToolsParameter {
     }
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
+    // Custom Header
+    const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+    const githubHostUrl = githubServerUrl === constants.GITHUB_CLOUD_URL ? '' : githubServerUrl
 
+    if (githubHostUrl === null || githubHostUrl === '') {
+      if (blackduckData.data.bridge?.invoked) {
+        blackduckData.data.bridge.invoked.from = 'Integrations-github-cloud'
+      }
+    } else {
+      if (blackduckData.data.bridge?.invoked) {
+        blackduckData.data.bridge.invoked.from = 'Integrations-github-ee'
+      }
+    }
     const inputJson = JSON.stringify(blackduckData)
 
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.BD_STATE_FILE_NAME)
@@ -587,7 +628,19 @@ export class BridgeToolsParameter {
     if (Object.keys(detectArgs).length > 0) {
       srmData.data.detect = {...srmData.data.detect, ...detectArgs}
     }
+    // Custom Header
+    const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+    const githubHostUrl = githubServerUrl === constants.GITHUB_CLOUD_URL ? '' : githubServerUrl
 
+    if (githubHostUrl === null || githubHostUrl === '') {
+      if (srmData.data.bridge?.invoked) {
+        srmData.data.bridge.invoked.from = 'Integrations-github-cloud'
+      }
+    } else {
+      if (srmData.data.bridge?.invoked) {
+        srmData.data.bridge.invoked.from = 'Integrations-github-ee'
+      }
+    }
     const inputJson = JSON.stringify(srmData)
 
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.SRM_STATE_FILE_NAME)

@@ -10,6 +10,7 @@ export interface Polaris {
   github?: GithubData
   coverity?: CoverityDetect
   detect?: Omit<BlackDuckDetect, 'install' | 'scan'>
+  bridge?: Bridge
 }
 
 export interface PolarisData extends AsyncMode {
@@ -55,4 +56,11 @@ export interface Branch {
 
 export interface Test {
   sca: {type: string}
+}
+export interface Bridge {
+  invoked: Invoked
+}
+
+export interface Invoked {
+  from: string
 }
