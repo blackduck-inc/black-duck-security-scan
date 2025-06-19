@@ -11,6 +11,7 @@ import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
 import {isBoolean, isPullRequestEvent, parseToBoolean} from './utility'
 import {SRM} from './input-data/srm'
+import {NetworkConfiguration} from './input-data/common'
 
 export class BridgeToolsParameter {
   tempDir: string
@@ -230,6 +231,12 @@ export class BridgeToolsParameter {
       }
     }
 
+    // Set Network Configuration
+    const networkConfig = this.setNetworkConfiguration()
+    if (Object.keys(networkConfig).length > 0) {
+      polData.data.network = networkConfig
+    }
+
     // Set Coverity and Blackduck Detect Arguments
     const coverityArgs = this.setCoverityDetectArgs()
     const detectArgs = this.setDetectArgs()
@@ -324,8 +331,10 @@ export class BridgeToolsParameter {
       }
     }
 
-    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
-      covData.data.network = {airGap: parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)}
+    // Set Network Configuration
+    const networkConfig = this.setNetworkConfiguration()
+    if (Object.keys(networkConfig).length > 0) {
+      covData.data.network = networkConfig
     }
 
     covData.data.coverity = Object.assign({}, this.setCoverityDetectArgs(), covData.data.coverity)
@@ -497,8 +506,10 @@ export class BridgeToolsParameter {
       }
     }
 
-    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
-      blackduckData.data.network = {airGap: parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)}
+    // Set Network Configuration
+    const networkConfig = this.setNetworkConfiguration()
+    if (Object.keys(networkConfig).length > 0) {
+      blackduckData.data.network = networkConfig
     }
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
@@ -574,6 +585,12 @@ export class BridgeToolsParameter {
       srmData.data.project = {
         directory: inputs.PROJECT_DIRECTORY
       }
+    }
+
+    // Set Network Configuration
+    const networkConfig = this.setNetworkConfiguration()
+    if (Object.keys(networkConfig).length > 0) {
+      srmData.data.network = networkConfig
     }
 
     // Set Coverity and Blackduck Detect Arguments
@@ -766,5 +783,37 @@ export class BridgeToolsParameter {
       blackduckDetectData.args = inputs.DETECT_ARGS
     }
     return blackduckDetectData
+  }
+
+  private setNetworkConfiguration(): NetworkConfiguration {
+    const networkConfig: NetworkConfiguration = {}
+
+    if (isBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
+      networkConfig.airGap = parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)
+    }
+
+    // SSL Configuration
+    if (inputs.NETWORK_SSL_TRUST_ALL || inputs.NETWORK_SSL_CERT_FILE) {
+      networkConfig.ssl = {}
+
+      if (isBoolean(inputs.NETWORK_SSL_TRUST_ALL)) {
+        networkConfig.ssl.trust = {
+          all: parseToBoolean(inputs.NETWORK_SSL_TRUST_ALL)
+        }
+      }
+
+      if (inputs.NETWORK_SSL_CERT_FILE && inputs.NETWORK_SSL_CERT_FILE.trim() !== '') {
+        networkConfig.ssl.cert = {
+          file: inputs.NETWORK_SSL_CERT_FILE.trim()
+        }
+
+        // Set NODE_EXTRA_CA_CERTS environment variable when SSL trust all is false and cert file is provided
+        if (!parseToBoolean(inputs.NETWORK_SSL_TRUST_ALL)) {
+          process.env.NODE_EXTRA_CA_CERTS = inputs.NETWORK_SSL_CERT_FILE.trim()
+        }
+      }
+    }
+
+    return networkConfig
   }
 }

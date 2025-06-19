@@ -239,6 +239,12 @@ inputs:
   network_airgap:
     description: 'If provided, Black Duck Security Action will be using local network to download and execute bridge .'
     required: false
+  network_ssl_trustAll:
+    description: 'Trust all SSL certificates'
+    required: false
+  network_ssl_cert_file:
+    description: 'Path to custom SSL certificate file (PEM format)'
+    required: false
   polaris_policy_badges_create:
     description: 'To enable creation of badges on the GitHub repository for polaris'
     required: false

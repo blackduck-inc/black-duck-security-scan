@@ -3,6 +3,8 @@ import * as constants from '../application-constants'
 
 export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = getInput(constants.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)?.trim() || getInput(constants.BRIDGE_INSTALL_DIRECTORY_KEY)?.trim() || ''
 export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.trim() || getInput(constants.BRIDGE_NETWORK_AIRGAP_KEY)?.trim() || ''
+export const NETWORK_SSL_TRUST_ALL = getInput(constants.NETWORK_SSL_TRUST_ALL_KEY)?.trim() || ''
+export const NETWORK_SSL_CERT_FILE = getInput(constants.NETWORK_SSL_CERT_FILE_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || getInput(constants.BRIDGE_DOWNLOAD_URL_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || ''
 

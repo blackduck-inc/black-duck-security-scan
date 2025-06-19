@@ -1,12 +1,14 @@
 import {BlackDuckDetect} from './blackduck'
 import {CoverityDetect} from './coverity'
 import {AsyncMode} from './async-mode'
+import {NetworkConfiguration} from './common'
 
 export interface SRM {
   srm: SRMData
   project?: ProjectData
   coverity?: CoverityData
   detect?: DetectData
+  network?: NetworkConfiguration
 }
 
 export interface SRMData extends AsyncMode {

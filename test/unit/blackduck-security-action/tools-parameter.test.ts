@@ -1363,3 +1363,115 @@ it('should pass SRM fields and project directory field to bridge', () => {
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
   expect(jsonData.data.project.directory).toBe('SRM_PROJECT_DIRECTORY')
 })
+
+test('Test SSL configuration for Polaris', () => {
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'sca'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'true'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/cert.pem'})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.network).toBeDefined()
+  expect(jsonData.data.network.ssl).toBeDefined()
+  expect(jsonData.data.network.ssl.trust.all).toBe(true)
+  expect(jsonData.data.network.ssl.cert.file).toBe('/path/to/cert.pem')
+})
+
+test('Test SSL configuration for Coverity', () => {
+  Object.defineProperty(inputs, 'COVERITY_URL', {value: 'coverity_url'})
+  Object.defineProperty(inputs, 'COVERITY_USER', {value: 'coverity_user'})
+  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'coverity_passphrase'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/custom.pem'})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage connect')
+  expect(jsonData.data.network).toBeDefined()
+  expect(jsonData.data.network.ssl).toBeDefined()
+  expect(jsonData.data.network.ssl.trust.all).toBe(false)
+  expect(jsonData.data.network.ssl.cert.file).toBe('/path/to/custom.pem')
+  expect(process.env.NODE_EXTRA_CA_CERTS).toBe('/path/to/custom.pem')
+})
+
+test('Test SSL configuration for BlackDuck SCA', () => {
+  // Clear environment variables that could interfere with this test
+  delete process.env.NODE_EXTRA_CA_CERTS
+
+  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'blackduck_url'})
+  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'blackduck_token'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'true'})
+  Object.defineProperty(inputs, 'BLACKDUCKSCA_POLICY_BADGES_CREATE', {value: ''})
+  Object.defineProperty(inputs, 'BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT', {value: ''})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForBlackduck()
+
+  const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage blackducksca')
+  expect(jsonData.data.network).toBeDefined()
+  expect(jsonData.data.network.ssl).toBeDefined()
+  expect(jsonData.data.network.ssl.trust.all).toBe(true)
+})
+
+test('Test SSL configuration for SRM', () => {
+  // Clear previous environment variable that might interfere
+  delete process.env.NODE_EXTRA_CA_CERTS
+
+  Object.defineProperty(inputs, 'SRM_URL', {value: 'srm_url'})
+  Object.defineProperty(inputs, 'SRM_API_KEY', {value: 'api_key'})
+  Object.defineProperty(inputs, 'SRM_ASSESSMENT_TYPES', {value: 'SCA'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/srm.pem'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage srm')
+  expect(jsonData.data.network).toBeDefined()
+  expect(jsonData.data.network.ssl).toBeDefined()
+  expect(jsonData.data.network.ssl.cert.file).toBe('/path/to/srm.pem')
+  expect(process.env.NODE_EXTRA_CA_CERTS).toBe('/path/to/srm.pem')
+})
+
+test('Test network air gap with SSL configuration', () => {
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'sca'})
+  Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: 'true'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+  Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/airgap.pem'})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.network).toBeDefined()
+  expect(jsonData.data.network.airGap).toBe(true)
+  expect(jsonData.data.network.ssl).toBeDefined()
+  expect(jsonData.data.network.ssl.trust.all).toBe(false)
+  expect(jsonData.data.network.ssl.cert.file).toBe('/path/to/airgap.pem')
+})

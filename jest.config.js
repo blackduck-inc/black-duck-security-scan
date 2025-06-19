@@ -10,5 +10,10 @@ module.exports = {
   "moduleDirectories": [
     "node_modules",
     "src"
-  ]
+  ],
+  "coverageThreshold": {
+    "global": {
+      "lines": 80
+    }
+  }
 }

@@ -3,6 +3,7 @@ import {CoverityDetect} from './coverity'
 import {GithubData} from './github'
 import {Reports} from './reports'
 import {AsyncMode} from './async-mode'
+import {NetworkConfiguration} from './common'
 
 export interface Polaris {
   polaris: PolarisData
@@ -10,6 +11,7 @@ export interface Polaris {
   github?: GithubData
   coverity?: CoverityDetect
   detect?: Omit<BlackDuckDetect, 'install' | 'scan'>
+  network?: NetworkConfiguration
 }
 
 export interface PolarisData extends AsyncMode {
