@@ -47,45 +47,9 @@ jobs:
           echo "${{ env.LOG_PREFIX }} Validating version tag: ${{ github.event.inputs.versionTag }}"
           VERSION_TAG="${{ github.event.inputs.versionTag }}"
           [[ "$VERSION_TAG" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "${{ env.LOG_PREFIX }} ::error::Invalid version tag format. Expected vX.Y.Z, got $VERSION_TAG"; exit 1; }
-          VERSION_TAG="${VERSION_TAG#v}"
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_TAG"
           
-          git fetch --tags
-          
-          MATCHING_TAGS=$(git tag | grep -E "^v$MAJOR\.$MINOR\.[0-9]+$" | sort -V)
-          if [ -z "$MATCHING_TAGS" ]; then
-            NEXT_VERSION_TAG="v$MAJOR.$MINOR.$PATCH"
-          else
-            HIGHEST_PATCH=$(echo "$MATCHING_TAGS" | tail -n 1 | cut -d'.' -f3)
-            if [ "$HIGHEST_PATCH" -lt 9 ]; then
-              NEXT_VERSION_TAG="v$MAJOR.$MINOR.$((HIGHEST_PATCH + 1))"
-            elif [ "$MINOR" -lt 9 ]; then
-              NEXT_VERSION_TAG="v$MAJOR.$((MINOR + 1)).0"
-            else
-              NEXT_VERSION_TAG="v$((MAJOR + 1)).0.0"
-            fi
-          fi
-          
-          MAX_ATTEMPTS=100
-          attempt=0
-          while git tag | grep -q "^$NEXT_VERSION_TAG$"; do
-            attempt=$((attempt + 1))
-            if [ "$attempt" -ge "$MAX_ATTEMPTS" ]; then
-              echo "${{ env.LOG_PREFIX }} ::error::Exceeded maximum attempts to find a unique version tag"
-              exit 1
-            fi
-            IFS='.' read -r _ MAJOR MINOR PATCH <<< "${NEXT_VERSION_TAG#v}"
-            if [ "$PATCH" -lt 9 ]; then
-              NEXT_VERSION_TAG="v$MAJOR.$MINOR.$((PATCH + 1))"
-            elif [ "$MINOR" -lt 9 ]; then
-              NEXT_VERSION_TAG="v$MAJOR.$((MINOR + 1)).0"
-            else
-              NEXT_VERSION_TAG="v$((MAJOR + 1)).0.0"
-            fi
-          done
-          
-          echo "${{ env.LOG_PREFIX }} Next version tag: $NEXT_VERSION_TAG"
-          echo "nextVersionTag=$NEXT_VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "${{ env.LOG_PREFIX }} Next version tag: $VERSION_TAG"
+          echo "nextVersionTag=$VERSION_TAG" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Setup Node.js
