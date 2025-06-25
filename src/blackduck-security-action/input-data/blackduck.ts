@@ -21,6 +21,7 @@ export interface BlackDuckSCA {
   }
   github?: GithubData
   network?: NetworkAirGap
+  bridge?: Bridge
 }
 
 export interface BlackDuckSCAData extends AsyncMode {
@@ -79,4 +80,11 @@ export interface BlackDuckFixPrFilerData {
 
 export interface NetworkAirGap {
   airGap: boolean
+}
+export interface Bridge {
+  invoked: Invoked
+}
+
+export interface Invoked {
+  from: string
 }

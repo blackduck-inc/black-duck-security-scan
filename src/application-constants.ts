@@ -307,3 +307,5 @@ export const TASK_RETURN_STATUS = 'status'
 export const BRIDGE_BREAK_EXIT_CODE = 8
 export const INTEGRATIONS_POLARIS_DEFAULT_SARIF_FILE_PATH = '.blackduck/integrations/polaris/sarif/report.sarif.json'
 export const INTEGRATIONS_BLACKDUCK_SCA_DEFAULT_SARIF_FILE_PATH = '.blackduck/integrations/blackducksca/sarif/report.sarif.json'
+export const INTEGRATIONS_GITHUB_CLOUD = 'Integrations-github-cloud'
+export const INTEGRATIONS_GITHUB_EE = 'Integrations-github-ee'

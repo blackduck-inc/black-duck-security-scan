@@ -7,6 +7,7 @@ export interface SRM {
   project?: ProjectData
   coverity?: CoverityData
   detect?: DetectData
+  bridge?: Bridge
 }
 
 export interface SRMData extends AsyncMode {
@@ -29,7 +30,13 @@ export interface Branch {
 export interface ExecutionPath {
   execution?: {path?: string}
 }
+export interface Bridge {
+  invoked: Invoked
+}
 
+export interface Invoked {
+  from: string
+}
 export interface DetectData extends ExecutionPath, Omit<BlackDuckDetect, 'install' | 'scan'> {}
 
 export interface CoverityData extends ExecutionPath, CoverityDetect {}
