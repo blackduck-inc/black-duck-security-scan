@@ -178,7 +178,7 @@ test('Not supported flow error - run', async () => {
     await run()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('Requires at least one scan type: (polaris_server_url,coverity_url,blackducksca_url,srm_url)')
+    expect(error.message).toContain('Provide at least one of the product URL (polaris_server_url, coverity_url, blackducksca_url, or srm_url) to proceed.')
   }
 })
 
@@ -197,7 +197,7 @@ test('Not supported flow error (empty strings) - run', async () => {
     await run()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('Requires at least one scan type: (polaris_server_url,coverity_url,blackducksca_url,srm_url)')
+    expect(error.message).toContain('Provide at least one of the product URL (polaris_server_url, coverity_url, blackducksca_url, or srm_url) to proceed.')
   }
 })
 
