@@ -44,7 +44,7 @@ jobs:
           ls -al
           pwd
       - name: Extract secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: |
             QA_GITHUB_TOKEN
@@ -101,7 +101,7 @@ jobs:
           pwd
           
       - name: Extract secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: |
             QA_GITHUB_TOKEN
@@ -157,7 +157,7 @@ jobs:
           pwd 
 
       - name: Extract secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: |
             QA_GITHUB_TOKEN
