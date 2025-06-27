@@ -3,8 +3,8 @@ import {GithubClientServiceCloud} from '../service/impl/cloud/github-client-serv
 import {debug, info} from '@actions/core'
 import * as constants from '../../application-constants'
 import {GithubClientServiceV1} from '../service/impl/enterprise/v1/github-client-service-v1'
-import {HttpClient} from 'typed-rest-client/HttpClient'
 import * as inputs from '../inputs'
+import {getSharedHttpClient} from '../utility'
 
 export const GitHubClientServiceFactory = {
   DEFAULT_VERSION: '3.12',
@@ -19,7 +19,7 @@ export const GitHubClientServiceFactory = {
     const endpoint = githubApiUrl.concat(githubEnterpriseMetaUrl)
 
     try {
-      const httpClient = new HttpClient('GitHubClientServiceFactory')
+      const httpClient = getSharedHttpClient()
       const httpResponse = await httpClient.get(endpoint, {
         Authorization: `Bearer ${githubToken}`,
         Accept: 'application/vnd.github+json'

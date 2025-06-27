@@ -10,7 +10,6 @@ import {GithubClientServiceBase} from '../../src/blackduck-security-action/servi
 import * as utility from '../../src/blackduck-security-action/utility'
 import {GitHubClientServiceFactory} from '../../src/blackduck-security-action/factory/github-client-service-factory'
 import {GithubClientServiceCloud} from '../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
-import fs from 'fs'
 import * as core from '@actions/core'
 
 jest.mock('@actions/core')
@@ -27,7 +26,6 @@ beforeEach(() => {
   jest.resetModules()
   const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
   jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
-  jest.spyOn(fs, 'renameSync').mockReturnValue()
   jest.spyOn(utility, 'getRealSystemTime').mockReturnValue('1749123407519') // Mock with a fixed timestamp
   delete process.env.NODE_EXTRA_CA_CERTS
 })

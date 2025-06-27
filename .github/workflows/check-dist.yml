@@ -37,6 +37,7 @@ jobs:
         run: |
           npm run build
           npm run package
+          npm run test
 
       - name: Compare the expected and actual dist/ directories
         run: |

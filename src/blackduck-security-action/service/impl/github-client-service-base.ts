@@ -1,8 +1,7 @@
-import {HttpClient} from 'typed-rest-client/HttpClient'
 import * as inputs from '../../inputs'
 import * as fs from 'fs'
 import * as zlib from 'zlib'
-import {checkIfPathExists, getDefaultSarifReportPath, sleep} from '../../utility'
+import {checkIfPathExists, getDefaultSarifReportPath, sleep, getSharedHttpClient} from '../../utility'
 import {debug, info} from '@actions/core'
 import * as constants from '../../../application-constants'
 import {GithubClientServiceInterface} from '../github-client-service-interface'
@@ -48,7 +47,7 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
         const base64Sarif = compressedSarif.toString('base64')
         const data = this.createSarifData(base64Sarif)
         do {
-          const httpClient = new HttpClient('GithubClientServiceBase')
+          const httpClient = getSharedHttpClient()
           const httpResponse = await httpClient.post(endpoint, JSON.stringify(data), {
             Authorization: `Bearer ${this.githubToken}`,
             Accept: 'application/vnd.github+json'

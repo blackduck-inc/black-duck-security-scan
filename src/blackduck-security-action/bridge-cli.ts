@@ -4,14 +4,13 @@ import {debug, error, info, warning} from '@actions/core'
 import {GITHUB_ENVIRONMENT_VARIABLES, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, MAC_PLATFORM_NAME, LINUX_PLATFORM_NAME, WINDOWS_PLATFORM_NAME} from '../application-constants'
 import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import path from 'path'
-import {checkIfPathExists, cleanupTempDir, parseToBoolean, sleep} from './utility'
+import {checkIfPathExists, cleanupTempDir, parseToBoolean, sleep, getSharedHttpClient} from './utility'
 import * as inputs from './inputs'
 import {DownloadFileResponse, extractZipped, getRemoteFile} from './download-utility'
 import fs, {readFileSync} from 'fs'
 import {validateBlackDuckInputs, validateCoverityInputs, validatePolarisInputs, validateSRMInputs, validateScanTypes} from './validators'
 import {BridgeToolsParameter} from './tools-parameter'
 import * as constants from '../application-constants'
-import {HttpClient} from 'typed-rest-client/HttpClient'
 import DomParser from 'dom-parser'
 import os from 'os'
 import semver from 'semver'
@@ -247,7 +246,7 @@ export class Bridge {
 
   async getAllAvailableBridgeVersions(): Promise<string[]> {
     let htmlResponse = ''
-    const httpClient = new HttpClient('blackduck-task')
+    const httpClient = getSharedHttpClient()
 
     let retryCountLocal = RETRY_COUNT
     let retryDelay = RETRY_DELAY_IN_MILLISECONDS
@@ -378,7 +377,7 @@ export class Bridge {
 
   async getBridgeVersionFromLatestURL(latestVersionsUrl: string): Promise<string> {
     try {
-      const httpClient = new HttpClient('')
+      const httpClient = getSharedHttpClient()
 
       let retryCountLocal = RETRY_COUNT
       let retryDelay = RETRY_DELAY_IN_MILLISECONDS
