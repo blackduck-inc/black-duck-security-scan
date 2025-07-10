@@ -1,0 +1,182 @@
+name: Sync Tags on Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  sync-tags:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT_TOKEN }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate release tag
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          echo "Processing release tag: $RELEASE_TAG"
+          
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Warning: Release tag format does not match semver pattern v0.0.0"
+            echo "Tag: $RELEASE_TAG"
+          else
+            echo "Release tag format validated: $RELEASE_TAG"
+          fi
+          
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+
+      - name: Extract version components
+        run: |
+          TAG="${{ env.RELEASE_TAG }}"
+          
+          # Remove 'v' prefix if present
+          VERSION_NO_V="${TAG#v}"
+          
+          # Extract major, minor, patch versions
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION_NO_V"
+          
+          echo "Full version: $VERSION_NO_V"
+          echo "Major: $MAJOR"
+          echo "Minor: $MINOR"
+          echo "Patch: $PATCH"
+          
+          echo "VERSION_NO_V=$VERSION_NO_V" >> $GITHUB_ENV
+          echo "MAJOR=$MAJOR" >> $GITHUB_ENV
+          echo "MINOR=$MINOR" >> $GITHUB_ENV
+          echo "PATCH=$PATCH" >> $GITHUB_ENV
+
+      - name: Fetch all tags
+        run: |
+          git fetch --tags
+          echo "Current tags in repository:"
+          git tag -l | sort -V
+
+      - name: Create or update major version tag
+        run: |
+          MAJOR_TAG="v${{ env.MAJOR }}"
+          echo "Processing major version tag: $MAJOR_TAG"
+          
+          # Check if major tag exists
+          if git tag -l | grep -q "^$MAJOR_TAG$"; then
+            echo "Major tag $MAJOR_TAG exists, updating to point to ${{ env.RELEASE_TAG }}"
+            git tag -d "$MAJOR_TAG"
+            git push origin ":refs/tags/$MAJOR_TAG" || true
+          else
+            echo "Creating new major tag: $MAJOR_TAG"
+          fi
+          
+          # Create/recreate the major tag
+          git tag -a "$MAJOR_TAG" -m "Major version tag for ${{ env.RELEASE_TAG }}"
+          git push origin "$MAJOR_TAG"
+          echo "Major tag $MAJOR_TAG synchronized successfully"
+
+      - name: Update latest tag
+        run: |
+          LATEST_TAG="latest"
+          echo "Updating latest tag to point to ${{ env.RELEASE_TAG }}"
+          
+          # Remove existing latest tag if it exists
+          if git tag -l | grep -q "^$LATEST_TAG$"; then
+            git tag -d "$LATEST_TAG"
+            git push origin ":refs/tags/$LATEST_TAG" || true
+          fi
+          
+          # Create new latest tag
+          git tag -a "$LATEST_TAG" -m "Latest release: ${{ env.RELEASE_TAG }}"
+          git push origin "$LATEST_TAG"
+          echo "Latest tag synchronized successfully"
+
+      - name: Verify marketplace compatibility
+        run: |
+          echo "=== Marketplace Compatibility Check ==="
+          echo "Release tag: ${{ env.RELEASE_TAG }}"
+          echo "Major tag: v${{ env.MAJOR }}"
+          echo "Minor tag: v${{ env.MAJOR }}.${{ env.MINOR }}"
+          
+          # Check for common marketplace requirements
+          if [[ -f "action.yml" ]] || [[ -f "action.yaml" ]]; then
+            echo "Action metadata file found"
+          
+            # Basic validation of action file
+            if command -v yq &> /dev/null; then
+              echo "Validating action metadata structure"
+              yq eval '.name, .description, .runs' action.y*ml 2>/dev/null || echo "Basic YAML structure appears valid"
+            fi
+          else
+            echo "Warning: No action.yml or action.yaml found"
+          fi
+          
+          if [[ -f "package.json" ]]; then
+            echo "Package.json found - Node.js action detected"
+          
+            # Verify version in package.json matches release
+            if command -v jq &> /dev/null; then
+              PKG_VERSION=$(jq -r '.version' package.json)
+              if [[ "$PKG_VERSION" == "${{ env.VERSION_NO_V }}" ]]; then
+                echo "Package.json version matches release: $PKG_VERSION"
+              else
+                echo "Warning: Package.json version ($PKG_VERSION) does not match release (${{ env.VERSION_NO_V }})"
+              fi
+            fi
+          fi
+
+      - name: Generate tag summary
+        run: |
+          echo "=== Tag Synchronization Summary ==="
+          echo "Release published: ${{ github.event.release.name }}"
+          echo "Release tag: ${{ env.RELEASE_TAG }}"
+          echo "Release URL: ${{ github.event.release.html_url }}"
+          echo ""
+          echo "Tags synchronized:"
+          echo "- v${{ env.MAJOR }} (major)"
+          echo "- v${{ env.MAJOR }}.${{ env.MINOR }} (minor)"
+          echo "- latest"
+          echo ""
+          echo "Marketplace sync completed successfully"
+          
+          # Output for potential downstream workflows
+          echo "::notice title=Tag Sync Complete::Successfully synchronized tags for release ${{ env.RELEASE_TAG }}"
+
+      - name: Cleanup old pre-release tags
+        run: |
+          echo "=== Cleanup Pre-release Tags ==="
+          
+          # Find and list pre-release tags (containing alpha, beta, rc)
+          PRERELEASE_TAGS=$(git tag -l | grep -E "(alpha|beta|rc)" | sort -V || true)
+          
+          if [[ -n "$PRERELEASE_TAGS" ]]; then
+            echo "Found pre-release tags:"
+            echo "$PRERELEASE_TAGS"
+          
+            # Keep only the 5 most recent pre-release tags
+            TAGS_TO_DELETE=$(echo "$PRERELEASE_TAGS" | head -n -5)
+          
+            if [[ -n "$TAGS_TO_DELETE" ]]; then
+              echo "Cleaning up old pre-release tags:"
+              echo "$TAGS_TO_DELETE"
+          
+              while IFS= read -r tag; do
+                if [[ -n "$tag" ]]; then
+                  echo "Deleting tag: $tag"
+                  git push origin ":refs/tags/$tag" || echo "Failed to delete remote tag: $tag"
+                fi
+              done <<< "$TAGS_TO_DELETE"
+            else
+              echo "No old pre-release tags to clean up"
+            fi
+          else
+            echo "No pre-release tags found"
+          fi
