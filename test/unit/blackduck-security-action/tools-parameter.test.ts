@@ -28,6 +28,8 @@ beforeEach(() => {
   Object.defineProperty(inputs, 'SRM_PROJECT_ID', {value: null})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_POLICY_BADGES_CREATE', {value: null})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT', {value: null})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: undefined, configurable: true})
 })
 
 afterAll(() => {
@@ -1413,4 +1415,91 @@ it('should pass SRM fields and project directory field to bridge', () => {
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
   expect(jsonData.data.project.directory).toBe('SRM_PROJECT_DIRECTORY')
+})
+test('Test getFormattedCommandForPolaris with POLARIS_TEST_SCA_LOCATION only', () => {
+  // Clear all test-related inputs first
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_TYPE', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_TYPE', {value: undefined, configurable: true})
+
+  // Set required inputs
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+
+  // Set the test input we want to test
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: 'local', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.test.sca.location).toBe('local')
+  expect(jsonData.data.polaris.test.sast).toBeUndefined()
+})
+
+test('Test getFormattedCommandForPolaris with POLARIS_TEST_SAST_LOCATION only', () => {
+  // Clear all test-related inputs first
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_TYPE', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_TYPE', {value: undefined, configurable: true})
+
+  // Set required inputs
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+  // Set the test input we want to test
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: 'local', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.test.sast.location).toBe('local')
+  expect(jsonData.data.polaris.test.sca).toBeUndefined()
+})
+
+test('Test getFormattedCommandForPolaris with both POLARIS_TEST_SCA_LOCATION and POLARIS_TEST_SAST_LOCATION', () => {
+  // Clear all test-related inputs first
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_TYPE', {value: undefined, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_TYPE', {value: undefined, configurable: true})
+
+  // Set required inputs
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+
+  // Set both test inputs
+  Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: 'local', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: 'local', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.test.sca.location).toBe('local')
+  expect(jsonData.data.polaris.test.sast.location).toBe('local')
 })
