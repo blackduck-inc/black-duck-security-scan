@@ -1,0 +1,21 @@
+name: Scan
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  polaris-scan:
+    uses: blackduck-inc/common-repo-ci/.github/workflows/polaris.yml@main
+    with:
+      polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+      polaris_application_name: ${{ github.event.repository.name }}
+      polaris_project_name: ${{ github.event.repository.name }}
+      polaris_assessment_types: "SCA,SAST"
+      polaris_prComment_enabled: true
+      # include_diagnostics: false
+    secrets:
+      POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
