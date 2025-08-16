@@ -471,7 +471,7 @@ export class Bridge {
   private async makeHttpsGetRequest(targetUrl: string): Promise<{statusCode: number; body: string}> {
     return new Promise((resolve, reject) => {
       const parsedUrl = new url.URL(targetUrl)
-      const agent = getSharedHttpsAgent(targetUrl)
+      const agent = getSharedHttpsAgent()
 
       const requestOptions: https.RequestOptions = {
         hostname: parsedUrl.hostname,

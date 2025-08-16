@@ -3,10 +3,11 @@ import path from 'path'
 import {debug, info} from '@actions/core'
 import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam} from './validators'
 import * as inputs from './inputs'
+import {BLACKDUCKSCA_WORKFLOW_VERSION, COVERITY_WORKFLOW_VERSION, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from './inputs'
 import {Polaris} from './input-data/polaris'
 import {InputData} from './input-data/input-data'
 import {Coverity, CoverityDetect} from './input-data/coverity'
-import {BlackDuckSCA, BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData} from './input-data/blackduck'
+import {BlackDuckDetect, BlackDuckFixPrData, BlackDuckSCA, BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES} from './input-data/blackduck'
 import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
 import {isBoolean, isPullRequestEvent, parseToBoolean} from './utility'
@@ -15,9 +16,7 @@ import {Network} from './input-data/common'
 
 export class BridgeToolsParameter {
   tempDir: string
-  private static STAGE_OPTION = '--stage'
   static DIAGNOSTICS_OPTION = '--diagnostics'
-  private static INPUT_OPTION = '--input'
   private static POLARIS_STAGE = 'polaris'
   private static POLARIS_STATE_FILE_NAME = 'polaris_input.json'
   private static COVERITY_STATE_FILE_NAME = 'coverity_input.json'
@@ -33,8 +32,7 @@ export class BridgeToolsParameter {
   constructor(tempDir: string) {
     this.tempDir = tempDir
   }
-  getFormattedCommandForPolaris(githubRepoName: string): string {
-    let command = ''
+  getFormattedCommandForPolaris(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     const assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
@@ -269,12 +267,16 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    const commandParams = {
+      stage: BridgeToolsParameter.POLARIS_STAGE,
+      stateFilePath,
+      workflowVersion: POLARIS_WORKFLOW_VERSION
+    }
+
+    return commandParams
   }
 
-  getFormattedCommandForCoverity(githubRepoName: string): string {
-    let command = ''
+  getFormattedCommandForCoverity(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let coverityStreamName = inputs.COVERITY_STREAM_NAME
     const isPrEvent = isPullRequestEvent()
@@ -376,11 +378,14 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.COVERITY_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return {
+      stage: BridgeToolsParameter.COVERITY_STAGE,
+      stateFilePath,
+      workflowVersion: COVERITY_WORKFLOW_VERSION
+    }
   }
 
-  getFormattedCommandForBlackduck(): string {
+  getFormattedCommandForBlackduck(): {stage: string; stateFilePath: string; workflowVersion: string} {
     const failureSeverities: string[] = []
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     if (inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES != null && inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES.length > 0) {
@@ -398,7 +403,6 @@ export class BridgeToolsParameter {
         throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY))
       }
     }
-    let command = ''
     const blackduckData: InputData<BlackDuckSCA> = {
       data: {
         blackducksca: {
@@ -552,12 +556,14 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.BLACKDUCK_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return {
+      stage: BridgeToolsParameter.BLACKDUCK_STAGE,
+      stateFilePath,
+      workflowVersion: BLACKDUCKSCA_WORKFLOW_VERSION
+    }
   }
 
-  getFormattedCommandForSRM(githubRepoName: string): string {
-    let command = ''
+  getFormattedCommandForSRM(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
@@ -643,8 +649,13 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.SRM_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    const commandParams = {
+      stage: BridgeToolsParameter.SRM_STAGE,
+      stateFilePath,
+      workflowVersion: SRM_WORKFLOW_VERSION
+    }
+
+    return commandParams
   }
 
   private getGithubRepoInfo(): GithubData | undefined {
