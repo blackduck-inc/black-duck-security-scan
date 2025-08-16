@@ -1,10 +1,14 @@
 import path from 'path'
 
-export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/bridge-cli-bundle' //Path will be in home
-export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\bridge-cli-bundle'
-export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/bridge-cli-bundle'
-export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/'
+export const BRIDGE_CLI_THIN_CLIENT_AIRGAP_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-thin-client/'
 
+export const BRIDGE_CLI_CUSTOM_ARTIFACTORY_URL_KEY = 'bridge_cli_custom_artifactory_url'
+
+export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/.blackduck/integrations' //Path will be in home
+export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\.blackduck\\integrations'
+export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/.blackduck/integrations'
+export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/'
+export const BRIDGE_DOWNLOAD_URL_REGEX = '^https:\\/\\/repo\\.blackduck\\.com\\/.*$'
 export const APPLICATION_NAME = 'blackduck-security-action'
 /**
  * @deprecated Use bridgecli_install_directory instead. This can be removed in future release.
@@ -23,6 +27,20 @@ export const BRIDGE_DOWNLOAD_VERSION_KEY = 'synopsys_bridge_download_version'
 export const BRIDGE_CLI_DOWNLOAD_VERSION_KEY = 'bridgecli_download_version'
 export const MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION = '2.1.0'
 export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
+
+// Thin Client Configuration
+export const THIN_CLIENT_ENABLED_KEY = 'thin_client_enabled'
+export const BRIDGE_WORKFLOW_DISABLE_UPDATE_KEY = 'bridge_workflow_disable_update'
+export const INTERNAL_REGISTRY_URL_KEY = 'register_url'
+
+// Workflow Version Keys
+export const POLARIS_WORKFLOW_VERSION_KEY = 'polaris_workflow_version'
+export const COVERITY_WORKFLOW_VERSION_KEY = 'coverity_workflow_version'
+export const SRM_WORKFLOW_VERSION_KEY = 'srm_workflow_version'
+export const BLACKDUCKSCA_WORKFLOW_VERSION_KEY = 'blackducksca_workflow_version'
+
+// BD Repository URL for validation
+export const BD_REPO_URL = 'https://repo.blackduck.com'
 
 // Scan Types
 export const COVERITY_KEY = 'coverity'
@@ -233,6 +251,11 @@ export const DIAGNOSTICS_RETENTION_DAYS_KEY = 'diagnostics_retention_days'
 export const NETWORK_SSL_CERT_FILE_KEY = 'network_ssl_cert_file'
 export const NETWORK_SSL_TRUST_ALL_KEY = 'network_ssl_trustAll'
 
+// Bridge CLI Command Options
+export const BRIDGE_CLI_STAGE_OPTION = '--stage'
+export const BRIDGE_CLI_INPUT_OPTION = '--input'
+export const BRIDGE_CLI_SPACE = ' '
+
 // Bridge Exit Codes
 export const EXIT_CODE_MAP = new Map<string, string>([
   ['0', 'Bridge execution successfully completed'],
@@ -325,3 +348,5 @@ export const VERSION = '3.5.0'
 export const SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION = '3.7.8'
 export const COVERITY_PRCOMMENT_NEW_FORMAT_VERSION = '3.9.0'
 export const NETWORK_SSL_VALIDATION_ERROR_MESSAGE = 'Both "network.ssl.cert.file" and "network.ssl.trustAll" are set. Only one of these resources should be set at a time."'
+
+export const BRIDGE_CLI_THIN_CLIENT_AIRGAP_DOWNLOAD_URL_ERROR = "Can't use the Bridge CLI download URL in AirGap mode. Please provide a custom download URL using the 'BRIDGE_CLI_DOWNLOAD_URL' input."
