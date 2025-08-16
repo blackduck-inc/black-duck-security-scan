@@ -1,20 +1,20 @@
 import * as fs from 'fs'
+import {readFileSync, writeFileSync} from 'fs'
 import * as os from 'os'
 import path from 'path'
-import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES} from '../application-constants'
+import * as constants from '../application-constants'
+import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, WINDOWS_PLATFORM_NAME} from '../application-constants'
 import {rmRF} from '@actions/io'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
-import * as constants from '../application-constants'
-import {readFileSync, writeFileSync} from 'fs'
 import {InputData} from './input-data/input-data'
 import {BlackDuckSCA} from './input-data/blackduck'
 import {Polaris} from './input-data/polaris'
 import {isNullOrEmptyValue} from './validators'
 import * as inputs from './inputs'
-import {debug, warning, info} from '@actions/core'
+import {debug, info, warning} from '@actions/core'
 import * as https from 'https'
 import {HttpClient} from 'typed-rest-client/HttpClient'
-import {getSSLConfig, getSSLConfigHash, createHTTPSAgent} from './ssl-utils'
+import {createHTTPSAgent, getSSLConfig, getSSLConfigHash} from './ssl-utils'
 
 export function cleanUrl(url: string): string {
   if (url && url.endsWith('/')) {
@@ -41,24 +41,15 @@ export function checkIfGithubHostedAndLinux(): boolean {
 }
 
 export function parseToBoolean(value: string | boolean): boolean {
-  if (value !== null && value !== '' && (value.toString().toLowerCase() === 'true' || value === true)) {
-    return true
-  }
-  return false
+  return value !== null && value !== '' && (value.toString().toLowerCase() === 'true' || value === true)
 }
 
 export function isBoolean(value: string | boolean): boolean {
-  if (value !== null && value !== '' && (value.toString().toLowerCase() === 'true' || value === true || value.toString().toLowerCase() === 'false' || value === false)) {
-    return true
-  }
-  return false
+  return value !== null && value !== '' && (value.toString().toLowerCase() === 'true' || value === true || value.toString().toLowerCase() === 'false' || value === false)
 }
 
 export function checkIfPathExists(fileOrDirectoryPath: string): boolean {
-  if (fileOrDirectoryPath && fs.existsSync(fileOrDirectoryPath.trim())) {
-    return true
-  }
-  return false
+  return !!(fileOrDirectoryPath && fs.existsSync(fileOrDirectoryPath.trim()))
 }
 
 export async function sleep(duration: number): Promise<void> {
@@ -77,6 +68,19 @@ export function getIntegrationDefaultSarifReportPath(sarifReportDirectory: strin
   const uploadPath = !appendFilePath ? path.join(pwd, constants.INTEGRATIONS_LOCAL_DIRECTORY, sarifReportDirectory) : path.join(pwd, constants.INTEGRATIONS_LOCAL_DIRECTORY, sarifReportDirectory, constants.SARIF_DEFAULT_FILE_NAME)
   info(`Upload default path: ${uploadPath}`)
   return uploadPath
+}
+
+export function getOSPlatform(): string {
+  if (process.platform === MAC_PLATFORM_NAME) {
+    return os.cpus()[0].model.includes('Intel') ? 'macosx' : 'macos_arm'
+  }
+  if (process.platform === LINUX_PLATFORM_NAME) {
+    return /^(arm.*|aarch.*)$/.test(process.arch) ? 'linux_arm' : 'linux64'
+  }
+  if (process.platform === WINDOWS_PLATFORM_NAME) {
+    return 'win64'
+  }
+  return ''
 }
 
 export function isPullRequestEvent(): boolean {
