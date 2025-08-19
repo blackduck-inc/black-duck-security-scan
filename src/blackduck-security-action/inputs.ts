@@ -1,18 +1,17 @@
 import {getInput} from '@actions/core'
 import * as constants from '../application-constants'
-import * as inputValue from './inputValue'
 
-export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = inputValue.BRIDGE_CLI_INSTALL_DIRECTORY_KEY
-export const ENABLE_NETWORK_AIR_GAP = inputValue.ENABLE_NETWORK_AIR_GAP
-export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || getInput(constants.BRIDGE_DOWNLOAD_URL_KEY)?.trim() || inputValue.BRIDGE_CLI_DOWNLOAD_URL
-export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || inputValue.BRIDGE_CLI_DOWNLOAD_VERSION
+export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = getInput(constants.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)?.trim() || getInput(constants.BRIDGE_INSTALL_DIRECTORY_KEY)?.trim() || ''
+export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.trim() || getInput(constants.BRIDGE_NETWORK_AIRGAP_KEY)?.trim() || ''
+export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || getInput(constants.BRIDGE_DOWNLOAD_URL_KEY)?.trim() || ''
+export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || ''
 // Thin Client Configuration
 export const THIN_CLIENT_ENABLED = getInput(constants.THIN_CLIENT_ENABLED_KEY)?.trim() || 'true'
 export const BRIDGE_WORKFLOW_DISABLE_UPDATE = getInput(constants.BRIDGE_WORKFLOW_DISABLE_UPDATE_KEY)?.trim() || 'false'
 export const REGISTER_URL = getInput(constants.INTERNAL_REGISTRY_URL_KEY)?.trim() || ''
 
 // Workflow Versions
-export const POLARIS_WORKFLOW_VERSION = getInput(constants.POLARIS_WORKFLOW_VERSION_KEY)?.trim() || '3.0.45'
+export const POLARIS_WORKFLOW_VERSION = getInput(constants.POLARIS_WORKFLOW_VERSION_KEY)?.trim() || ''
 export const COVERITY_WORKFLOW_VERSION = getInput(constants.COVERITY_WORKFLOW_VERSION_KEY)?.trim() || ''
 export const SRM_WORKFLOW_VERSION = getInput(constants.SRM_WORKFLOW_VERSION_KEY)?.trim() || ''
 export const BLACKDUCKSCA_WORKFLOW_VERSION = getInput(constants.BLACKDUCKSCA_WORKFLOW_VERSION_KEY)?.trim() || ''
@@ -33,8 +32,8 @@ export const DETECT_EXECUTION_PATH = getInput(constants.DETECT_EXECUTION_PATH_KE
 export const POLARIS_ACCESS_TOKEN = getInput(constants.POLARIS_ACCESSTOKEN_KEY)?.trim() || getInput(constants.POLARIS_ACCESS_TOKEN_KEY)?.trim() || ''
 export const POLARIS_APPLICATION_NAME = getInput(constants.POLARIS_APPLICATION_NAME_KEY)?.trim() || ''
 export const POLARIS_PROJECT_NAME = getInput(constants.POLARIS_PROJECT_NAME_KEY)?.trim() || ''
-export const POLARIS_ASSESSMENT_TYPES = getInput(constants.POLARIS_ASSESSMENT_TYPES_KEY)?.trim() || 'sast'
-export const POLARIS_SERVER_URL = getInput(constants.POLARIS_SERVERURL_KEY)?.trim() || getInput(constants.POLARIS_SERVER_URL_KEY)?.trim() || 'a'
+export const POLARIS_ASSESSMENT_TYPES = getInput(constants.POLARIS_ASSESSMENT_TYPES_KEY)?.trim() || ''
+export const POLARIS_SERVER_URL = getInput(constants.POLARIS_SERVERURL_KEY)?.trim() || getInput(constants.POLARIS_SERVER_URL_KEY)?.trim() || ''
 export const POLARIS_PRCOMMENT_ENABLED = getInput(constants.POLARIS_PRCOMMENT_ENABLED_KEY)?.trim() || ''
 export const POLARIS_PRCOMMENT_SEVERITIES = getInput(constants.POLARIS_PRCOMMENT_SEVERITIES_KEY)?.trim() || ''
 export const POLARIS_BRANCH_NAME = getInput(constants.POLARIS_BRANCH_NAME_KEY)?.trim() || ''
