@@ -118,15 +118,3 @@ export function validateBridgeUrl(url: string): boolean {
     return false
   }
 }
-
-export function isBDRepoUrl(url: string): boolean {
-  try {
-    return new URL(url).hostname === new URL(constants.BD_REPO_URL).hostname
-  } catch {
-    return false
-  }
-}
-
-export function isCustomUrl(url: string): boolean {
-  return !isBDRepoUrl(url)
-}
