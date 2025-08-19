@@ -42,6 +42,8 @@ export const PROJECT_DIRECTORY = getInput(constants.PROJECT_DIRECTORY_KEY)?.trim
 export const PROJECT_SOURCE_ARCHIVE = getInput(constants.PROJECT_SOURCE_ARCHIVE_KEY)?.trim() || ''
 export const PROJECT_SOURCE_PRESERVESYMLINKS = getInput(constants.PROJECT_SOURCE_PRESERVESYMLINKS_KEY)?.trim() || ''
 export const PROJECT_SOURCE_EXCLUDES = getInput(constants.PROJECT_SOURCE_EXCLUDES_KEY)?.trim() || ''
+export const POLARIS_TEST_SAST_LOCATION = getInput(constants.POLARIS_TEST_SAST_LOCATION)?.trim() || ''
+export const POLARIS_TEST_SCA_LOCATION = getInput(constants.POLARIS_TEST_SCA_LOCATION)?.trim() || ''
 
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''
