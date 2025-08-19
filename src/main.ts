@@ -1,6 +1,7 @@
 import {debug, info, setFailed, setOutput} from '@actions/core'
 import * as util from './blackduck-security-action/utility'
 import {checkJobResult, cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
+import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from './application-constants'
 import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
@@ -9,7 +10,7 @@ import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
 import {createBridgeClient} from './blackduck-security-action/bridge/bridge-client-factory'
 
-export async function run(): Promise<number> {
+export async function run() {
   info('Black Duck Security Action started...')
   const tempDir = await createTempDir()
   let formattedCommand = ''
@@ -18,6 +19,7 @@ export async function run(): Promise<number> {
   let bridgeVersion = ''
   let productInputFileName = ''
   let productInputFilPath = ''
+
   try {
     const sb = createBridgeClient()
     formattedCommand = await sb.prepareCommand(tempDir)
@@ -36,7 +38,7 @@ export async function run(): Promise<number> {
     // Based on bridge version update Coverity configuration for backward compatibility
     util.updateCoverityConfigForBridgeVersion(productInputFileName, bridgeVersion, productInputFilPath)
     // Execute bridge command
-    exitCode = await sb.executeBridgeCommand(formattedCommand, '/tmp')
+    exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
     if (exitCode === 0) {
       info('Black Duck Security Action workflow execution completed successfully.')
       isBridgeExecuted = true
