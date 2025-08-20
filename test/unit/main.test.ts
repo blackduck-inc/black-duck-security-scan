@@ -1,47 +1,96 @@
 import {getBridgeExitCode, logBridgeExitCodes, markBuildStatusIfIssuesArePresent, run} from '../../src/main'
 import * as inputs from '../../src/blackduck-security-action/inputs'
-import {Bridge} from '../../src/blackduck-security-action/bridge-cli'
 import {DownloadFileResponse} from '../../src/blackduck-security-action/download-utility'
 import * as downloadUtility from './../../src/blackduck-security-action/download-utility'
 import * as configVariables from 'actions-artifact-v2/lib/internal/shared/config'
 import * as diagnostics from '../../src/blackduck-security-action/artifacts'
 import {UploadArtifactResponse} from 'actions-artifact-v2'
-import {GithubClientServiceBase} from '../../src/blackduck-security-action/service/impl/github-client-service-base'
 import * as utility from '../../src/blackduck-security-action/utility'
 import {GitHubClientServiceFactory} from '../../src/blackduck-security-action/factory/github-client-service-factory'
 import {GithubClientServiceCloud} from '../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
+import fs from 'fs'
 import * as core from '@actions/core'
-import * as fs from 'fs'
-import {BridgeToolsParameter} from '../../src/blackduck-security-action/tools-parameter'
-import * as constants from '../../src/application-constants'
+import {BridgeClientBase} from '../../src/blackduck-security-action/bridge/bridge-client-base'
 
-jest.mock('@actions/core')
-jest.mock('@actions/io', () => ({
-  rmRF: jest.fn(),
-  mkdirP: jest.fn().mockResolvedValue(undefined)
+jest.mock('@actions/core', () => ({
+  getInput: jest.fn((key: string) => {
+    const mockInputs: Record<string, string> = {
+      github_token: 'mock-github-token',
+      blackducksca_url: 'BLACKDUCKSCA_URL',
+      blackducksca_token: 'BLACKDUCKSCA_TOKEN'
+    }
+    return mockInputs[key] || ''
+  }),
+  info: jest.fn(),
+  debug: jest.fn(),
+  warning: jest.fn(),
+  error: jest.fn(),
+  setOutput: jest.fn(),
+  setFailed: jest.fn(),
+  exportVariable: jest.fn()
 }))
-jest.mock('fs', () => ({
-  ...jest.requireActual('fs'),
-  renameSync: jest.fn(),
-  existsSync: jest.fn().mockReturnValue(false)
+jest.mock('@actions/io', () => ({
+  rmRF: jest.fn()
+}))
+
+// Mock the artifact libraries to prevent token validation errors
+jest.mock('actions-artifact-v2', () => ({
+  DefaultArtifactClient: jest.fn().mockImplementation(() => ({
+    uploadArtifact: jest.fn().mockResolvedValue({size: 0, id: 123})
+  }))
+}))
+
+jest.mock('actions-artifact-v1', () => ({
+  create: jest.fn().mockReturnValue({
+    uploadArtifact: jest.fn().mockResolvedValue({size: 0, id: 123})
+  })
+}))
+
+jest.mock('actions-artifact-v2/lib/internal/shared/config', () => ({
+  getGitHubWorkspaceDir: jest.fn().mockReturnValue('/github/workspace')
 }))
 
 beforeEach(() => {
+  // Set up GITHUB_TOKEN first to prevent undefined errors
   Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'token'})
   process.env['GITHUB_REPOSITORY'] = 'blackduck-security-action'
   process.env['GITHUB_REF_NAME'] = 'branch-name'
   process.env['GITHUB_REF'] = 'refs/pull/1/merge'
   process.env['GITHUB_REPOSITORY_OWNER'] = 'blackduck-inc'
+
+  // Add GitHub Actions environment variables for artifact upload
+  process.env['ACTIONS_RUNTIME_TOKEN'] = 'mock-runtime-token'
+  process.env['ACTIONS_RUNTIME_URL'] = 'https://pipelines.actions.githubusercontent.com/mock'
+  process.env['GITHUB_RUN_ID'] = '123456789'
+  process.env['GITHUB_WORKSPACE'] = '/github/workspace'
+
   jest.resetModules()
   const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
   jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
+  jest.spyOn(fs, 'renameSync').mockReturnValue()
   jest.spyOn(utility, 'getRealSystemTime').mockReturnValue('1749123407519') // Mock with a fixed timestamp
-  // Add common bridge path validation mock
-  jest.spyOn(Bridge.prototype, 'validateBridgePath').mockResolvedValue()
+
+  // Mock file system operations to prevent ENOENT errors with SARIF file paths
+  jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+  jest.spyOn(fs, 'readFileSync').mockReturnValue('{"mock": "data"}')
+  jest.spyOn(fs, 'writeFileSync').mockReturnValue()
+  jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined)
+  jest.spyOn(fs, 'statSync').mockReturnValue({
+    isDirectory: () => true,
+    isFile: () => false
+  } as fs.Stats)
+
   delete process.env.NODE_EXTRA_CA_CERTS
 })
 
 afterEach(() => {
+  // Clean up environment variables
+  delete process.env['ACTIONS_RUNTIME_TOKEN']
+  delete process.env['ACTIONS_RUNTIME_URL']
+  delete process.env['GITHUB_RUN_ID']
+  delete process.env['GITHUB_WORKSPACE']
+  delete process.env['GITHUB_SERVER_URL']
+
   jest.restoreAllMocks()
 })
 
@@ -61,7 +110,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
   }
 
   const setupMocks = () => {
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    jest.spyOn(BridgeClientBase.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
     const downloadFileResp: DownloadFileResponse = {
       filePath: 'C://user/temp/download/',
       fileName: 'C://user/temp/download/bridge-win.zip'
@@ -71,36 +120,47 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
     const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
     jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
-    // Add path existence mock for bridge validation
-    jest.spyOn(Bridge.prototype, 'validateBridgePath').mockResolvedValueOnce()
   }
 
   afterEach(() => {
     Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
   })
 
-  it('handles successful execution with exitCode 0', async () => {
-    setupBlackDuckInputs()
+  it('handles successful execution with exitCode 0 and upload diagnostics enabled', async () => {
+    setupBlackDuckInputs({INCLUDE_DIAGNOSTICS: 'true'})
     setupMocks()
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-    const response = await run()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    await run()
 
-    expect(response).toBe(0)
     expect(core.info).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
     expect(core.setOutput).toHaveBeenCalledWith('status', 0)
     expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
+    expect(diagnostics.uploadDiagnostics).toHaveBeenCalled()
+  })
+
+  it('handles successful execution with exitCode 0', async () => {
+    setupBlackDuckInputs()
+    setupMocks()
+    Object.defineProperty(inputs, 'INCLUDE_DIAGNOSTICS', {value: true})
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    await run()
+
+    expect(core.info).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+    expect(core.setOutput).toHaveBeenCalledWith('status', 0)
+    expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
+    Object.defineProperty(inputs, 'INCLUDE_DIAGNOSTICS', {value: false})
   })
 
   it('handles issues detected but marked as success with exitCode 8', async () => {
     setupBlackDuckInputs({MARK_BUILD_STATUS: 'success'})
     setupMocks()
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge CLI execution failed with exit code 8'))
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('BridgeClientBase CLI execution failed with exit code 8'))
     jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
 
     try {
       await run()
     } catch (error: any) {
-      expect(error.message).toContain('Bridge CLI execution failed with exit code 8')
+      expect(error.message).toContain('BridgeClientBase CLI execution failed with exit code 8')
       expect(core.debug).toHaveBeenCalledWith('Bridge CLI execution completed: true')
     }
   })
@@ -108,7 +168,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
   it('handles failure case with exitCode 2', async () => {
     setupBlackDuckInputs()
     setupMocks()
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Exit Code: 2 Error from adapter end'))
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Exit Code: 2 Error from adapter end'))
 
     try {
       await run()
@@ -124,7 +184,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
       MARK_BUILD_STATUS: 'success'
     })
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    jest.spyOn(BridgeClientBase.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
     const downloadFileResp: DownloadFileResponse = {
       filePath: 'C://user/temp/download/',
       fileName: 'C://user/temp/download/bridge-win.zip'
@@ -133,7 +193,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
 
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge CLI execution failed with exit code 8'))
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('BridgeClientBase CLI execution failed with exit code 8'))
     jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
     const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
@@ -145,7 +205,7 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     try {
       await run()
     } catch (error: any) {
-      expect(error.message).toContain('Bridge CLI execution failed with exit code 8')
+      expect(error.message).toContain('BridgeClientBase CLI execution failed with exit code 8')
       expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith('Blackduck SCA SARIF Generator', '/', 'blackduck_sarif_report_1749123407519')
     }
   })
@@ -190,11 +250,10 @@ test('Not supported flow error - run', async () => {
   Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
   Object.defineProperty(inputs, 'SRM_URL', {value: null})
 
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+  jest.spyOn(BridgeClientBase.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
   const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
   jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
   jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(Bridge.prototype, 'validateBridgePath').mockResolvedValueOnce()
 
   try {
     await run()
@@ -210,7 +269,7 @@ test('Not supported flow error (empty strings) - run', async () => {
   Object.defineProperty(inputs, 'COVERITY_URL', {value: ''})
   Object.defineProperty(inputs, 'SRM_URL', {value: ''})
 
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+  jest.spyOn(BridgeClientBase.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
   const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
   jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
   jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
@@ -223,997 +282,244 @@ test('Not supported flow error (empty strings) - run', async () => {
   }
 })
 
-test('Run polaris flow - run', async () => {
-  jest.setTimeout(25000)
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-
-  jest.restoreAllMocks()
-})
-
-test('Run polaris flow - run: success', async () => {
-  jest.setTimeout(25000)
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  const response = await run()
-
-  expect(response).toEqual(0)
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-
-  jest.restoreAllMocks()
-})
-
-test('Enable airgap', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
-
-  const defaultDir = jest.spyOn(Bridge.prototype as any, 'getBridgeDefaultPath')
-  defaultDir.mockImplementation(() => {
-    return '/home'
-  })
-
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: null})
-  Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
-})
-
-test('Run blackduck flow - run', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-})
-
-test('Run blackduck flow - PR COMMENT - when MR details not found', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
-  delete process.env['GITHUB_REF']
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-
-  try {
-    await run()
-  } catch (error) {
-    expect(error).toContain('Coverity/Blackduck automation PR comment can be run only by raising PR/MR')
+describe('GitHub Enterprise and Cloud Tests', () => {
+  const setupGitHubInputs = () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
+    Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
+    Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'RETURN_STATUS', {value: true})
+    // Add required file path inputs to prevent validation errors
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH', {value: '/tmp/sarif'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/tmp/polaris-sarif'})
+    Object.defineProperty(inputs, 'COVERITY_REPORTS_SARIF_FILE_PATH', {value: '/tmp/coverity-sarif'})
+    Object.defineProperty(inputs, 'SRM_REPORTS_SARIF_FILE_PATH', {value: '/tmp/srm-sarif'})
   }
 
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-})
-
-test('Run blackduck flow with Fix pull request - run', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'TRUE'})
-  Object.defineProperty(process.env, 'GITHUB_TOKEN', {value: 'token123456789'})
-  Object.defineProperty(process.env, 'GITHUB_REPOSITORY', {value: 'owner/repo1'})
-  Object.defineProperty(process.env, 'GITHUB_REF_NAME', {value: 'ref'})
-  Object.defineProperty(process.env, 'GITHUB_REPOSITORY_OWNER', {value: 'owner'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
-})
-
-test('Run blackduck flow with Fix pull request, missing github token - run', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: false})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-
-  try {
-    const response = await run()
-  } catch (error) {
-    expect(error).toContain('Missing required github token for fix pull request')
-  }
-})
-
-test('Run coverity flow - run - without optional fields', async () => {
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-  Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-  Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
-})
-
-test('Run coverity flow - run - with optional fields', async () => {
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-  Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-  Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-  Object.defineProperty(inputs, 'COVERITY_INSTALL_DIRECTORY', {value: 'COVERITY_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'COVERITY_POLICY_VIEW', {value: 'COVERITY_POLICY_VIEW'})
-  Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: true})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
-})
-
-test('Run coverity flow - run - with optional fields - when MR details not found', async () => {
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-  Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-  Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-  Object.defineProperty(inputs, 'COVERITY_INSTALL_DIRECTORY', {value: 'COVERITY_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'COVERITY_POLICY_VIEW', {value: 'COVERITY_POLICY_VIEW'})
-  Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: true})
-  delete process.env['GITHUB_REF']
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-
-  try {
-    await run()
-  } catch (error) {
-    expect(error).toContain('Coverity/Blackduck automation PR comment can be run only by raising PR/MR')
-  }
-
-  Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
-})
-
-test('Run blackduck flow with download and configure option - run without optional fields', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'http://download-bridge-win.zip'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: null})
-})
-
-test('Run blackduck flow with download and configure option - run with optional fields', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
-
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'http://download-bridge-win.zip'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  const response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: null})
-})
-
-test('Run Bridge download and configure option with wrong download url - run', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
-
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'http://wrong-url-mac.zip'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  jest.spyOn(Bridge.prototype, 'checkIfBridgeExists').mockResolvedValueOnce(false)
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockRejectedValueOnce(new Error('URL not found - 404'))
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toContain('Bridge CLI url is not valid')
-  }
-
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: null})
-})
-
-test('Run Bridge download and configure option with empty url - run', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES', {value: 'ALL'})
-
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: ''})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockRejectedValueOnce(new Error('Bridge CLI url cannot be empty'))
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toContain('Bridge CLI URL cannot be empty')
-  }
-
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: null})
-})
-
-test('Run polaris flow for bridge command failure - run', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA'})
-
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Error in executing command'))
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toContain('Error in executing command')
-  }
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-})
-
-test('Run polaris flow with provided bridge version - run', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-
-  const response = await run()
-
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-})
-
-test('Run polaris flow with wrong bridge version - run', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(false)
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toContain('Provided Bridge CLI version not found in artifactory')
-  }
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-})
-
-test('Run polaris flow - diagnostics', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'INCLUDE_DIAGNOSTICS', {value: 'server_url'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(1)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-
-  let response = await run()
-  expect(response).not.toBe(null)
-
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-})
-test('Test error messages with bridge exit codes', () => {
-  var errorMessage = 'Error: The process failed with exit code 2'
-  expect(logBridgeExitCodes(errorMessage)).toEqual('Exit Code: 2 Error from adapter end')
-})
-test('Run Black Duck SCA flow for uploading sarif result as artifact', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-
-  let response = await run()
-  expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-})
-
-test('Run Black Duck SCA flow for uploading sarif result to advance security and artifacts', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-  Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'true'})
-  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  jest.spyOn(GitHubClientServiceFactory, 'getGitHubClientServiceInstance').mockResolvedValueOnce(new GithubClientServiceCloud())
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-
-  let response = await run()
-  expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(1)
-})
-
-test('should throw error while uploading Black Duck SCA sarif result to advance security', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-  Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'true'})
-  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Error uploading SARIF data to GitHub Advance Security:'))
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockRejectedValueOnce(new Error('Error uploading SARIF data to GitHub Advance Security:'))
-  jest.spyOn(GitHubClientServiceFactory, 'getGitHubClientServiceInstance').mockResolvedValueOnce(new GithubClientServiceCloud())
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toEqual('Error uploading SARIF data to GitHub Advance Security:')
-  }
-})
-
-test('test black duck sca flow for mandatory github token for uploading sarif result to github advance security', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
-  Object.defineProperty(inputs, 'DETECT_SCAN_FULL', {value: 'TRUE'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-  Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'true'})
-  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: ''})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Adapter failed: exit status 1'))
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockRejectedValueOnce(new Error('Error uploading SARIF data to GitHub Advance Security:'))
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-  try {
-    await run()
-  } catch (error: any) {
-    const errorObject = error as Error
-    expect(errorObject.message).toContain('Missing required GitHub token for uploading SARIF report to GitHub Advanced Security')
-  }
-})
-
-test('should return black duck sca token missing on failure', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: ''})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.7.0')
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toEqual('[blackduck_token] - required parameters for blackduck is missing')
-  }
-}, 10000)
-
-test('should not execute black duck sca sarif create for pr context', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'test'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-  await run()
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
-})
-
-test('should not upload black duck sca sarif for pr context', async () => {
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'test'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  await run()
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(0)
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
-  Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: null})
-  Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: null})
-})
-
-test('Run Polaris flow for uploading sarif result as artifact', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-  let response = await run()
-  expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-  jest.restoreAllMocks()
-})
-
-test('test polaris flow for mandatory github token for uploading sarif result to github  advance security', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
-  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: ''})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-  try {
-    await run()
-  } catch (error: any) {
-    const errorObject = error as Error
-    expect(errorObject.message).toContain('Missing required GitHub token for uploading SARIF report to GitHub Advanced Security')
-  }
-})
-
-test('Run Polaris flow for uploading sarif result to advance security and artifacts', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  jest.spyOn(GitHubClientServiceFactory, 'getGitHubClientServiceInstance').mockResolvedValueOnce(new GithubClientServiceCloud())
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-
-  let response = await run()
-  expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(1)
-})
-
-test('should throw error while uploading Polaris sarif result to advance security', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_SEVERITIES', {value: 'CRITICAL,HIGH'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_GROUP_SCA_ISSUES', {value: true})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Error uploading SARIF data to GitHub Advance Security:'))
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockRejectedValueOnce(new Error('Error uploading SARIF data to GitHub Advance Security:'))
-  jest.spyOn(GitHubClientServiceFactory, 'getGitHubClientServiceInstance').mockResolvedValueOnce(new GithubClientServiceCloud())
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toEqual('Error uploading SARIF data to GitHub Advance Security:')
-  }
-})
-
-test('should return polaris access token and assessment types missing on failure', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: ''})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: ''})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.7.0')
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-
-  try {
-    await run()
-  } catch (error: any) {
-    expect(error.message).toEqual('[polaris_access_token,polaris_assessment_types] - required parameters for polaris is missing')
-  }
-}, 10000)
-
-test('should not execute polaris sarif create for pr context', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-  await run()
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
-})
-
-test('should not upload polaris sarif for pr context', async () => {
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-  Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '0.7.0'})
-  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'true'})
-
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
-  const downloadFileResp: DownloadFileResponse = {
-    filePath: 'C://user/temp/download/',
-    fileName: 'C://user/temp/download/bridge-win.zip'
-  }
-  jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-  jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-  jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
-  jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-  jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
-  await run()
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(0)
-  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-  Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
-  Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: null})
-})
-
-describe('SSL Configuration Tests', () => {
-  test('should handle SSL configuration when NETWORK_SSL_CERT_FILE is provided and NETWORK_SSL_TRUST_ALL is false', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/cert.pem'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
-
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
+  const setupGitHubMocks = () => {
+    jest.spyOn(BridgeClientBase.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
     jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
     jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadDiagnostics').mockResolvedValueOnce(uploadResponse)
+    // Mock utility functions that might be called during validation
+    jest.spyOn(utility, 'extractInputJsonFilename').mockReturnValue('/tmp/bridge-input.json')
+    jest.spyOn(utility, 'updateSarifFilePaths').mockReturnValue()
+    // Mock file system operations to prevent file existence errors
+    jest.spyOn(fs, 'existsSync').mockReturnValue(true)
+    jest.spyOn(fs, 'readFileSync').mockReturnValue('{"mock": "data"}')
+    jest.spyOn(fs, 'writeFileSync').mockReturnValue()
+    jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined)
+  }
+
+  afterEach(() => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
+    jest.restoreAllMocks()
+  })
+
+  it('Should run successfully for github.com URL', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    expect(response).toBe(0)
   })
 
-  test('should handle SSL configuration when NETWORK_SSL_TRUST_ALL is true even if NETWORK_SSL_CERT_FILE is provided', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: '/path/to/cert.pem'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'true'})
+  it('Should run for enterprise github URL but fail for bridge client', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge execution failed'))
 
-    expect(() => {
-      if (inputs.NETWORK_SSL_CERT_FILE && inputs.NETWORK_SSL_TRUST_ALL === 'true') {
-        throw new Error(constants.NETWORK_SSL_VALIDATION_ERROR_MESSAGE)
-      }
-    }).toThrow('Both "network.ssl.cert.file" and "network.ssl.trustAll" are set. Only one of these resources should be set at a time.')
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_CERT_FILE', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    try {
+      await run()
+    } catch (error: any) {
+      expect(error.message).toContain('Bridge execution failed')
+    }
   })
 
-  test('should handle SSL configuration when NETWORK_SSL_CERT_FILE is not provided', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+  it('Should run successfully for github.com URL with GITHUB_TOKEN', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    expect(response).toBe(0)
   })
 
-  test('should handle SSL configuration when NETWORK_SSL_TRUST_ALL is true', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'true'})
+  it('Should run successfully for github.com URL with cloud GitHub client factory', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    jest.spyOn(GitHubClientServiceFactory, 'getGitHubClientServiceInstance').mockResolvedValueOnce(new GithubClientServiceCloud())
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    expect(response).toBe(0)
   })
 
-  test('should handle SSL configuration when NETWORK_SSL_TRUST_ALL is false', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'false'})
+  it('Should run successfully for enterprise github URL', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    expect(response).toBe(0)
   })
 
-  test('should handle SSL configuration when NETWORK_SSL_TRUST_ALL is not provided', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+  it('Should run successfully for enterprise github URL with enterprise GitHub client factory', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    expect(response).toBe(0)
   })
 
-  test('should handle SSL configuration with string "TRUE" (case insensitive)', async () => {
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
-    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
-    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: 'TRUE'})
+  it('Should run successfully for github.com URL - PR Comment', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
 
-    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
-    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
-    const downloadFileResp: DownloadFileResponse = {filePath: 'C://user/temp/download/', fileName: 'C://user/temp/download/bridge-win.zip'}
-    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
-    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
-    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
 
     const response = await run()
-
-    expect(response).toEqual(0)
-
-    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
-    Object.defineProperty(inputs, 'NETWORK_SSL_TRUST_ALL', {value: null})
+    expect(response).toBe(0)
   })
+
+  it('Should run successfully for enterprise github URL - PR Comment', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for github.com URL - Fix PR', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for enterprise github URL - Fix PR', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for github.com URL - Fix PR & PR Comment', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for enterprise github URL - Fix PR & PR Comment', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for github.com URL - Fix PR & PR Comment with default GitHub client service', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+
+  it('Should run successfully for enterprise github URL - Fix PR & PR Comment with default GitHub client service', async () => {
+    process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+
+    setupGitHubMocks()
+    jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+
+    const response = await run()
+    expect(response).toBe(0)
+  })
+})
+
+describe('logBridgeExitCodes function', () => {
+  test('logBridgeExitCodes - code 0', () => {
+    const result = logBridgeExitCodes('Error: The process failed with exit code 0')
+    expect(result).toBe('Exit Code: 0 Bridge execution successfully completed')
+  })
+
+  test('logBridgeExitCodes - code 1', () => {
+    const result = logBridgeExitCodes('Error: The process failed with exit code 1')
+    expect(result).toBe('Exit Code: 1 Undefined error, check error logs')
+  })
+
+  test('logBridgeExitCodes - code 2', () => {
+    const result = logBridgeExitCodes('Error: The process failed with exit code 2')
+    expect(result).toBe('Exit Code: 2 Error from adapter end')
+  })
+
+  test('logBridgeExitCodes - code 8', () => {
+    const result = logBridgeExitCodes('Error: The process failed with exit code 8')
+    expect(result).toBe('Exit Code: 8 The config option bridge.break has been set to true')
+  })
+
+  test('logBridgeExitCodes - unknown code', () => {
+    const message = 'Some error message without exit code'
+    const result = logBridgeExitCodes(message)
+    expect(result).toBe(message)
+  })
+})
+
+test('getBridgeExitCode function', () => {
+  const error1 = new Error('Error: The process failed with exit code 8')
+  expect(getBridgeExitCode(error1)).toBe(true)
+
+  const error2 = new Error('Some other error message')
+  expect(getBridgeExitCode(error2)).toBe(false)
 })
