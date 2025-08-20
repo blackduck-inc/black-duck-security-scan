@@ -3,7 +3,7 @@ import {BridgeClientBase} from './bridge-client-base'
 import * as inputs from '../inputs'
 import {BRIDGE_WORKFLOW_DISABLE_UPDATE, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION} from '../inputs'
 import * as constants from '../../application-constants'
-import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION, BRIDGE_DOWNLOAD_URL_REGEX} from '../../application-constants'
+import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 import {DownloadFileResponse, extractZipped} from '../download-utility'
 import {debug, info} from '@actions/core'
 import path from 'path'
@@ -40,8 +40,6 @@ export class BridgeThinClient extends BridgeClientBase {
 
   async downloadBridge(tempDir: string): Promise<void> {
     debug('Starting bridge download process...')
-    this.handleAirGapValidation()
-    debug('URL validation completed, proceeding with download')
     return super.downloadBridge(tempDir)
   }
 
@@ -112,7 +110,7 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   private handleAirGapValidation(): void {
-    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP) && inputs.BRIDGE_CLI_DOWNLOAD_URL?.match(BRIDGE_DOWNLOAD_URL_REGEX)) {
+    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP)) {
       debug('Air gap mode detected with download URL matching regex pattern')
     }
   }
