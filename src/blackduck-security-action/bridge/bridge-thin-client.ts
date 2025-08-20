@@ -1,7 +1,7 @@
 import {ExecOptions} from '@actions/exec'
 import {BridgeClientBase} from './bridge-client-base'
 import * as inputs from '../inputs'
-import {BRIDGE_WORKFLOW_DISABLE_UPDATE, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION} from '../inputs'
+import {DISABLE_BRIDGE_WORKFLOW_UPDATE, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION} from '../inputs'
 import * as constants from '../../application-constants'
 import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 import {DownloadFileResponse, extractZipped} from '../download-utility'
@@ -13,6 +13,7 @@ import {execSync} from 'node:child_process'
 export class BridgeThinClient extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-thin-client'
   private static readonly BRIDGE_FILE_TYPE = 'bridge-cli'
+
   private cachedBridgeVersion: string | null = null
   private currentVersion: string | undefined
   private isBridgeCLIInstalled: boolean | undefined
@@ -32,7 +33,8 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected async executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
-    if (inputs.REGISTER_URL && (await this.runBridgeCommand(this.appendRegisterCommand(), execOptions)) !== 0) {
+    if (!inputs.BRIDGE_REGISTRY_KEY) debug('Registry URL is empty')
+    if (inputs.BRIDGE_REGISTRY_KEY && (await this.runBridgeCommand(this.appendRegisterCommand(), execOptions)) !== 0) {
       throw new Error('Register command failed, returning early')
     }
     return this.runBridgeCommand(bridgeCommand, execOptions)
@@ -124,12 +126,12 @@ export class BridgeThinClient extends BridgeClientBase {
       .concat(BRIDGE_CLI_SPACE)
       .concat(stateFilePath)
       .concat(BRIDGE_CLI_SPACE)
-      .concat(this.handleUpdateCommand())
+      .concat(this.handleBridgeUpdateCommand())
   }
 
   private appendRegisterCommand(): string {
     debug('Building register command')
-    const registerCommand = `${this.bridgeExecutablePath} --register ${inputs.REGISTER_URL}`
+    const registerCommand = `${this.bridgeExecutablePath} --register ${inputs.BRIDGE_REGISTRY_KEY}`
     debug(`Register command built: ${registerCommand}`)
     return registerCommand
   }
@@ -189,13 +191,10 @@ export class BridgeThinClient extends BridgeClientBase {
     return expectedVersion === currentVersion
   }
 
-  private handleUpdateCommand(): string {
-    if (parseToBoolean(BRIDGE_WORKFLOW_DISABLE_UPDATE)) {
-      info('Bridge workflow update is disabled')
-      return ''
-    }
-    info('Running Bridge update command')
-    return '--update'
+  private handleBridgeUpdateCommand(): string {
+    const isBridgeUpdateDisabled = DISABLE_BRIDGE_WORKFLOW_UPDATE === '' || parseToBoolean(DISABLE_BRIDGE_WORKFLOW_UPDATE)
+    info(isBridgeUpdateDisabled ? 'Bridge workflow update is disabled' : 'Bridge update command has been added.')
+    return isBridgeUpdateDisabled ? '' : '--update'
   }
 
   protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
@@ -206,5 +205,9 @@ export class BridgeThinClient extends BridgeClientBase {
   async validateBridgeVersion(version: string): Promise<boolean> {
     const versions = await this.getAllAvailableBridgeVersions()
     return versions.includes(version.trim())
+  }
+
+  protected getLatestVersionRegexPattern(): RegExp {
+    return new RegExp(`(${BridgeThinClient.BRIDGE_FILE_TYPE}-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)`)
   }
 }

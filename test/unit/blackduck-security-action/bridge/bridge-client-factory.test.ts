@@ -6,18 +6,18 @@ describe('createBridgeClient', () => {
     jest.clearAllMocks()
   })
 
-  it('returns BridgeThinClient when THIN_CLIENT_ENABLED is true', async () => {
+  it('returns BridgeThinClient when ENABLE_BRIDGE_THIN_CLIENT is true', async () => {
     jest.mock('../../../../src/blackduck-security-action/inputs', () => ({
-      THIN_CLIENT_ENABLED: 'true'
+      ENABLE_BRIDGE_THIN_CLIENT: 'true'
     }))
     const {BridgeThinClient} = await import('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
     const client = createBridgeClient()
     expect(client).toBeInstanceOf(BridgeThinClient)
   })
 
-  it('returns BridgeCliBundle when THIN_CLIENT_ENABLED is false', async () => {
+  it('returns BridgeCliBundle when ENABLE_BRIDGE_THIN_CLIENT is false', async () => {
     jest.mock('../../../../src/blackduck-security-action/inputs', () => ({
-      THIN_CLIENT_ENABLED: 'false'
+      ENABLE_BRIDGE_THIN_CLIENT: 'false'
     }))
     const {BridgeCliBundle} = await import('../../../../src/blackduck-security-action/bridge/bridge-cli-bundle')
     const client = createBridgeClient()
