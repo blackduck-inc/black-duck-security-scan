@@ -267,11 +267,13 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    return {
+    const commandParams = {
       stage: BridgeToolsParameter.POLARIS_STAGE,
       stateFilePath,
       workflowVersion: POLARIS_WORKFLOW_VERSION
     }
+
+    return commandParams
   }
 
   getFormattedCommandForCoverity(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
@@ -647,11 +649,13 @@ export class BridgeToolsParameter {
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    return {
+    const commandParams = {
       stage: BridgeToolsParameter.SRM_STAGE,
       stateFilePath,
       workflowVersion: SRM_WORKFLOW_VERSION
     }
+
+    return commandParams
   }
 
   private getGithubRepoInfo(): GithubData | undefined {

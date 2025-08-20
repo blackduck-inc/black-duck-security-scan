@@ -1,10 +1,9 @@
 import path from 'path'
 
-export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/bridge-cli-bundle' //Path will be in home
-export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\bridge-cli-bundle'
-export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/bridge-cli-bundle'
-export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/'
-
+export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/.blackduck/integrations' //Path will be in home
+export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\.blackduck\\integrations'
+export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/.blackduck/integrations'
+export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/'
 export const APPLICATION_NAME = 'blackduck-security-action'
 /**
  * @deprecated Use bridgecli_install_directory instead. This can be removed in future release.
