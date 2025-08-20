@@ -44,6 +44,7 @@ export abstract class BridgeClientBase {
   abstract getBridgeVersion(): Promise<string>
   protected abstract getBridgeType(): string
   protected abstract getBridgeFileType(): string
+  protected abstract getLatestVersionRegexPattern(): RegExp
   protected abstract getBridgeCLIDownloadDefaultPath(): string
   protected abstract verifyRegexCheck(url: string): RegExpMatchArray | null
   protected abstract executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number>
@@ -202,6 +203,7 @@ export abstract class BridgeClientBase {
   }
 
   private async getBridgeUrlAndVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    info(`Bridge CLI download URL: ${inputs.BRIDGE_CLI_DOWNLOAD_URL}`)
     if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
       return await this.processDownloadUrl()
     }
@@ -221,9 +223,7 @@ export abstract class BridgeClientBase {
     if (versionInfo != null) {
       bridgeVersion = versionInfo[1]
       if (!bridgeVersion) {
-        const bridgeType = this.getBridgeType()
-        const regex = new RegExp(`(${bridgeType}-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)`)
-        bridgeVersion = await this.getBridgeVersionFromLatestURL(bridgeUrl.replace(regex, 'versions.txt'))
+        bridgeVersion = await this.getBridgeVersionFromLatestURL(bridgeUrl.replace(this.getLatestVersionRegexPattern(), 'versions.txt'))
       }
     }
 
@@ -231,9 +231,6 @@ export abstract class BridgeClientBase {
   }
 
   private async processVersion(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP)) {
-      throw new Error("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_DOWNLOAD_URL'.")
-    }
     const requestedVersion = inputs.BRIDGE_CLI_DOWNLOAD_VERSION
     if (await this.isBridgeInstalled(requestedVersion)) {
       info('Bridge CLI already exists')

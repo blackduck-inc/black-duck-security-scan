@@ -170,15 +170,15 @@ inputs:
   bridgecli_download_version:
     description: 'If provided, Black Duck Security Action will configure the version of Bridge'
     required: false
-  thin_client_enabled:
+  enable_bridge_thin_client:
     description: 'Flag to enable thin client mode. Default: true. If set to false, it will use bridge-cli-bundle.'
     required: false
-    default: 'true'
-  bridge_workflow_update_enabled:
+    default: true
+  disable_bridge_workflow_update:
     description: 'Flag to enable workflow updates for thin client. Default: true.'
     required: false
-    default: 'true'
-  register_url:
+    default: false
+  bridge_register_url:
     description: 'Register URL for thin client in airgap mode to use custom root registry'
     required: false
   polaris_workflow_version:
