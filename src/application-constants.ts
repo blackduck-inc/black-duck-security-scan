@@ -18,15 +18,14 @@ export const BRIDGE_CLI_DOWNLOAD_URL_KEY = 'bridgecli_download_url'
 /**
  * @deprecated Use bridgecli_download_version instead. This can be removed in future release.
  */
-export const BRIDGE_DOWNLOAD_VERSION_KEY = 'synopsys_bridge_download_version'
 export const BRIDGE_CLI_DOWNLOAD_VERSION_KEY = 'bridgecli_download_version'
 export const MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION = '2.1.0'
 export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
 
 // Thin Client Configuration
-export const THIN_CLIENT_ENABLED_KEY = 'thin_client_enabled'
-export const BRIDGE_WORKFLOW_DISABLE_UPDATE_KEY = 'bridge_workflow_disable_update'
-export const INTERNAL_REGISTRY_URL_KEY = 'register_url'
+export const ENABLE_BRIDGE_THIN_CLIENT = 'enable_bridge_thin_client'
+export const DISABLE_BRIDGE_WORKFLOW_UPDATE_KEY = 'disable_bridge_workflow_update'
+export const INTERNAL_BRIDGE_REGISTRY_URL_KEY = 'bridge_register_url'
 
 // Workflow Version Keys
 export const POLARIS_WORKFLOW_VERSION_KEY = 'polaris_workflow_version'

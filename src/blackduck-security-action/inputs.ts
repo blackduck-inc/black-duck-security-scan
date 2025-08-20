@@ -5,10 +5,11 @@ export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = getInput(constants.BRIDGE_CLI_IN
 export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.trim() || getInput(constants.BRIDGE_NETWORK_AIRGAP_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || getInput(constants.BRIDGE_DOWNLOAD_URL_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || ''
+
 // Thin Client Configuration
-export const THIN_CLIENT_ENABLED = getInput(constants.THIN_CLIENT_ENABLED_KEY)?.trim() || 'true'
-export const BRIDGE_WORKFLOW_DISABLE_UPDATE = getInput(constants.BRIDGE_WORKFLOW_DISABLE_UPDATE_KEY)?.trim() || 'false'
-export const REGISTER_URL = getInput(constants.INTERNAL_REGISTRY_URL_KEY)?.trim() || ''
+export const ENABLE_BRIDGE_THIN_CLIENT = getInput(constants.ENABLE_BRIDGE_THIN_CLIENT)?.trim() || ''
+export const DISABLE_BRIDGE_WORKFLOW_UPDATE = getInput(constants.DISABLE_BRIDGE_WORKFLOW_UPDATE_KEY)?.trim() || 'false'
+export const BRIDGE_REGISTRY_KEY = getInput(constants.INTERNAL_BRIDGE_REGISTRY_URL_KEY)?.trim() || ''
 
 // Workflow Versions
 export const POLARIS_WORKFLOW_VERSION = getInput(constants.POLARIS_WORKFLOW_VERSION_KEY)?.trim() || ''
