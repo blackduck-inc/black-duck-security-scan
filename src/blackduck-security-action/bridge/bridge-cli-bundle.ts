@@ -8,7 +8,7 @@ import {debug, info} from '@actions/core'
 import path, {join} from 'path'
 import {checkIfPathExists, getOSPlatform, parseToBoolean} from '../utility'
 import * as inputs from '../inputs'
-import {BLACKDUCKSCA_WORKFLOW_VERSION, BRIDGE_CLI_DOWNLOAD_URL, COVERITY_WORKFLOW_VERSION, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from '../inputs'
+import {BLACKDUCKSCA_WORKFLOW_VERSION, BRIDGE_CLI_DOWNLOAD_URL, BRIDGE_CLI_DOWNLOAD_VERSION, COVERITY_WORKFLOW_VERSION, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from '../inputs'
 import {rmRF} from '@actions/io'
 
 export class BridgeCliBundle extends BridgeClientBase {
@@ -98,14 +98,14 @@ export class BridgeCliBundle extends BridgeClientBase {
       return false
     }
 
-    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP) && BRIDGE_CLI_DOWNLOAD_URL === '') {
-      throw new Error("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_DOWNLOAD_URL'.")
-    }
     debug('Version file found at '.concat(this.bridgePath))
     return await this.checkIfVersionExists(bridgeVersion, versionFilePath)
   }
 
   async validateBridgeVersion(version: string): Promise<boolean> {
+    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP) && BRIDGE_CLI_DOWNLOAD_URL === '' && BRIDGE_CLI_DOWNLOAD_VERSION !== '') {
+      throw new Error("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_DOWNLOAD_URL'.")
+    }
     const versions = await this.getAllAvailableBridgeVersions()
     return versions.includes(version.trim())
   }
