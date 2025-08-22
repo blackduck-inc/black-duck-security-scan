@@ -9,7 +9,7 @@ export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOA
 // Thin Client Configuration
 export const ENABLE_BRIDGE_THIN_CLIENT = getInput(constants.ENABLE_BRIDGE_THIN_CLIENT)?.trim() || ''
 export const DISABLE_BRIDGE_WORKFLOW_UPDATE = getInput(constants.DISABLE_BRIDGE_WORKFLOW_UPDATE_KEY)?.trim() || 'false'
-export const BRIDGE_REGISTRY_KEY = getInput(constants.INTERNAL_BRIDGE_REGISTRY_URL_KEY)?.trim() || ''
+export const BRIDGE_REGISTRY_URL = getInput(constants.BRIDGE_REGISTRY_URL_KEY)?.trim() || ''
 
 // Workflow Versions
 export const POLARIS_WORKFLOW_VERSION = getInput(constants.POLARIS_WORKFLOW_VERSION_KEY)?.trim() || ''
