@@ -15,7 +15,6 @@ import {HttpClient} from 'typed-rest-client/HttpClient'
 import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import {rmRF} from '@actions/io'
 import semver from 'semver'
-import {execSync} from 'node:child_process'
 import DomParser from 'dom-parser'
 
 export abstract class BridgeClientBase {
@@ -40,88 +39,205 @@ export abstract class BridgeClientBase {
     this.initializeUrls()
   }
 
-  protected abstract initializeUrls(): void
+  abstract getBridgeFileType(): string
   abstract getBridgeVersion(): Promise<string>
-  protected abstract getBridgeType(): string
-  protected abstract getBridgeFileType(): string
-  protected abstract getLatestVersionRegexPattern(): RegExp
-  protected abstract getBridgeCLIDownloadDefaultPath(): string
-  protected abstract verifyRegexCheck(url: string): RegExpMatchArray | null
-  protected abstract executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number>
-  protected abstract handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string, bridgePathType?: string, pathSeparator?: string): Promise<void>
-  protected abstract updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}>
-  protected abstract checkIfBridgeExistsInAirGap(): Promise<boolean>
-  abstract validateAndSetBridgePath(): Promise<void>
+  abstract getBridgeType(): string
   abstract generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string
   abstract isBridgeInstalled(bridgeVersion: string): Promise<boolean>
+  abstract validateAndSetBridgePath(): Promise<void>
+
+  protected abstract checkIfBridgeExistsInAirGap(): Promise<boolean>
+  protected abstract executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number>
+  protected abstract getLatestVersionRegexPattern(): RegExp
+  protected abstract getBridgeCLIDownloadDefaultPath(): string
+  protected abstract handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string, bridgePathType?: string, pathSeparator?: string): Promise<void>
+  protected abstract initializeUrls(): void
+  protected abstract updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}>
+  protected abstract verifyRegexCheck(url: string): RegExpMatchArray | null
 
   async prepareCommand(tempDir: string): Promise<string> {
     try {
-      let formattedCommand = ''
-      const invalidParams: string[] = validateScanTypes()
-      if (invalidParams.length === 4) {
-        return Promise.reject(new Error(constants.SCAN_TYPE_REQUIRED_ERROR.replace('{0}', constants.POLARIS_SERVER_URL_KEY).replace('{1}', constants.COVERITY_URL_KEY).replace('{2}', constants.BLACKDUCKSCA_URL_KEY).replace('{3}', constants.SRM_URL_KEY)))
-      }
+      this.validateRequiredScanTypes()
 
-      const githubRepo = process.env[GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
-      const githubRepoName = githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
+      const githubRepoName = this.extractGithubRepoName()
+      const {formattedCommand, validationErrors} = await this.buildCommandForAllTools(tempDir, githubRepoName)
 
-      // validating and preparing command for polaris
-      const polarisErrors: string[] = validatePolarisInputs()
-      if (polarisErrors.length === 0 && inputs.POLARIS_SERVER_URL) {
-        const polarisCommandFormatter = new BridgeToolsParameter(tempDir)
-        const polarisParams = polarisCommandFormatter.getFormattedCommandForPolaris(githubRepoName)
-        formattedCommand = formattedCommand.concat(this.generateFormattedCommand(polarisParams.stage, polarisParams.stateFilePath, polarisParams.workflowVersion))
-      }
+      this.handleValidationErrors(validationErrors, formattedCommand)
 
-      // validating and preparing command for coverity
-      const coverityErrors: string[] = validateCoverityInputs()
-      if (coverityErrors.length === 0 && inputs.COVERITY_URL) {
-        const coverityCommandFormatter = new BridgeToolsParameter(tempDir)
-        const coverityParams = coverityCommandFormatter.getFormattedCommandForCoverity(githubRepoName)
-        formattedCommand = formattedCommand.concat(this.generateFormattedCommand(coverityParams.stage, coverityParams.stateFilePath, coverityParams.workflowVersion))
-      }
+      const finalCommand = this.addDiagnosticsIfEnabled(formattedCommand)
 
-      // validating and preparing command for blackduck
-      const blackduckErrors: string[] = validateBlackDuckInputs()
-      if (blackduckErrors.length === 0 && inputs.BLACKDUCKSCA_URL) {
-        const blackDuckCommandFormatter = new BridgeToolsParameter(tempDir)
-        const blackduckParams = blackDuckCommandFormatter.getFormattedCommandForBlackduck()
-        formattedCommand = formattedCommand.concat(this.generateFormattedCommand(blackduckParams.stage, blackduckParams.stateFilePath, blackduckParams.workflowVersion))
-      }
-
-      // validating and preparing command for SRM
-      const srmErrors: string[] = validateSRMInputs()
-      if (srmErrors.length === 0 && inputs.SRM_URL) {
-        const srmCommandFormatter = new BridgeToolsParameter(tempDir)
-        const srmParams = srmCommandFormatter.getFormattedCommandForSRM(githubRepoName)
-        formattedCommand = formattedCommand.concat(this.generateFormattedCommand(srmParams.stage, srmParams.stateFilePath, srmParams.workflowVersion))
-      }
-
-      let validationErrors: string[] = []
-      validationErrors = validationErrors.concat(polarisErrors)
-      validationErrors = validationErrors.concat(coverityErrors)
-      validationErrors = validationErrors.concat(blackduckErrors)
-      validationErrors = validationErrors.concat(srmErrors)
-      if (formattedCommand.length === 0) {
-        return Promise.reject(new Error(validationErrors.join(',')))
-      }
-      if (validationErrors.length > 0) {
-        error(new Error(validationErrors.join(',')))
-      }
-
-      if (parseToBoolean(inputs.INCLUDE_DIAGNOSTICS)) {
-        formattedCommand = formattedCommand.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.DIAGNOSTICS_OPTION)
-      }
-
-      debug('Formatted command is - '.concat(formattedCommand))
-      return formattedCommand
+      debug(`Formatted command: ${finalCommand}`)
+      return finalCommand
     } catch (e) {
-      const errorObject = e as Error
-      await cleanupTempDir(tempDir)
-      debug(errorObject.stack === undefined ? '' : errorObject.stack.toString())
-      return Promise.reject(errorObject.message)
+      const errorObject = e instanceof Error ? e : new Error(String(e))
+
+      await this.cleanupOnError(tempDir)
+
+      debug(`Error in prepareCommand: ${errorObject.message}`)
+      debug(`Stack trace: ${errorObject.stack || 'No stack trace available'}`)
+
+      throw errorObject
     }
+  }
+
+  private async cleanupOnError(tempDir: string): Promise<void> {
+    try {
+      await cleanupTempDir(tempDir)
+    } catch (cleanupError) {
+      debug(`Failed to cleanup temp directory: ${cleanupError}`)
+    }
+  }
+
+  /**
+   * Validates that at least one scan type is configured
+   * @throws Error if no scan types are configured
+   */
+  private validateRequiredScanTypes(): void {
+    const invalidParams: string[] = validateScanTypes()
+    if (invalidParams.length === 4) {
+      throw new Error(constants.SCAN_TYPE_REQUIRED_ERROR.replace('{0}', constants.POLARIS_SERVER_URL_KEY).replace('{1}', constants.COVERITY_URL_KEY).replace('{2}', constants.BLACKDUCKSCA_URL_KEY).replace('{3}', constants.SRM_URL_KEY))
+    }
+  }
+
+  /**
+   * Extracts the GitHub repository name from environment variables
+   * @returns The repository name or empty string if not found
+   */
+  private extractGithubRepoName(): string {
+    const githubRepo = process.env[GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
+    return githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
+  }
+
+  /**
+   * Builds commands for all configured tools and aggregates validation errors
+   * @param tempDir Temporary directory path
+   * @param githubRepoName GitHub repository name
+   * @returns Object containing formatted command and validation errors
+   */
+  private async buildCommandForAllTools(tempDir: string, githubRepoName: string): Promise<{formattedCommand: string; validationErrors: string[]}> {
+    let formattedCommand = ''
+    const validationErrors: string[] = []
+
+    // Build command for Polaris
+    const polarisResult = this.buildPolarisCommand(tempDir, githubRepoName)
+    formattedCommand = formattedCommand.concat(polarisResult.command)
+    validationErrors.push(...polarisResult.errors)
+
+    // Build command for Coverity
+    const coverityResult = this.buildCoverityCommand(tempDir, githubRepoName)
+    formattedCommand = formattedCommand.concat(coverityResult.command)
+    validationErrors.push(...coverityResult.errors)
+
+    // Build command for BlackDuck
+    const blackduckResult = this.buildBlackDuckCommand(tempDir)
+    formattedCommand = formattedCommand.concat(blackduckResult.command)
+    validationErrors.push(...blackduckResult.errors)
+
+    // Build command for SRM
+    const srmResult = this.buildSRMCommand(tempDir, githubRepoName)
+    formattedCommand = formattedCommand.concat(srmResult.command)
+    validationErrors.push(...srmResult.errors)
+
+    return {formattedCommand, validationErrors}
+  }
+
+  /**
+   * Builds command for Polaris tool
+   * @param tempDir Temporary directory path
+   * @param githubRepoName GitHub repository name
+   * @returns Command string and validation errors
+   */
+  private buildPolarisCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+    const polarisErrors: string[] = validatePolarisInputs()
+    let command = ''
+
+    if (polarisErrors.length === 0 && inputs.POLARIS_SERVER_URL) {
+      const polarisCommandFormatter = new BridgeToolsParameter(tempDir)
+      const polarisParams = polarisCommandFormatter.getFormattedCommandForPolaris(githubRepoName)
+      command = this.generateFormattedCommand(polarisParams.stage, polarisParams.stateFilePath, polarisParams.workflowVersion)
+    }
+
+    return {command, errors: polarisErrors}
+  }
+
+  /**
+   * Builds command for Coverity tool
+   * @param tempDir Temporary directory path
+   * @param githubRepoName GitHub repository name
+   * @returns Command string and validation errors
+   */
+  private buildCoverityCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+    const coverityErrors: string[] = validateCoverityInputs()
+    let command = ''
+
+    if (coverityErrors.length === 0 && inputs.COVERITY_URL) {
+      const coverityCommandFormatter = new BridgeToolsParameter(tempDir)
+      const coverityParams = coverityCommandFormatter.getFormattedCommandForCoverity(githubRepoName)
+      command = this.generateFormattedCommand(coverityParams.stage, coverityParams.stateFilePath, coverityParams.workflowVersion)
+    }
+
+    return {command, errors: coverityErrors}
+  }
+
+  /**
+   * Builds command for BlackDuck tool
+   * @param tempDir Temporary directory path
+   * @returns Command string and validation errors
+   */
+  private buildBlackDuckCommand(tempDir: string): {command: string; errors: string[]} {
+    const blackduckErrors: string[] = validateBlackDuckInputs()
+    let command = ''
+
+    if (blackduckErrors.length === 0 && inputs.BLACKDUCKSCA_URL) {
+      const blackDuckCommandFormatter = new BridgeToolsParameter(tempDir)
+      const blackduckParams = blackDuckCommandFormatter.getFormattedCommandForBlackduck()
+      command = this.generateFormattedCommand(blackduckParams.stage, blackduckParams.stateFilePath, blackduckParams.workflowVersion)
+    }
+
+    return {command, errors: blackduckErrors}
+  }
+
+  /**
+   * Builds command for SRM tool
+   * @param tempDir Temporary directory path
+   * @param githubRepoName GitHub repository name
+   * @returns Command string and validation errors
+   */
+  private buildSRMCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+    const srmErrors: string[] = validateSRMInputs()
+    let command = ''
+
+    if (srmErrors.length === 0 && inputs.SRM_URL) {
+      const srmCommandFormatter = new BridgeToolsParameter(tempDir)
+      const srmParams = srmCommandFormatter.getFormattedCommandForSRM(githubRepoName)
+      command = this.generateFormattedCommand(srmParams.stage, srmParams.stateFilePath, srmParams.workflowVersion)
+    }
+
+    return {command, errors: srmErrors}
+  }
+
+  /**
+   * Handles validation errors and command validation
+   * @param validationErrors Array of validation errors
+   * @param formattedCommand The formatted command string
+   * @throws Error if no command was generated and there are validation errors
+   */
+  private handleValidationErrors(validationErrors: string[], formattedCommand: string): void {
+    if (formattedCommand.length === 0) {
+      throw new Error(validationErrors.join(','))
+    }
+    if (validationErrors.length > 0) {
+      error(new Error(validationErrors.join(',')))
+    }
+  }
+
+  /**
+   * Adds diagnostics option to command if enabled
+   * @param formattedCommand The base command
+   * @returns Command with diagnostics option if enabled
+   */
+  private addDiagnosticsIfEnabled(formattedCommand: string): string {
+    return parseToBoolean(inputs.INCLUDE_DIAGNOSTICS) ? formattedCommand.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.DIAGNOSTICS_OPTION) : formattedCommand
   }
 
   /**
@@ -130,16 +246,7 @@ export abstract class BridgeClientBase {
    * @returns The complete default download path
    */
   protected getBridgeCLIDownloadPathCommon(includeBridgeType = false): string {
-    let bridgeCLIDefaultPath = ''
-    const osName = process.platform
-    if (osName === MAC_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_MAC)
-    } else if (osName === LINUX_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_LINUX)
-    } else if (osName === WINDOWS_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['USERPROFILE'] as string, BRIDGE_CLI_DEFAULT_PATH_WINDOWS)
-    }
-    return includeBridgeType ? bridgeCLIDefaultPath.concat('/', this.getBridgeType()) : bridgeCLIDefaultPath
+    return includeBridgeType ? path.join(this.getBasePath(), this.getBridgeType()) : this.getBasePath()
   }
 
   private getBasePath(): string {
@@ -176,7 +283,10 @@ export abstract class BridgeClientBase {
       info('Downloading and configuring Bridge from URL - '.concat(bridgeUrl))
 
       const downloadResponse: DownloadFileResponse = await getRemoteFile(tempDir, bridgeUrl)
-      const extractZippedFilePath: string = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY || this.getBridgeCLIDownloadDefaultPath()
+      let extractZippedFilePath: string = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY || this.getBridgeCLIDownloadDefaultPath()
+      if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
+        extractZippedFilePath = path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
+      }
       // Only clear existing bridge folder if it exists to avoid unnecessary I/O
       if (fs.existsSync(this.bridgePath)) {
         info('Clear the existing bridge folder, if available from '.concat(this.bridgePath))
@@ -203,15 +313,18 @@ export abstract class BridgeClientBase {
   }
 
   private async getBridgeUrlAndVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    info(`Bridge CLI download URL: ${inputs.BRIDGE_CLI_DOWNLOAD_URL}`)
+    debug(`Bridge CLI download URL: ${inputs.BRIDGE_CLI_DOWNLOAD_URL}`)
     if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
+      debug('Using provided Bridge CLI download URL')
       return await this.processDownloadUrl()
     }
 
     if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
+      debug(`Using specified Bridge CLI version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
       return await this.processVersion()
     }
 
+    debug('No specific URL or version provided, using latest version')
     return await this.processLatestVersion(isAirGap)
   }
 
@@ -238,8 +351,6 @@ export abstract class BridgeClientBase {
     }
     return await this.updateBridgeCLIVersion(requestedVersion)
   }
-
-  // Abstract method to be implemented by each client type
 
   private async processLatestVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
     if (isAirGap && (await this.checkIfBridgeExistsInAirGap())) {
@@ -353,22 +464,24 @@ export abstract class BridgeClientBase {
   }
 
   getVersionUrl(version: string): string {
-    const osName = process.platform
-    let platform = ''
+    const platform = this.getPlatformForVersion(version)
+    return this.bridgeUrlPattern.replace(/\$version/g, version).replace('$platform', platform)
+  }
 
-    if (osName === MAC_PLATFORM_NAME) {
+  private getPlatformForVersion(version: string): string {
+    if (process.platform === MAC_PLATFORM_NAME) {
       const isARM = !os.cpus()[0].model.includes('Intel')
       const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
-      platform = this.selectPlatform(version, isARM, isValidVersionForARM, this.MAC_ARM_PLATFORM, this.MAC_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
-    } else if (osName === LINUX_PLATFORM_NAME) {
-      const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
-      const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
-      platform = this.selectPlatform(version, isARM, isValidVersionForARM, this.LINUX_ARM_PLATFORM, this.LINUX_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
-    } else if (osName === WINDOWS_PLATFORM_NAME) {
-      platform = this.WINDOWS_PLATFORM
+      return this.selectPlatform(version, isARM, isValidVersionForARM, this.MAC_ARM_PLATFORM, this.MAC_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
     }
 
-    return this.bridgeUrlPattern.replace(/\$version/g, version).replace('$platform', platform)
+    if (process.platform === LINUX_PLATFORM_NAME) {
+      const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
+      const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
+      return this.selectPlatform(version, isARM, isValidVersionForARM, this.LINUX_ARM_PLATFORM, this.LINUX_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
+    }
+
+    return this.WINDOWS_PLATFORM
   }
 
   protected async validateAirGapExecutable(bridgePath: string): Promise<void> {
@@ -385,18 +498,6 @@ export abstract class BridgeClientBase {
         debug(`Air gap validation failed: ${errorMessage}`)
         throw new Error(errorMessage)
       }
-    }
-  }
-
-  protected async executeUseBridgeCommand(bridgeExecutable: string, bridgeVersion: string): Promise<void> {
-    debug('Different bridge version found, running --use bridge command')
-    const useBridgeCommand = `${bridgeExecutable} --use ${this.getBridgeFileType()}@${bridgeVersion}`
-    try {
-      execSync(useBridgeCommand, {stdio: 'pipe'})
-      debug(`Successfully executed --use bridge command: ${useBridgeCommand} with version ${bridgeVersion}`)
-    } catch (err) {
-      debug(`Failed to execute --use bridge command: ${(err as Error).message}`)
-      throw error
     }
   }
 
