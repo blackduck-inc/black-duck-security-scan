@@ -8,12 +8,14 @@ import {debug, info} from '@actions/core'
 import path, {join} from 'path'
 import {checkIfPathExists, getOSPlatform, parseToBoolean} from '../utility'
 import * as inputs from '../inputs'
-import {BLACKDUCKSCA_WORKFLOW_VERSION, BRIDGE_CLI_DOWNLOAD_URL, BRIDGE_CLI_DOWNLOAD_VERSION, COVERITY_WORKFLOW_VERSION, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from '../inputs'
+import {BLACKDUCKSCA_WORKFLOW_VERSION, BRIDGE_CLI_DOWNLOAD_URL, COVERITY_WORKFLOW_VERSION, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from '../inputs'
 import {rmRF} from '@actions/io'
 
 export class BridgeCliBundle extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-bundle'
   private static readonly BRIDGE_FILE_TYPE = 'bridge-cli'
+  private readonly VERSIONS_TXT = 'versions.txt'
+
   private osPlatform: string | undefined
   private static get VERSION_PATTERN(): RegExp {
     return new RegExp(`${this.BRIDGE_TYPE}:\\s*([0-9.]+)`)
@@ -34,7 +36,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   generateFormattedCommand(stage: string, stateFilePath: string): string {
     debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
 
-    this.logWorkflowVersionWarning()
+    this.logWorkflowVersionInfo()
     const command = this.buildCommand(stage, stateFilePath)
 
     info(`Generated command: ${command}`)
@@ -46,7 +48,12 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   async validateAndSetBridgePath(): Promise<void> {
-    const basePath = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY || this.getBridgeDefaultPath()
+    let basePath: string
+    if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
+      basePath = path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
+    } else {
+      basePath = this.getBridgeDefaultPath()
+    }
     info('Bridge CLI directory '.concat(basePath))
 
     const platformFolderName = this.getBridgeType()
@@ -118,11 +125,11 @@ export class BridgeCliBundle extends BridgeClientBase {
     this.bridgeUrlLatestPattern = constants.BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeType()).concat(`-${this.osPlatform}.zip`)
   }
 
-  protected getBridgeType(): string {
+  getBridgeType(): string {
     return BridgeCliBundle.BRIDGE_TYPE
   }
 
-  protected getBridgeFileType(): string {
+  getBridgeFileType(): string {
     return BridgeCliBundle.BRIDGE_FILE_TYPE
   }
 
@@ -139,7 +146,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   protected async updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP) && BRIDGE_CLI_DOWNLOAD_URL === '' && BRIDGE_CLI_DOWNLOAD_VERSION !== '') {
+    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP) && BRIDGE_CLI_DOWNLOAD_URL === '' && requestedVersion !== '') {
       throw new Error("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_DOWNLOAD_URL'.")
     } else {
       if (await this.validateBridgeVersion(requestedVersion)) {
@@ -170,9 +177,9 @@ export class BridgeCliBundle extends BridgeClientBase {
     fs.renameSync(sourceFile, this.bridgePath)
   }
 
-  private logWorkflowVersionWarning(): void {
+  private logWorkflowVersionInfo(): void {
     if (BridgeCliBundle.WORKFLOW_VERSIONS.some(version => version)) {
-      debug('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+      info('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
     }
   }
 
@@ -181,11 +188,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   private getVersionFilePath(): string {
-    return path.join(this.bridgePath, 'versions.txt')
-  }
-
-  private getBridgeExecutablePath(): string {
-    return path.join(this.bridgePath, this.getBridgeFileType())
+    return path.join(this.bridgePath, this.VERSIONS_TXT)
   }
 
   protected getLatestVersionRegexPattern(): RegExp {
