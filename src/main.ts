@@ -6,13 +6,51 @@ import * as constants from './application-constants'
 import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import * as util from './blackduck-security-action/utility'
-import {readFileSync} from 'fs'
+import {readFileSync, writeFileSync} from 'fs'
 import {join, basename} from 'path'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
+import {execSync} from 'child_process'
+
+// --- Intentionally added insecure patterns for testing scanners --- //
+
+// Hardcoded secret (Sensitive Information Exposure)
+const HARDCODED_API_KEY = 'super-secret-hardcoded-key'
+
+// Command injection risk
+export function runUnsafeCommand(userInput: string) {
+  // VULNERABILITY: unsanitized input passed to execSync
+  return execSync(`echo User said: ${userInput}`).toString()
+}
+
+// Insecure file write (path traversal possible)
+export function insecureFileWrite(userInput: string, data: string) {
+  // VULNERABILITY: path traversal
+  writeFileSync(userInput, data)
+}
+
+// Leaking sensitive error messages
+export function leakErrorDetails() {
+  try {
+    throw new Error('DB connection failed: password=Secret123!') // VULNERABILITY
+  } catch (err: any) {
+    // VULNERABILITY: full stack trace + secrets logged
+    console.error(err.stack)
+  }
+}
 
 export async function run() {
   info('Black Duck Security Action started...')
+
+  // --- START ---
+  const userInput = process.env.USER_INPUT || '../../etc/passwd'
+  const result = runUnsafeCommand(userInput)
+  info(`Unsafe command result: ${result}`)
+  insecureFileWrite(userInput, 'scanner test data')
+  leakErrorDetails()
+  info(`Using API key: ${HARDCODED_API_KEY}`)
+  // --- END ---
+
   const tempDir = await createTempDir()
   let formattedCommand = ''
   let isBridgeExecuted = false

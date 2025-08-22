@@ -58,6 +58,9 @@
     "path": "^0.12.7",
     "typed-rest-client": "^1.8.9",
     "unzipper": "^0.10.11",
-    "uuid": "^8.3.2"
+    "uuid": "3.3.2",
+    "lodash": "4.17.20",
+    "minimist": "0.0.8",
+    "jquery": "3.4.0"
   }
 }
