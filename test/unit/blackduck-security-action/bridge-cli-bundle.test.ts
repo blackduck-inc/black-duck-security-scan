@@ -6,12 +6,10 @@ import {validateBridgeUrl} from '../../../src/blackduck-security-action/validato
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as constants from '../../../src/application-constants'
 import * as downloadUtility from '../../../src/blackduck-security-action/download-utility'
-import {DownloadFileResponse, extractZipped} from '../../../src/blackduck-security-action/download-utility'
+import {DownloadFileResponse} from '../../../src/blackduck-security-action/download-utility'
 import os from 'os'
 import mock = jest.mock
 import Mocked = jest.Mocked
-
-const util = require('../../../src/blackduck-security-action/utility')
 
 const ioUtils = require('@actions/io/lib/io-util')
 mock('@actions/io/lib/io-util')
@@ -264,7 +262,7 @@ test('Latest URL Version success', async () => {
   jest.spyOn(HttpClient.prototype, 'get').mockResolvedValueOnce(httpResponse)
 
   const response = sb.getVersionUrl('0.3.1')
-  expect(response).toContain('latest/bridge-cli-bundle')
+  expect(response).toContain('https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/0.3.1/bridge-cli-bundle-0.3.1-macosx.zip')
 })
 
 test('Latest URL Version success for MAC ARM arch', async () => {
