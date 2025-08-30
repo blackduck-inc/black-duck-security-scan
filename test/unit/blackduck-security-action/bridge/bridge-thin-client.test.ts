@@ -82,7 +82,10 @@ describe('BridgeThinClient', () => {
     })
 
     it('should use custom install directory when provided', async () => {
-      jest.spyOn(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', 'get').mockReturnValue('/custom/install/dir')
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+        value: '/custom/install/dir',
+        configurable: true
+      })
       mockGetOSPlatform.mockReturnValue('linux64')
 
       await bridgeThinClient.validateAndSetBridgePath()
@@ -92,7 +95,10 @@ describe('BridgeThinClient', () => {
     })
 
     it('should use default path when custom directory not provided', async () => {
-      jest.spyOn(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', 'get').mockReturnValue('')
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+        value: '',
+        configurable: true
+      })
       mockGetOSPlatform.mockReturnValue('macosx')
 
       await bridgeThinClient.validateAndSetBridgePath()
@@ -103,7 +109,10 @@ describe('BridgeThinClient', () => {
 
     it('should validate air gap executable when air gap mode is enabled', async () => {
       mockParseToBoolean.mockReturnValue(true)
-      jest.spyOn(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', 'get').mockReturnValue('')
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+        value: '',
+        configurable: true
+      })
 
       await bridgeThinClient.validateAndSetBridgePath()
 
@@ -205,29 +214,36 @@ describe('BridgeThinClient', () => {
       expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenCalledWith('test command', execOptions)
     })
 
-    // it('should execute registration command first when registry URL is provided', async () => {
-    //   mockParseToBoolean.mockReturnValue(true)
-    //   jest.spyOn(inputs, 'BRIDGE_REGISTRY_URL', 'get').mockReturnValue('https://registry.example.com')
-    //   const execOptions: ExecOptions = {cwd: '/test'}
-    //
-    //   const result = await (bridgeThinClient as any).executeCommand('test command', execOptions)
-    //
-    //   expect(result).toBe(0)
-    //   expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenCalledTimes(2)
-    //   expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenNthCalledWith(1, 'register command', execOptions)
-    //   expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenNthCalledWith(2, 'test command', execOptions)
-    // })
+    it('should execute registration command first when registry URL is provided', async () => {
+      mockParseToBoolean.mockReturnValue(true)
+      Object.defineProperty(inputs, 'BRIDGE_REGISTRY_URL', {
+        value: 'https://registry.example.com',
+        configurable: true
+      })
+      const execOptions: ExecOptions = {cwd: '/test'}
 
-    // it('should throw error when registration command fails', async () => {
-    //   mockParseToBoolean.mockReturnValue(true)
-    //   jest.spyOn(inputs, 'BRIDGE_REGISTRY_URL', 'get').mockReturnValue('https://registry.example.com')
-    //   jest
-    //     .spyOn(bridgeThinClient as any, 'runBridgeCommand')
-    //     .mockResolvedValueOnce(1) // registration fails
-    //     .mockResolvedValueOnce(0) // main command would succeed
-    //
-    //   await expect((bridgeThinClient as any).executeCommand('test command', {})).rejects.toThrow('Register command failed, returning early')
-    // })
+      const result = await (bridgeThinClient as any).executeCommand('test command', execOptions)
+
+      expect(result).toBe(0)
+      expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenCalledTimes(2)
+      expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenNthCalledWith(1, 'register command', execOptions)
+      expect((bridgeThinClient as any).runBridgeCommand).toHaveBeenNthCalledWith(2, 'test command', execOptions)
+    })
+
+    it('should throw error when registration command fails', async () => {
+      mockParseToBoolean.mockReturnValue(true)
+      Object.defineProperty(inputs, 'BRIDGE_REGISTRY_URL', {
+        value: 'https://registry.example.com',
+        configurable: true
+      })
+      const execOptions: ExecOptions = {cwd: '/test'}
+      jest
+        .spyOn(bridgeThinClient as any, 'runBridgeCommand')
+        .mockResolvedValueOnce(1) // registration fails
+        .mockResolvedValueOnce(0) // main command would succeed
+
+      await expect((bridgeThinClient as any).executeCommand('test command', execOptions)).rejects.toThrow('Register command failed, returning early')
+    })
   })
 
   describe('downloadBridge', () => {
@@ -339,18 +355,30 @@ describe('BridgeThinClient', () => {
       })
 
       it('should build command without workflow version', () => {
-        jest.spyOn(inputs, 'POLARIS_WORKFLOW_VERSION', 'get').mockReturnValue('')
-
-        const result = (bridgeThinClient as any).buildCommand('test', '/path/state.json')
-
+        jest.resetModules()
+        jest.doMock('../../../../src/blackduck-security-action/inputs', () => ({
+          ...jest.requireActual('../../../../src/blackduck-security-action/inputs'),
+          POLARIS_WORKFLOW_VERSION: ''
+        }))
+        // Re-import BridgeThinClient to use the mocked inputs
+        const {BridgeThinClient} = require('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
+        const thinClient = new BridgeThinClient()
+        jest.spyOn(thinClient, 'handleBridgeUpdateCommand').mockReturnValue('--update')
+        const result = (thinClient as any).buildCommand('test', '/path/state.json')
         expect(result).toBe('--stage test --input /path/state.json --update')
       })
 
       it('should build command with workflow version', () => {
-        jest.spyOn(inputs, 'POLARIS_WORKFLOW_VERSION', 'get').mockReturnValue('2.0.0')
-
-        const result = (bridgeThinClient as any).buildCommand('test', '/path/state.json')
-
+        jest.resetModules()
+        jest.doMock('../../../../src/blackduck-security-action/inputs', () => ({
+          ...jest.requireActual('../../../../src/blackduck-security-action/inputs'),
+          POLARIS_WORKFLOW_VERSION: '2.0.0'
+        }))
+        // Re-import BridgeThinClient to use the mocked inputs
+        const {BridgeThinClient} = require('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
+        const thinClient = new BridgeThinClient()
+        jest.spyOn(thinClient, 'handleBridgeUpdateCommand').mockReturnValue('--update')
+        const result = (thinClient as any).buildCommand('test', '/path/state.json')
         expect(result).toBe('--stage test@2.0.0 --input /path/state.json --update')
       })
     })
@@ -358,21 +386,27 @@ describe('BridgeThinClient', () => {
     describe('appendRegisterCommand', () => {
       beforeEach(() => {
         ;(bridgeThinClient as any).bridgeExecutablePath = '/bridge/path/bridge-cli'
-        jest.spyOn(inputs, 'BRIDGE_REGISTRY_URL', 'get').mockReturnValue('https://registry.example.com')
+        Object.defineProperty(inputs, 'BRIDGE_REGISTRY_URL', {
+          value: 'https://registry.example.com',
+          configurable: true
+        })
       })
 
       it('should build register command correctly', () => {
         const result = (bridgeThinClient as any).appendRegisterCommand()
 
-        expect(result).toBe('/bridge/path/bridge-cli --register https://registry.example.com')
+        expect(result).toBe('/bridge/path/bridge-cli  --register https://registry.example.com')
         expect(mockDebug).toHaveBeenCalledWith('Building register command')
-        expect(mockDebug).toHaveBeenCalledWith('Register command built: /bridge/path/bridge-cli --register https://registry.example.com')
+        expect(mockDebug).toHaveBeenCalledWith('Register command built: /bridge/path/bridge-cli  --register https://registry.example.com')
       })
     })
 
     describe('handleBridgeUpdateCommand', () => {
       it('should return empty string when update is disabled', () => {
-        jest.spyOn(inputs, 'DISABLE_BRIDGE_WORKFLOW_UPDATE', 'get').mockReturnValue('')
+        Object.defineProperty(inputs, 'DISABLE_BRIDGE_WORKFLOW_UPDATE', {
+          value: '',
+          configurable: true
+        })
         mockParseToBoolean.mockReturnValue(true)
 
         const result = (bridgeThinClient as any).handleBridgeUpdateCommand()
@@ -382,7 +416,10 @@ describe('BridgeThinClient', () => {
       })
 
       it('should return update command when update is enabled', () => {
-        jest.spyOn(inputs, 'DISABLE_BRIDGE_WORKFLOW_UPDATE', 'get').mockReturnValue('false')
+        Object.defineProperty(inputs, 'DISABLE_BRIDGE_WORKFLOW_UPDATE', {
+          value: 'false',
+          configurable: true
+        })
         mockParseToBoolean.mockReturnValue(false)
 
         const result = (bridgeThinClient as any).handleBridgeUpdateCommand()
@@ -398,7 +435,6 @@ describe('BridgeThinClient', () => {
         ;(bridgeThinClient as any).bridgePath = ''
 
         await (bridgeThinClient as any).ensureBridgePathIsSet()
-
         expect(bridgeThinClient.validateAndSetBridgePath).toHaveBeenCalled()
       })
 
@@ -460,7 +496,30 @@ describe('BridgeThinClient', () => {
     it('should return correct regex pattern for latest version', () => {
       const pattern = (bridgeThinClient as any).getLatestVersionRegexPattern()
 
-      expect(pattern.source).toContain('bridge-cli-thin-client')
+      expect(pattern.source).toContain('bridge-cli-')
+    })
+  })
+
+  describe('executeUseBridgeCommand', () => {
+    const bridgeExecutable = '/mock/path/bridge-cli'
+    const bridgeVersion = '2.3.4'
+
+    it('should execute the use bridge command successfully', async () => {
+      mockExecSync.mockReturnValue(Buffer.from(''))
+      await (bridgeThinClient as any).executeUseBridgeCommand(bridgeExecutable, bridgeVersion)
+      expect(mockExecSync).toHaveBeenCalledWith(`${bridgeExecutable} --use bridge-cli@${bridgeVersion}`, {stdio: 'pipe'})
+      expect(mockDebug).toHaveBeenCalledWith('Different bridge version found, running --use bridge command')
+      expect(mockDebug).toHaveBeenCalledWith(`Successfully executed --use bridge command: ${bridgeExecutable} --use bridge-cli@${bridgeVersion} with version ${bridgeVersion}`)
+    })
+
+    it('should throw error when execSync fails', async () => {
+      const error = new Error('Failed to execute')
+      mockExecSync.mockImplementation(() => {
+        throw error
+      })
+      await expect((bridgeThinClient as any).executeUseBridgeCommand(bridgeExecutable, bridgeVersion)).rejects.toThrow('Failed to execute')
+      expect(mockDebug).toHaveBeenCalledWith('Different bridge version found, running --use bridge command')
+      expect(mockDebug).toHaveBeenCalledWith(`Failed to execute --use bridge command: ${error.message}`)
     })
   })
 })

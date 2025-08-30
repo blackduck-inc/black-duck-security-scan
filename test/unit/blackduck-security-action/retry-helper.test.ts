@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import {RetryHelper} from '../../../src/blackduck-security-action/retry-helper'
 import * as constants from '../../../src/application-constants'
+import * as utility from '../../../src/blackduck-security-action/utility'
 
 let info: string[]
 let retryHelper: RetryHelper
@@ -11,6 +12,11 @@ describe('retry-helper tests', () => {
     // Mock @actions/core info()
     jest.spyOn(core, 'info').mockImplementation((message: string) => {
       info.push(message)
+    })
+
+    // Mock sleep function to eliminate delays in tests
+    jest.spyOn(utility, 'sleep').mockImplementation(async () => {
+      return Promise.resolve()
     })
 
     retryHelper = new RetryHelper(3, 100)

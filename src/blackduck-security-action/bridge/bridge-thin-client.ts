@@ -16,7 +16,7 @@ export class BridgeThinClient extends BridgeClientBase {
   private readonly BRIDGE_CLI_UPDATE_COMMAND = '--update'
   private readonly BRIDGE_CLI_VERSION_COMMAND = '--version'
   private readonly BRIDGE_CLI_REGISTER_COMMAND = ' --register'
-  private readonly BRIDGE_CLI_USE_COMMAND = '--use '
+  private readonly BRIDGE_CLI_USE_COMMAND = '--use'
 
   private currentVersion: string | undefined
   private isBridgeCLIInstalled: boolean | undefined
@@ -36,7 +36,7 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected async executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
-    if (!parseToBoolean(inputs.BRIDGE_REGISTRY_URL)) debug('Registry URL is empty')
+    if (!inputs.BRIDGE_REGISTRY_URL) debug('Registry URL is empty')
     if (inputs.BRIDGE_REGISTRY_URL && (await this.runBridgeCommand(this.appendRegisterCommand(), execOptions)) !== 0) {
       throw new Error('Register command failed, returning early')
     }

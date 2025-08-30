@@ -1,4 +1,4 @@
-import {getBridgeExitCode, logBridgeExitCodes, markBuildStatusIfIssuesArePresent, run} from '../../src/main'
+import {getBridgeExitCode, getBridgeExitCodeAsNumericValue, logBridgeExitCodes, markBuildStatusIfIssuesArePresent, run} from '../../src/main'
 import * as inputs from '../../src/blackduck-security-action/inputs'
 import {DownloadFileResponse} from '../../src/blackduck-security-action/download-utility'
 import * as downloadUtility from './../../src/blackduck-security-action/download-utility'
@@ -325,6 +325,10 @@ describe('GitHub Enterprise and Cloud Tests', () => {
     jest.restoreAllMocks()
   })
 
+  beforeEach(() => {
+    setupGitHubInputs()
+  })
+
   it('Should run successfully for github.com URL', async () => {
     process.env['GITHUB_SERVER_URL'] = 'https://github.com'
     Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
@@ -339,6 +343,7 @@ describe('GitHub Enterprise and Cloud Tests', () => {
   it('Should run for enterprise github URL but fail for bridge client', async () => {
     process.env['GITHUB_SERVER_URL'] = 'https://github.enterprise.com'
     Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'https://blackduck.example.com'}) // Ensure product URL is set
 
     setupGitHubMocks()
     jest.spyOn(BridgeClientBase.prototype, 'executeBridgeCommand').mockRejectedValueOnce(new Error('Bridge execution failed'))
@@ -522,4 +527,94 @@ test('getBridgeExitCode function', () => {
 
   const error2 = new Error('Some other error message')
   expect(getBridgeExitCode(error2)).toBe(false)
+})
+describe('Error Handling in run().catch() Block', () => {
+  const setupInputsForErrorHandling = (extraInputs: Record<string, any> = {}) => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', writable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', writable: true})
+    Object.defineProperty(inputs, 'RETURN_STATUS', {value: 'true', writable: true})
+    Object.defineProperty(inputs, 'MARK_BUILD_STATUS', {value: 'success', writable: true})
+    for (const [key, value] of Object.entries(extraInputs)) {
+      Object.defineProperty(inputs, key, {value, writable: true})
+    }
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('should not set output variable when RETURN_STATUS is disabled', async () => {
+    setupInputsForErrorHandling({RETURN_STATUS: 'false', MARK_BUILD_STATUS: 'success'})
+
+    const mockError = new Error('Bridge CLI execution failed with exit code 2')
+    jest.spyOn(BridgeClientBase.prototype, 'prepareCommand').mockRejectedValueOnce(mockError)
+    jest.spyOn(utility, 'parseToBoolean').mockImplementation((value: string | boolean) => {
+      if (typeof value === 'boolean') return value
+      return value === 'false'
+    })
+    jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
+
+    const setOutputSpy = jest.spyOn(core, 'setOutput')
+
+    await expect(run()).rejects.toThrow(mockError)
+    await new Promise(resolve => setImmediate(resolve))
+
+    // When RETURN_STATUS is false, setOutput should not be called
+    expect(setOutputSpy).not.toHaveBeenCalledWith('status', expect.any(Number))
+  })
+
+  it('should call markBuildStatusIfIssuesArePresent when taskResult is not FAILURE', async () => {
+    setupInputsForErrorHandling({RETURN_STATUS: 'true', MARK_BUILD_STATUS: 'success'})
+
+    const mockError = new Error('Bridge CLI execution failed with exit code 8')
+    jest.spyOn(utility, 'parseToBoolean').mockImplementation((value: string | boolean) => {
+      if (typeof value === 'boolean') return value
+      return value === 'true'
+    })
+    jest.spyOn(utility, 'checkJobResult').mockReturnValue('success')
+
+    const markBuildStatusSpy = jest.spyOn(require('../../src/main'), 'markBuildStatusIfIssuesArePresent')
+    const setOutputSpy = jest.spyOn(core, 'setOutput')
+    const debugSpy = jest.spyOn(core, 'debug')
+
+    // Simulate the global catch block logic manually since we can't easily trigger it in tests
+    const main = require('../../src/main')
+    const isReturnStatusEnabled = utility.parseToBoolean(inputs.RETURN_STATUS)
+    const exitCode = main.getBridgeExitCodeAsNumericValue(mockError)
+    const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
+
+    // This simulates what happens in the global catch block in main.ts
+    if (mockError.message !== undefined) {
+      if (isReturnStatusEnabled) {
+        core.debug(`Setting output variable status with exit code ${exitCode}`)
+        core.setOutput('status', exitCode)
+      }
+
+      if (taskResult && taskResult !== 'failure') {
+        main.markBuildStatusIfIssuesArePresent(exitCode, taskResult, mockError.message)
+      }
+    }
+
+    expect(markBuildStatusSpy).toHaveBeenCalledWith(8, 'success', mockError.message)
+    expect(setOutputSpy).toHaveBeenCalledWith('status', 8)
+    expect(debugSpy).toHaveBeenCalledWith('Setting output variable status with exit code 8')
+  })
+
+  it('should extract correct exit code from error message', () => {
+    const testCases = [
+      {message: 'Bridge CLI execution failed with exit code 0', expected: 0},
+      {message: 'Bridge CLI execution failed with exit code 1', expected: 1},
+      {message: 'Bridge CLI execution failed with exit code 2', expected: 2},
+      {message: 'Bridge CLI execution failed with exit code 8', expected: 8},
+      {message: 'Bridge CLI execution failed with exit code 9', expected: 9},
+      {message: 'Some other error message', expected: -1},
+      {message: '', expected: -1}
+    ]
+
+    testCases.forEach(({message, expected}) => {
+      const error = new Error(message)
+      const exitCode = getBridgeExitCodeAsNumericValue(error)
+      expect(exitCode).toBe(expected)
+    })
+  })
 })

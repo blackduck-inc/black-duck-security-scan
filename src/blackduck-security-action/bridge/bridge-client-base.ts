@@ -1,7 +1,7 @@
 import {exec, ExecOptions} from '@actions/exec'
 import {debug, error, info, warning} from '@actions/core'
 import * as constants from '../../application-constants'
-import {BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, GITHUB_ENVIRONMENT_VARIABLES, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, WINDOWS_PLATFORM_NAME} from '../../application-constants'
+import {BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, WINDOWS_PLATFORM_NAME} from '../../application-constants'
 import path from 'path'
 import {checkIfPathExists, cleanupTempDir, parseToBoolean, sleep} from '../utility'
 import os from 'os'
@@ -59,8 +59,7 @@ export abstract class BridgeClientBase {
     try {
       this.validateRequiredScanTypes()
 
-      const githubRepoName = this.extractGithubRepoName()
-      const {formattedCommand, validationErrors} = await this.buildCommandForAllTools(tempDir, githubRepoName)
+      const {formattedCommand, validationErrors} = await this.buildCommandForAllTools(tempDir)
 
       this.handleValidationErrors(validationErrors, formattedCommand)
 
@@ -100,31 +99,21 @@ export abstract class BridgeClientBase {
   }
 
   /**
-   * Extracts the GitHub repository name from environment variables
-   * @returns The repository name or empty string if not found
-   */
-  private extractGithubRepoName(): string {
-    const githubRepo = process.env[GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
-    return githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
-  }
-
-  /**
    * Builds commands for all configured tools and aggregates validation errors
    * @param tempDir Temporary directory path
-   * @param githubRepoName GitHub repository name
    * @returns Object containing formatted command and validation errors
    */
-  private async buildCommandForAllTools(tempDir: string, githubRepoName: string): Promise<{formattedCommand: string; validationErrors: string[]}> {
+  private async buildCommandForAllTools(tempDir: string): Promise<{formattedCommand: string; validationErrors: string[]}> {
     let formattedCommand = ''
     const validationErrors: string[] = []
 
     // Build command for Polaris
-    const polarisResult = this.buildPolarisCommand(tempDir, githubRepoName)
+    const polarisResult = this.buildPolarisCommand(tempDir)
     formattedCommand = formattedCommand.concat(polarisResult.command)
     validationErrors.push(...polarisResult.errors)
 
     // Build command for Coverity
-    const coverityResult = this.buildCoverityCommand(tempDir, githubRepoName)
+    const coverityResult = this.buildCoverityCommand(tempDir)
     formattedCommand = formattedCommand.concat(coverityResult.command)
     validationErrors.push(...coverityResult.errors)
 
@@ -134,7 +123,7 @@ export abstract class BridgeClientBase {
     validationErrors.push(...blackduckResult.errors)
 
     // Build command for SRM
-    const srmResult = this.buildSRMCommand(tempDir, githubRepoName)
+    const srmResult = this.buildSRMCommand(tempDir)
     formattedCommand = formattedCommand.concat(srmResult.command)
     validationErrors.push(...srmResult.errors)
 
@@ -144,16 +133,15 @@ export abstract class BridgeClientBase {
   /**
    * Builds command for Polaris tool
    * @param tempDir Temporary directory path
-   * @param githubRepoName GitHub repository name
    * @returns Command string and validation errors
    */
-  private buildPolarisCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+  private buildPolarisCommand(tempDir: string): {command: string; errors: string[]} {
     const polarisErrors: string[] = validatePolarisInputs()
     let command = ''
 
     if (polarisErrors.length === 0 && inputs.POLARIS_SERVER_URL) {
       const polarisCommandFormatter = new BridgeToolsParameter(tempDir)
-      const polarisParams = polarisCommandFormatter.getFormattedCommandForPolaris(githubRepoName)
+      const polarisParams = polarisCommandFormatter.getFormattedCommandForPolaris()
       command = this.generateFormattedCommand(polarisParams.stage, polarisParams.stateFilePath, polarisParams.workflowVersion)
     }
 
@@ -163,16 +151,15 @@ export abstract class BridgeClientBase {
   /**
    * Builds command for Coverity tool
    * @param tempDir Temporary directory path
-   * @param githubRepoName GitHub repository name
    * @returns Command string and validation errors
    */
-  private buildCoverityCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+  private buildCoverityCommand(tempDir: string): {command: string; errors: string[]} {
     const coverityErrors: string[] = validateCoverityInputs()
     let command = ''
 
     if (coverityErrors.length === 0 && inputs.COVERITY_URL) {
       const coverityCommandFormatter = new BridgeToolsParameter(tempDir)
-      const coverityParams = coverityCommandFormatter.getFormattedCommandForCoverity(githubRepoName)
+      const coverityParams = coverityCommandFormatter.getFormattedCommandForCoverity()
       command = this.generateFormattedCommand(coverityParams.stage, coverityParams.stateFilePath, coverityParams.workflowVersion)
     }
 
@@ -200,16 +187,15 @@ export abstract class BridgeClientBase {
   /**
    * Builds command for SRM tool
    * @param tempDir Temporary directory path
-   * @param githubRepoName GitHub repository name
    * @returns Command string and validation errors
    */
-  private buildSRMCommand(tempDir: string, githubRepoName: string): {command: string; errors: string[]} {
+  private buildSRMCommand(tempDir: string): {command: string; errors: string[]} {
     const srmErrors: string[] = validateSRMInputs()
     let command = ''
 
     if (srmErrors.length === 0 && inputs.SRM_URL) {
       const srmCommandFormatter = new BridgeToolsParameter(tempDir)
-      const srmParams = srmCommandFormatter.getFormattedCommandForSRM(githubRepoName)
+      const srmParams = srmCommandFormatter.getFormattedCommandForSRM()
       command = this.generateFormattedCommand(srmParams.stage, srmParams.stateFilePath, srmParams.workflowVersion)
     }
 
@@ -484,7 +470,7 @@ export abstract class BridgeClientBase {
     return this.WINDOWS_PLATFORM
   }
 
-  protected async validateAirGapExecutable(bridgePath: string): Promise<void> {
+  async validateAirGapExecutable(bridgePath: string): Promise<void> {
     const executablePath = path.join(bridgePath, this.getBridgeFileType())
     debug(`Validating air gap executable at: ${executablePath}`)
 
