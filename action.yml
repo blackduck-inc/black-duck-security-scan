@@ -175,7 +175,7 @@ inputs:
     required: false
     default: true
   disable_bridge_workflow_update:
-    description: 'Flag to enable workflow updates for thin client. Default: true.'
+    description: 'Flag to disable workflow updates for thin client. Default: false.'
     required: false
     default: false
   bridge_register_url:

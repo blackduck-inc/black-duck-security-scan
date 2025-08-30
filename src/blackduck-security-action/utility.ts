@@ -24,10 +24,7 @@ export function cleanUrl(url: string): string {
 }
 
 export async function createTempDir(): Promise<string> {
-  const appPrefix = APPLICATION_NAME
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), appPrefix))
-
-  return tempDir
+  return fs.mkdtempSync(path.join(os.tmpdir(), APPLICATION_NAME))
 }
 
 export async function cleanupTempDir(tempDir: string): Promise<void> {

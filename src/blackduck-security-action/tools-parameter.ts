@@ -32,7 +32,18 @@ export class BridgeToolsParameter {
   constructor(tempDir: string) {
     this.tempDir = tempDir
   }
-  getFormattedCommandForPolaris(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
+
+  /**
+   * Extracts the GitHub repository name from environment variables
+   * @returns The repository name or empty string if not found
+   */
+  private extractGithubRepoName(): string {
+    const githubRepo = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
+    return githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
+  }
+
+  getFormattedCommandForPolaris(): {stage: string; stateFilePath: string; workflowVersion: string} {
+    const githubRepoName = this.extractGithubRepoName()
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     const assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
@@ -276,7 +287,8 @@ export class BridgeToolsParameter {
     return commandParams
   }
 
-  getFormattedCommandForCoverity(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
+  getFormattedCommandForCoverity(): {stage: string; stateFilePath: string; workflowVersion: string} {
+    const githubRepoName = this.extractGithubRepoName()
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let coverityStreamName = inputs.COVERITY_STREAM_NAME
     const isPrEvent = isPullRequestEvent()
@@ -563,7 +575,8 @@ export class BridgeToolsParameter {
     }
   }
 
-  getFormattedCommandForSRM(githubRepoName: string): {stage: string; stateFilePath: string; workflowVersion: string} {
+  getFormattedCommandForSRM(): {stage: string; stateFilePath: string; workflowVersion: string} {
+    const githubRepoName = this.extractGithubRepoName()
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
