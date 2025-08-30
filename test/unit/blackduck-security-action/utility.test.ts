@@ -1,5 +1,9 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, clearHttpClientCache, createSSLConfiguredHttpClient, isBoolean, isPullRequestEvent, updatePolarisSarifPath} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
+import * as fs from 'fs'
+import * as path from 'path'
+import * as os from 'os'
+
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
   const testUrl = `${validUrl}/`
@@ -168,69 +172,315 @@ describe('SSL HTTP Client Functions', () => {
       expect(client1).not.toBe(client2)
     })
   })
+})
 
-  describe('updateCoverityConfigForBridgeVersion', () => {
-    test('should convert new format to legacy for Bridge CLI < 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input.json'
-      const testData = {
+describe('updatePolarisSarifPath', () => {
+  let tempDir: string
+  let tempFilePath: string
+
+  beforeEach(() => {
+    // Create a temporary directory for test files
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'polaris-test-'))
+    tempFilePath = path.join(tempDir, 'polaris_input.json')
+  })
+
+  afterEach(() => {
+    // Clean up temporary files
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, {recursive: true, force: true})
+    }
+  })
+
+  describe('when SARIF configuration already exists', () => {
+    it('should update existing SARIF file path', () => {
+      // Arrange
+      const initialConfig = {
         data: {
-          coverity: {
-            prcomment: {
-              enabled: true,
-              impacts: ['HIGH', 'MEDIUM']
+          polaris: {
+            reports: {
+              sarif: {
+                file: {
+                  path: '/old/path/to/sarif.json'
+                }
+              }
             }
           }
         }
       }
+      const newSarifPath = '/new/path/to/sarif.json'
 
-      // Write test data to temporary file
-      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
 
-      // Call the function with version < 3.9.0
-      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.8.0', tempFile)
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
 
-      // Read the updated file
-      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
-
-      // Verify conversion to legacy format
-      expect(updatedData.data.coverity.automation).toEqual({prcomment: true})
-      expect(updatedData.data.coverity.prcomment).toBeUndefined()
-
-      // Cleanup
-      require('fs').unlinkSync(tempFile)
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
     })
 
-    test('should preserve new format for Bridge CLI >= 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input2.json'
-      const testData = {
+    it('should preserve other configuration properties when updating SARIF path', () => {
+      // Arrange
+      const initialConfig = {
         data: {
-          coverity: {
-            prcomment: {
-              enabled: true,
-              impacts: ['HIGH', 'MEDIUM']
+          polaris: {
+            accesstoken: 'test-token',
+            serverUrl: 'https://test.polaris.com',
+            application: {name: 'test-app'},
+            project: {name: 'test-project'},
+            reports: {
+              sarif: {
+                create: true,
+                file: {
+                  path: '/old/path/to/sarif.json'
+                },
+                severities: ['high', 'medium']
+              }
             }
           }
         }
       }
+      const newSarifPath = '/new/path/to/sarif.json'
 
-      // Write test data to temporary file
-      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
 
-      // Call the function with version >= 3.9.0
-      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.9.0', tempFile)
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
 
-      // Read the file (should be unchanged)
-      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
+      expect(updatedConfig.data.polaris.reports.sarif.create).toBe(true)
+      expect(updatedConfig.data.polaris.reports.sarif.severities).toEqual(['high', 'medium'])
+      expect(updatedConfig.data.polaris.accesstoken).toBe('test-token')
+      expect(updatedConfig.data.polaris.serverUrl).toBe('https://test.polaris.com')
+    })
+  })
 
-      // Verify new format is preserved
-      expect(updatedData.data.coverity.prcomment).toEqual({
-        enabled: true,
-        impacts: ['HIGH', 'MEDIUM']
-      })
-      expect(updatedData.data.coverity.automation).toBeUndefined()
+  describe('when SARIF configuration does not exist', () => {
+    it('should create complete SARIF structure and set path when config has no polaris data', () => {
+      // Arrange
+      const initialConfig = {
+        data: {}
+      }
+      const newSarifPath = '/new/path/to/sarif.json'
 
-      // Cleanup
-      require('fs').unlinkSync(tempFile)
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
+    })
+
+    it('should create SARIF structure when polaris exists but no reports', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            accesstoken: 'test-token',
+            serverUrl: 'https://test.polaris.com'
+          }
+        }
+      }
+      const newSarifPath = '/new/path/to/sarif.json'
+
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
+      expect(updatedConfig.data.polaris.accesstoken).toBe('test-token')
+    })
+
+    it('should create SARIF file structure when reports exist but no sarif', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            accesstoken: 'test-token',
+            reports: {
+              someOtherReport: {
+                enabled: true
+              }
+            }
+          }
+        }
+      }
+      const newSarifPath = '/new/path/to/sarif.json'
+
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
+      expect(updatedConfig.data.polaris.reports.someOtherReport.enabled).toBe(true)
+    })
+
+    it('should create file structure when sarif exists but no file', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            reports: {
+              sarif: {
+                create: true,
+                severities: ['high']
+              }
+            }
+          }
+        }
+      }
+      const newSarifPath = '/new/path/to/sarif.json'
+
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, newSarifPath)
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(newSarifPath)
+      expect(updatedConfig.data.polaris.reports.sarif.create).toBe(true)
+      expect(updatedConfig.data.polaris.reports.sarif.severities).toEqual(['high'])
+    })
+  })
+
+  describe('error handling', () => {
+    it('should handle invalid JSON gracefully', () => {
+      // Arrange
+      const invalidJson = '{ invalid json content'
+      fs.writeFileSync(tempFilePath, invalidJson)
+
+      // Act & Assert - should not throw
+      expect(() => {
+        updatePolarisSarifPath(tempFilePath, '/new/path/sarif.json')
+      }).not.toThrow()
+    })
+
+    it('should handle non-existent file gracefully', () => {
+      // Arrange
+      const nonExistentPath = path.join(tempDir, 'non-existent.json')
+
+      // Act & Assert - should not throw
+      expect(() => {
+        updatePolarisSarifPath(nonExistentPath, '/new/path/sarif.json')
+      }).not.toThrow()
+    })
+
+    it('should handle null/undefined data gracefully', () => {
+      // Arrange
+      const configWithNullData = {
+        data: null
+      }
+      fs.writeFileSync(tempFilePath, JSON.stringify(configWithNullData, null, 2))
+
+      // Act & Assert - should not throw
+      expect(() => {
+        updatePolarisSarifPath(tempFilePath, '/new/path/sarif.json')
+      }).not.toThrow()
+    })
+  })
+
+  describe('file formatting', () => {
+    it('should maintain proper JSON formatting with 2-space indentation', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            accesstoken: 'test-token',
+            reports: {
+              sarif: {
+                file: {
+                  path: '/old/path/sarif.json'
+                }
+              }
+            }
+          }
+        }
+      }
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, '/new/path/sarif.json')
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const lines = updatedContent.split('\n')
+
+      // Check that the JSON is properly formatted with 2-space indentation
+      expect(lines[0]).toBe('{')
+      expect(lines[1]).toBe('  "data": {')
+      expect(lines[2]).toBe('    "polaris": {')
+    })
+  })
+
+  describe('path validation', () => {
+    it('should handle empty string as SARIF path', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            reports: {
+              sarif: {
+                file: {
+                  path: '/old/path/sarif.json'
+                }
+              }
+            }
+          }
+        }
+      }
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, '')
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe('')
+    })
+
+    it('should handle special characters in SARIF path', () => {
+      // Arrange
+      const initialConfig = {
+        data: {
+          polaris: {
+            reports: {
+              sarif: {
+                file: {
+                  path: '/old/path/sarif.json'
+                }
+              }
+            }
+          }
+        }
+      }
+      const specialPath = '/path/with spaces/and-special_chars@123/sarif.json'
+      fs.writeFileSync(tempFilePath, JSON.stringify(initialConfig, null, 2))
+
+      // Act
+      updatePolarisSarifPath(tempFilePath, specialPath)
+
+      // Assert
+      const updatedContent = fs.readFileSync(tempFilePath, 'utf-8')
+      const updatedConfig = JSON.parse(updatedContent)
+      expect(updatedConfig.data.polaris.reports.sarif.file.path).toBe(specialPath)
     })
   })
 })
