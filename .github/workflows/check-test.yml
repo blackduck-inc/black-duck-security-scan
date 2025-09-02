@@ -1,0 +1,48 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests and collect results
+        id: results
+        run: |
+          npm test -- --coverage --coverageReporters=json-summary --json --outputFile=test.json
+          for k in passed failed total; do echo "$k=$(jq -r .num${k^}Tests test.json)" >> $GITHUB_OUTPUT; done
+      - name: Upload coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+      - name: Comment results on PR
+        run: |
+          PR=$(jq -r .pull_request.number $GITHUB_EVENT_PATH)
+          BODY="## Test Results\n\n![ Tests ](https://img.shields.io/badge/tests-${{ steps.results.outputs.passed }}_passed_${{ steps.results.outputs.failed }}_failed-blue)"
+          CID=$(gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[] | select(.body|contains(\"## Test Results\")) | .id' | head -n1)
+          if [ -n "$CID" ]; then
+            gh api repos/${{ github.repository }}/issues/comments/$CID -X PATCH -f body="$BODY"
+          else
+            gh api repos/${{ github.repository }}/issues/$PR/comments -f body="$BODY"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
