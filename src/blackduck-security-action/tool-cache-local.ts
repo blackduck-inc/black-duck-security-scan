@@ -15,7 +15,7 @@ import {OutgoingHttpHeaders} from 'http'
 import {v4 as uuidv4} from 'uuid'
 import os from 'os'
 import {NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS} from '../application-constants'
-import {getSSLConfig, createHTTPSRequestOptions} from './ssl-utils'
+import {createHTTPSRequestOptions, getSSLConfig} from './ssl-utils'
 
 export class HTTPError extends Error {
   constructor(readonly httpStatusCode: number | undefined) {

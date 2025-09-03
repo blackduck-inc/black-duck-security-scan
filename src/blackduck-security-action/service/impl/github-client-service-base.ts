@@ -1,7 +1,7 @@
 import * as inputs from '../../inputs'
 import * as fs from 'fs'
 import * as zlib from 'zlib'
-import {checkIfPathExists, getDefaultSarifReportPath, sleep, getSharedHttpClient, getIntegrationDefaultSarifReportPath} from '../../utility'
+import {checkIfPathExists, getDefaultSarifReportPath, getIntegrationDefaultSarifReportPath, getSharedHttpClient, sleep} from '../../utility'
 import {debug, info} from '@actions/core'
 import * as constants from '../../../application-constants'
 import {GithubClientServiceInterface} from '../github-client-service-interface'

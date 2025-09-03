@@ -7,8 +7,5 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   verbose: true,
-  "moduleDirectories": [
-    "node_modules",
-    "src"
-  ]
+  moduleDirectories: ['node_modules', 'src']
 }
