@@ -1,0 +1,21 @@
+name: Test After Build
+ 
+on:
+  workflow_run:
+    workflows: ["Build and Dist"]   # 👈 matches the workflow name above
+    types:
+      - completed                   # run only when it completes
+ 
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+ 
+      - name: Run tests
+        run: |
+          echo "Running tests..."
+          # your test commands here
