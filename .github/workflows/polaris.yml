@@ -4,6 +4,9 @@ name: Polaris Analysis
 
 on:
   workflow_call:
+    secrets:
+      POLARIS_ACCESS_TOKEN:
+        required: true
   workflow_dispatch:
 
 permissions:
