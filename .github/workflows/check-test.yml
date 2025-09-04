@@ -60,21 +60,20 @@ jobs:
             jq -r 'to_entries[] | select(.key != "total") | [(.key | gsub("^.*/src/"; "src/")), (.value.statements.pct | tostring), (.value.branches.pct | tostring), (.value.functions.pct | tostring), (.value.lines.pct | tostring)] | "| " + join(" | ") + " |"' coverage/coverage-summary.json
           } > coverage-table.md
           BODY="## Test & Coverage Results
-          
+
           ![ Tests ](https://img.shields.io/badge/tests-${{ steps.results.outputs.passed }}_passed_${{ steps.results.outputs.failed }}_failed-blue)
           ![Coverage](https://img.shields.io/badge/coverage-${LINES}%25-brightgreen)
-          
+
           <details>
           <summary><strong>Full Coverage Details</strong></summary>
-          
+
           $(cat coverage-table.md)
-          
+
           </details>"
-          CID=$(gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[] | select(.body|contains("## 🧪 Test & Coverage Results")) | .id' | head -n1)
-          if [ -n "$CID" ]; then
-            gh api repos/${{ github.repository }}/issues/comments/$CID -X PATCH -f body="$BODY"
-          else
-            gh api repos/${{ github.repository }}/issues/$PR/comments -f body="$BODY"
-          fi
+          CID=$(gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[] | select(.body|contains("## Test & Coverage Results")) | .id' | head -n1)
+          for OLD_CID in $CID; do
+            gh api repos/${{ github.repository }}/issues/comments/$OLD_CID -X DELETE
+          done
+          gh api repos/${{ github.repository }}/issues/$PR/comments -f body="$BODY"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

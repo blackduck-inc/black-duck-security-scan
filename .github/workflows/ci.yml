@@ -24,3 +24,5 @@ jobs:
   polaris:
     needs: check-coverage
     uses: ./.github/workflows/polaris.yml
+    secrets:
+      POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
