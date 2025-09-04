@@ -35,6 +35,9 @@ inputs:
   coverity_prComment_enabled:
     description: 'Flag to enable pull request comments for new issues found in the Coverity scan'
     required: false
+  coverity_prComment_impacts:
+    description: 'List of impacts for which the Coverity PR Comments should be created. Supported values: HIGH, MEDIUM, LOW, AUDIT'
+    required: false
   coverity_waitForScan: 
     description: 'Specifies if the workflow should wait for the analysis to complete. Default value: true. If set to false, post merge workflows like PR comment, Fix PR, SARIF etc will not be applicable.'
     required: false

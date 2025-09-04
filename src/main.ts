@@ -42,6 +42,8 @@ export async function run() {
     productInputFileName = basename(productInputFilPath)
     // Based on bridge version and productInputFileName get the sarif file path
     util.updateSarifFilePaths(productInputFileName, bridgeVersion, productInputFilPath)
+    // Based on bridge version update Coverity configuration for backward compatibility
+    util.updateCoverityConfigForBridgeVersion(productInputFileName, bridgeVersion, productInputFilPath)
     // Execute bridge command
     exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
     if (exitCode === 0) {

@@ -185,6 +185,32 @@ export function updateSarifFilePaths(productInputFileName: string, bridgeVersion
   }
 }
 
+export function updateCoverityConfigForBridgeVersion(productInputFileName: string, bridgeVersion: string, productInputFilePath: string): void {
+  if (productInputFileName === 'coverity_input.json') {
+    try {
+      const inputFileContent = readFileSync(productInputFilePath, 'utf-8')
+      const covData = JSON.parse(inputFileContent)
+      
+      // Use simple version comparison like updateSarifFilePaths
+      if (covData.data?.coverity?.prcomment && bridgeVersion < constants.COVERITY_PRCOMMENT_NEW_FORMAT_VERSION) {
+        // Convert new format to legacy format for Bridge CLI < 3.9.0
+        debug(`Bridge CLI version ${bridgeVersion} < 3.9.0, converting to legacy automation format`)
+        
+        // Move prcomment to automation and remove prcomment
+        covData.data.coverity.automation = { prcomment: true }
+        delete covData.data.coverity.prcomment
+        
+        // Write the updated content back to the file
+        writeFileSync(productInputFilePath, JSON.stringify(covData, null, 2))
+        
+        info('Converted Coverity PR comment configuration to legacy format for compatibility with Bridge CLI < 3.9.0')
+      }
+    } catch (error) {
+      debug(`Failed to update Coverity configuration for bridge version compatibility: ${error}`)
+    }
+  }
+}
+
 // Singleton HTTPS agent cache for downloads (with proper system + custom CA combination)
 let _httpsAgentCache: https.Agent | null = null
 let _httpsAgentConfigHash: string | null = null

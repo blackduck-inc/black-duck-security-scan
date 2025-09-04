@@ -17,13 +17,19 @@ export interface ProjectData {
 }
 
 export interface AutomationData {
-  prcomment?: boolean
+  prcomment?: boolean | PrCommentData
+}
+
+export interface PrCommentData {
+  enabled?: boolean
+  impacts?: string[]
 }
 
 export interface CoverityConnect extends CoverityDetect, Common {
   connect: CoverityData
   install?: {directory: string}
   automation?: AutomationData
+  prcomment?: PrCommentData
   local?: boolean
   version?: string
 }

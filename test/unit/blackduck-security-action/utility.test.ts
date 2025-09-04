@@ -1,4 +1,4 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
@@ -166,6 +166,71 @@ describe('SSL HTTP Client Functions', () => {
       process.env.NETWORK_SSL_TRUST_ALL = 'true'
       const client2 = createSSLConfiguredHttpClient()
       expect(client1).not.toBe(client2)
+    })
+  })
+
+  describe('updateCoverityConfigForBridgeVersion', () => {
+    test('should convert new format to legacy for Bridge CLI < 3.9.0', () => {
+      const tempFile = '/tmp/test_coverity_input.json'
+      const testData = {
+        data: {
+          coverity: {
+            prcomment: {
+              enabled: true,
+              impacts: ['HIGH', 'MEDIUM']
+            }
+          }
+        }
+      }
+      
+      // Write test data to temporary file
+      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
+      
+      // Call the function with version < 3.9.0
+      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.8.0', tempFile)
+      
+      // Read the updated file
+      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
+      
+      // Verify conversion to legacy format
+      expect(updatedData.data.coverity.automation).toEqual({ prcomment: true })
+      expect(updatedData.data.coverity.prcomment).toBeUndefined()
+      
+      // Cleanup
+      require('fs').unlinkSync(tempFile)
+    })
+    
+    test('should preserve new format for Bridge CLI >= 3.9.0', () => {
+      const tempFile = '/tmp/test_coverity_input2.json'
+      const testData = {
+        data: {
+          coverity: {
+            prcomment: {
+              enabled: true,
+              impacts: ['HIGH', 'MEDIUM']
+            }
+          }
+        }
+      }
+      
+      // Write test data to temporary file
+      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
+      
+      // Call the function with version >= 3.9.0
+      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.9.0', tempFile)
+      
+      // Read the file (should be unchanged)
+      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
+      
+      // Verify new format is preserved
+      expect(updatedData.data.coverity.prcomment).toEqual({
+        enabled: true,
+        impacts: ['HIGH', 'MEDIUM']
+      })
+      expect(updatedData.data.coverity.automation).toBeUndefined()
+      
+      // Cleanup
+      require('fs').unlinkSync(tempFile)
     })
   })
 })
