@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+jobs:
+  check-dist:
+    uses: ./.github/workflows/check-dist.yml
+
+  check-test:
+    needs: check-dist
+    uses: ./.github/workflows/check-test.yml
+
+  check-coverage:
+    needs: check-test
+    uses: ./.github/workflows/check-coverage.yml
+
+  polaris:
+    needs: check-coverage
+    uses: ./.github/workflows/polaris.yml
