@@ -193,7 +193,7 @@ describe('SSL HTTP Client Functions', () => {
       const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
 
       // Verify conversion to legacy format
-      expect(updatedData.data.coverity.automation).toEqual({prcomment: true})
+      expect(updatedData.data.coverity.automation).toEqual({ prcomment: true })
       expect(updatedData.data.coverity.prcomment).toBeUndefined()
 
       // Cleanup

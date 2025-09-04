@@ -197,7 +197,7 @@ export function updateCoverityConfigForBridgeVersion(productInputFileName: strin
         debug(`Bridge CLI version ${bridgeVersion} < 3.9.0, converting to legacy automation format`)
 
         // Move prcomment to automation and remove prcomment
-        covData.data.coverity.automation = {prcomment: true}
+        covData.data.coverity.automation = { prcomment: true }
         delete covData.data.coverity.prcomment
 
         // Write the updated content back to the file
