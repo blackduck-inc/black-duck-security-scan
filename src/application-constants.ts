@@ -97,7 +97,7 @@ export const POLARIS_REPORTS_SARIF_ISSUE_TYPES_KEY = 'polaris_reports_sarif_issu
 export const POLARIS_UPLOAD_SARIF_REPORT_KEY = 'polaris_upload_sarif_report'
 export const POLARIS_WAITFORSCAN_KEY = 'polaris_waitForScan'
 /**
- * @deprecated Use polaris_test_sast_location='remote' instead. This can be removed in future release.
+ * @deprecated Use polaris_test_sast_location instead. This can be removed in future release.
  */
 export const POLARIS_ASSESSMENT_MODE_KEY = 'polaris_assessment_mode'
 export const POLARIS_TEST_SAST_LOCATION_KEY = 'polaris_test_sast_location'
