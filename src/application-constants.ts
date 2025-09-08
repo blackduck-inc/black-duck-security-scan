@@ -98,6 +98,9 @@ export const POLARIS_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY = 'polaris_reports_sarif
 export const POLARIS_REPORTS_SARIF_ISSUE_TYPES_KEY = 'polaris_reports_sarif_issue_types'
 export const POLARIS_UPLOAD_SARIF_REPORT_KEY = 'polaris_upload_sarif_report'
 export const POLARIS_WAITFORSCAN_KEY = 'polaris_waitForScan'
+/**
+ * @deprecated Use polaris.test.sast.location='remote' instead. This can be removed in future release.
+ */
 export const POLARIS_ASSESSMENT_MODE_KEY = 'polaris_assessment_mode'
 export const PROJECT_SOURCE_ARCHIVE_KEY = 'project_source_archive'
 export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLinks'
