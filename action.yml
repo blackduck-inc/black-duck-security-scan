@@ -95,6 +95,9 @@ inputs:
   polaris_test_sca_location:
     description: 'Polaris SCA test location'
     required: false
+  polaris_test_sast_location:
+    description: 'Polaris SAST test location'
+    required: false
   polaris_reports_sarif_create:
     description: 'Flag to enable/disable Polaris SARIF report generation'
     required: false
@@ -115,9 +118,6 @@ inputs:
     required: false
   polaris_waitForScan: 
     description: 'Specifies if the workflow should wait for the analysis to complete. Default value: true. If set to false, post merge workflows like PR comment, Fix PR, SARIF etc will not be applicable.'
-    required: false
-  polaris_test_sast_location:
-    description: 'The test mode type of this scan'
     required: false
   project_directory:
     description: 'The project source directory. Defaults to repository root directory. Set this to specify a custom folder that is other than repository root'
