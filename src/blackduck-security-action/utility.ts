@@ -335,6 +335,6 @@ export function clearHttpClientCache(): void {
 }
 export function validateSourceUploadValue(bridgeVersion: string): void {
   if (bridgeVersion >= constants.SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION && !isNullOrEmptyValue(inputs.POLARIS_ASSESSMENT_MODE)) {
-    info('INFO: polaris_assessment_mode is deprecated from Bridge version 3.8.0. Use the polaris_test_sast_location=remote or polaris_test_sca_location=remote for source upload scans instead.')
+    info('polaris_assessment_mode is deprecated. Use polaris_test_sast_location=remote and/or polaris_test_sca_location=remote for source upload scans instead.')
   }
 }
