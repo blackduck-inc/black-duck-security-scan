@@ -89,8 +89,6 @@ export const POLARIS_BRANCH_NAME_KEY = 'polaris_branch_name'
 export const POLARIS_BRANCH_PARENT_NAME_KEY = 'polaris_branch_parent_name'
 export const POLARIS_TEST_SCA_TYPE_KEY = 'polaris_test_sca_type'
 export const POLARIS_TEST_SAST_TYPE_KEY = 'polaris_test_sast_type'
-export const POLARIS_TEST_SAST_LOCATION_KEY = 'polaris_test_sast_location'
-export const POLARIS_TEST_SCA_LOCATION_KEY = 'polaris_test_sca_location'
 export const POLARIS_REPORTS_SARIF_CREATE_KEY = 'polaris_reports_sarif_create'
 export const POLARIS_REPORTS_SARIF_FILE_PATH_KEY = 'polaris_reports_sarif_file_path'
 export const POLARIS_REPORTS_SARIF_SEVERITIES_KEY = 'polaris_reports_sarif_severities'
@@ -99,9 +97,11 @@ export const POLARIS_REPORTS_SARIF_ISSUE_TYPES_KEY = 'polaris_reports_sarif_issu
 export const POLARIS_UPLOAD_SARIF_REPORT_KEY = 'polaris_upload_sarif_report'
 export const POLARIS_WAITFORSCAN_KEY = 'polaris_waitForScan'
 /**
- * @deprecated Use polaris.test.sast.location='remote' instead. This can be removed in future release.
+ * @deprecated Use polaris_test_sast_location='remote' instead. This can be removed in future release.
  */
 export const POLARIS_ASSESSMENT_MODE_KEY = 'polaris_assessment_mode'
+export const POLARIS_TEST_SAST_LOCATION_KEY = 'polaris_test_sast_location'
+export const POLARIS_TEST_SCA_LOCATION_KEY = 'polaris_test_sca_location'
 export const PROJECT_SOURCE_ARCHIVE_KEY = 'project_source_archive'
 export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLinks'
 export const PROJECT_SOURCE_EXCLUDES_KEY = 'project_source_excludes'
