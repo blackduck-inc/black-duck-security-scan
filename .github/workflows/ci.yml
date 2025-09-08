@@ -1,0 +1,149 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [main]
+    paths-ignore: ['**.md']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Check dist/
+      - name: Rebuild the dist/ directory
+        run: |
+          export NODE_OPTIONS=--openssl-legacy-provider
+          npm run build && npm run package
+
+      - name: Compare the expected and actual dist/ directories
+        id: dist-check
+        continue-on-error: true
+        run: |
+          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build. See status below:"
+            git diff
+            echo "dist_failed=true" >> $GITHUB_OUTPUT
+          else
+            echo "dist_failed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload dist artifact on failure
+        if: steps.dist-check.outputs.dist_failed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+      # Fail job if dist check failed
+      - name: Fail if dist check failed
+        if: steps.dist-check.outputs.dist_failed == 'true'
+        run: exit 1
+
+      # Run unit tests
+      - name: Run tests and collect results
+        id: test-results
+        run: |
+          npm test -- --json --outputFile=test.json --coverage --collectCoverageFrom='src/**/*.{ts,jsx}' --coverageReporters=json-summary
+          for key in passed failed total; do echo "$key=$(jq ".num${key^}Tests" test.json)" >> $GITHUB_OUTPUT; done
+          echo "lines=$(jq '.total.lines.pct' coverage/coverage-summary.json)" >> $GITHUB_OUTPUT
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test.json
+          retention-days: 1
+
+      - name: Upload coverage summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-summary
+          path: coverage/coverage-summary.json
+          retention-days: 1
+
+      - name: Comment test results on PR
+        if: github.event_name == 'pull_request'
+        run: |
+          PR=$(jq -r .pull_request.number $GITHUB_EVENT_PATH)
+          LINES=$(jq '.total.lines.pct' coverage/coverage-summary.json)
+          {
+            echo "| File | % Stmts | % Branch | % Funcs | % Lines |"
+            echo "|------|---------|----------|---------|---------|"
+            jq -r '.total as $t | ["All files", ($t.statements.pct | tostring), ($t.branches.pct | tostring), ($t.functions.pct | tostring), ($t.lines.pct | tostring)] | "| " + join(" | ") + " |"' coverage/coverage-summary.json
+            jq -r 'to_entries[] | select(.key != "total") | [(.key | gsub("^.*/src/"; "src/")), (.value.statements.pct | tostring), (.value.branches.pct | tostring), (.value.functions.pct | tostring), (.value.lines.pct | tostring)] | "| " + join(" | ") + " |"' coverage/coverage-summary.json
+          } > coverage-table.md
+          BODY="## Test & Coverage Results
+
+          ![Tests](https://img.shields.io/badge/tests-${{ steps.test-results.outputs.passed }}_passed_${{ steps.test-results.outputs.failed }}_failed-blue)
+          ![Coverage](https://img.shields.io/badge/coverage-${LINES}%25-brightgreen)
+
+          <details>
+          <summary><strong>Full Coverage Details</strong></summary>
+
+          $(cat coverage-table.md)
+
+          </details>"
+          CIDS=$(gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[] | select(.body | test("## Test & Coverage Results \\(Run [0-9]+\\)")) | .id')
+          for CID in $CIDS; do
+            gh api repos/${{ github.repository }}/issues/comments/$CID -X DELETE
+          done
+          gh api repos/${{ github.repository }}/issues/$PR/comments -f body="$BODY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Verify coverage
+      - name: Check coverage threshold
+        if: github.event_name == 'pull_request'
+        run: |
+          coverageValue=$(jq -r '.total.lines.pct' coverage/coverage-summary.json)
+          echo "Line Coverage: $coverageValue%"
+          if (( $(echo "$coverageValue < 90" | bc -l) )); then
+            echo "##[error]Line coverage is below 90%"
+            PR=$(jq -r .pull_request.number $GITHUB_EVENT_PATH)
+            BODY="## Coverage Threshold
+
+            Line Coverage: $coverageValue%"
+            CIDS=$(gh api repos/${{ github.repository }}/issues/$PR/comments --jq '.[] | select(.body | test("## Coverage Threshold \\(Run [0-9]+\\)")) | .id')
+            for CID in $CIDS; do
+              gh api repos/${{ github.repository }}/issues/comments/$CID -X DELETE
+            done
+            gh api repos/${{ github.repository }}/issues/$PR/comments -f body="$BODY"
+            exit 1
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  polaris:
+    needs: ci
+    uses: ./.github/workflows/polaris.yml
+    secrets:
+      POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
