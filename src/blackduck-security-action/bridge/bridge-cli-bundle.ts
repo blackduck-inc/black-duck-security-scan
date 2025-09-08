@@ -64,7 +64,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   async getBridgeVersion(): Promise<string> {
-    const versionFilePath = join(this.bridgePath, 'versions.txt')
+    const versionFilePath = join(this.bridgePath, this.VERSIONS_TXT)
     debug(`Reading bridge version from: ${versionFilePath}`)
 
     try {
