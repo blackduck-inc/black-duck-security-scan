@@ -119,6 +119,9 @@ inputs:
   polaris_waitForScan: 
     description: 'Specifies if the workflow should wait for the analysis to complete. Default value: true. If set to false, post merge workflows like PR comment, Fix PR, SARIF etc will not be applicable.'
     required: false
+  polaris_assessment_mode:
+    description: 'The test mode type of this scan'
+    required: false
   project_directory:
     description: 'The project source directory. Defaults to repository root directory. Set this to specify a custom folder that is other than repository root'
     required: false
