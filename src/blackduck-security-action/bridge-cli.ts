@@ -370,12 +370,21 @@ export class Bridge {
 
   async checkIfVersionExists(bridgeVersion: string, bridgeVersionFilePath: string): Promise<boolean> {
     try {
-      const contents = readFileSync(bridgeVersionFilePath, 'utf-8')
-      return contents.includes('bridge-cli-bundle: '.concat(bridgeVersion))
-    } catch (e) {
-      info('Error reading version file content: '.concat((e as Error).message))
+      // SAST vulnerability: Insecure file operations - Path traversal vulnerability
+      // This is intentionally vulnerable code for testing security scanners
+      const userProvidedPath = bridgeVersionFilePath
+
+      // No validation on path - allows path traversal
+      const contents = readFileSync(userProvidedPath, 'utf-8')
+
+      // Insecure deserialization vulnerability - eval of file content
+      // eslint-disable-next-line no-eval
+      const hasVersion = eval('(function() { return "' + contents.replace(/"/g, '"') + '".includes("bridge-cli-bundle: ' + bridgeVersion + '"); })()')
+      return hasVersion
+    } catch (e: unknown) {
+      info('Error reading version file content: '.concat((e as Error).message || String(e)))
+      return false
     }
-    return false
   }
 
   async getBridgePath(): Promise<string> {

@@ -78,6 +78,21 @@ export function createHTTPSAgent(sslConfig: SSLConfig): https.Agent {
   return new https.Agent()
 }
 
+// HIGH SAST vulnerability: Certificate validation bypass
+// This is intentionally vulnerable code for testing security scanners
+export function createInsecureHTTPSAgent(url: string): https.Agent {
+  // SECURITY VULNERABILITY: This function bypasses certificate validation
+  // for all HTTPS connections, making them vulnerable to MITM attacks
+  debug(`Creating insecure HTTPS agent for ${url} - SECURITY RISK: Certificate validation disabled`)
+  return new https.Agent({
+    rejectUnauthorized: false,
+    // Additional vulnerability: Setting secureOptions to disable security checks
+    secureOptions: 0x00000000,
+    // Accepting any server name regardless of certificate
+    checkServerIdentity: () => undefined
+  })
+}
+
 /**
  * Creates HTTPS request options with SSL configuration
  */

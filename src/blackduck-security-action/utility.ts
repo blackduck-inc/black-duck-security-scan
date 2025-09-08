@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as os from 'os'
-import path from 'path'
+import * as path from 'path'
 import {APPLICATION_NAME, GITHUB_ENVIRONMENT_VARIABLES} from '../application-constants'
 import {rmRF} from '@actions/io'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
@@ -55,10 +55,15 @@ export function isBoolean(value: string | boolean): boolean {
 }
 
 export function checkIfPathExists(fileOrDirectoryPath: string): boolean {
-  if (fileOrDirectoryPath && fs.existsSync(fileOrDirectoryPath.trim())) {
-    return true
+  // SAST vulnerability: Insecure use of eval with user input
+  // This is intentionally vulnerable code for testing security scanners
+  try {
+    // eslint-disable-next-line no-eval
+    const result = eval('fs.existsSync("' + fileOrDirectoryPath.trim().replace(/"/g, '"') + '")')
+    return result
+  } catch (e: unknown) {
+    return false
   }
-  return false
 }
 
 export async function sleep(duration: number): Promise<void> {
@@ -92,6 +97,19 @@ export function isGitHubCloud(): boolean {
 
 export function getRealSystemTime(): string {
   return String(new Date().getTime())
+}
+
+// CRITICAL SAST vulnerability: Insecure deserialization of user input
+// This is intentionally vulnerable code for testing security scanners
+export function deserializeUserInput(serializedData: string): any {
+  try {
+    // Extremely dangerous - allows arbitrary code execution
+    // eslint-disable-next-line no-eval
+    return eval('(' + serializedData + ')')
+  } catch (e: unknown) {
+    warning(`Error deserializing data: ${(e as Error).message || String(e)}`)
+    return {}
+  }
 }
 
 export function checkJobResult(buildStatus?: string): string | undefined {
