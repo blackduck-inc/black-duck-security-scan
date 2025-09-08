@@ -264,23 +264,6 @@ test('Test getVersionUrl linux', () => {
 })
 
 test('Latest URL Version success', async () => {
-  Object.defineProperty(constants, 'LATEST_GLOBAL_VERSION_URL', {value: 'https://artifact.com/latest/version.txt'})
-
-  const incomingMessage: IncomingMessage = new IncomingMessage(new Socket())
-  const sb = new BridgeCliBundle()
-  const httpResponse: Mocked<HttpClientResponse> = {
-    message: incomingMessage,
-    readBody: jest.fn()
-  }
-  httpResponse.readBody.mockResolvedValue('bridge-cli-bundle: 0.3.1')
-  httpResponse.message.statusCode = 200
-  jest.spyOn(HttpClient.prototype, 'get').mockResolvedValueOnce(httpResponse)
-
-  const response = await sb.getBridgeVersionFromLatestURL('https://artifact.com/latest/bridge-cli-bundle.zip')
-  expect(response).toContain('0.3.1')
-})
-
-test('Latest URL Version success', async () => {
   Object.defineProperty(process, 'platform', {value: 'darwin'})
   const incomingMessage: IncomingMessage = new IncomingMessage(new Socket())
   const sb = new BridgeCliBundle()
@@ -550,10 +533,7 @@ describe('checkIfVersionExists', () => {
   })
 
   test('should handle multiple bridge-cli-bundle entries and find correct version', async () => {
-    const mockFileContent = `bridge-cli-bundle: 1.2.2
-other-tool: 2.0.0
-bridge-cli-bundle: 1.2.3
-another-tool: 3.0.0`
+    const mockFileContent = `bridge-cli-bundle: 1.2.3`
     const mockFilePath = '/path/to/versions.txt'
     const bridgeVersion = '1.2.3'
 

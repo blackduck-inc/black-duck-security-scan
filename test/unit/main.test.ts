@@ -75,10 +75,12 @@ beforeEach(() => {
   jest.spyOn(fs, 'readFileSync').mockReturnValue('{"mock": "data"}')
   jest.spyOn(fs, 'writeFileSync').mockReturnValue()
   jest.spyOn(fs, 'mkdirSync').mockReturnValue(undefined)
+  jest.spyOn(fs, 'readdirSync').mockReturnValue([] as any)
   jest.spyOn(fs, 'statSync').mockReturnValue({
     isDirectory: () => true,
     isFile: () => false
   } as fs.Stats)
+  jest.spyOn(fs, 'rmdirSync').mockReturnValue()
 
   delete process.env.NODE_EXTRA_CA_CERTS
 })

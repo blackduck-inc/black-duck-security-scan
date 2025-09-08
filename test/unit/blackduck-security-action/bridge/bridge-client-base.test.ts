@@ -76,6 +76,10 @@ jest.mock('../../../../src/application-constants', () => ({
   COVERITY_URL_KEY: 'COVERITY_URL',
   BLACKDUCKSCA_URL_KEY: 'BLACKDUCKSCA_URL',
   SRM_URL_KEY: 'SRM_URL',
+  // Add the missing retry-related constants
+  RETRY_COUNT: 3,
+  RETRY_DELAY_IN_MILLISECONDS: 15000,
+  NON_RETRY_HTTP_CODES: new Set([200, 201, 401, 403, 416]),
   GITHUB_ENVIRONMENT_VARIABLES: {
     GITHUB_TOKEN: 'GITHUB_TOKEN',
     GITHUB_REPOSITORY: 'GITHUB_REPOSITORY',
@@ -1659,5 +1663,195 @@ describe('BridgeClientBase - getBridgeUrlAndVersion BRIDGE_CLI_DOWNLOAD_URL cond
       expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: ')
       expect(mockDebug).toHaveBeenCalledWith('No specific URL or version provided, using latest version')
     })
+  })
+})
+
+describe('BridgeClientBase - getBridgeVersionFromLatestURL HTTP 200 Response Handling', () => {
+  let bridgeClient: TestBridgeClient
+  let mockMakeHttpsGetRequest: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+
+    // Mock the private makeHttpsGetRequest method
+    mockMakeHttpsGetRequest = jest.spyOn(bridgeClient as any, 'makeHttpsGetRequest')
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('should parse bridge version from response body when status code is 200', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `bridge-cli-bundle: 2.3.1`
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('2.3.1')
+    expect(mockMakeHttpsGetRequest).toHaveBeenCalledWith(latestVersionsUrl)
+  })
+
+  test('should handle bridge version with whitespace in response body', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `
+      some-tool: 1.0.0
+      bridge-cli-bundle:   3.4.5   
+      other-tool: 2.0.0
+    `
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('3.4.5')
+  })
+
+  test('should return first matching bridge-cli-bundle version when multiple entries exist', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `
+      bridge-cli-bundle: 1.0.0
+      some-tool: 2.0.0
+      bridge-cli-bundle: 3.0.0
+    `
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('1.0.0')
+  })
+
+  test('should return empty string when bridge-cli-bundle not found in response', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `
+      some-tool: 1.0.0
+      other-tool: 2.0.0
+      different-bridge: 3.0.0
+    `
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('')
+  })
+
+  test('should handle response body with only bridge-cli-bundle entry', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = 'bridge-cli-bundle: 4.2.1'
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('4.2.1')
+  })
+
+  test('should handle empty response body', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = ''
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('')
+  })
+
+  test('should handle malformed bridge-cli-bundle line without colon', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `
+      some-tool: 1.0.0
+      bridge-cli-bundle-invalid-format
+      other-tool: 2.0.0
+    `
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('')
+  })
+
+  test('should trim response body before processing', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = `
+      bridge-cli-bundle: 5.1.0
+    ` // Response with leading/trailing whitespace
+
+    mockMakeHttpsGetRequest.mockResolvedValue({
+      statusCode: 200,
+      body: mockResponseBody
+    })
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('5.1.0')
+  })
+
+  test('should reset retry count to 0 when status code is 200', async () => {
+    // Arrange
+    const latestVersionsUrl = 'https://example.com/versions.txt'
+    const mockResponseBody = 'bridge-cli-bundle: 1.5.0'
+
+    // Mock multiple calls to simulate retry scenario followed by success
+    mockMakeHttpsGetRequest
+      .mockResolvedValueOnce({statusCode: 500, body: ''}) // First call fails
+      .mockResolvedValueOnce({statusCode: 200, body: mockResponseBody}) // Second call succeeds
+
+    // Act
+    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+    // Assert
+    expect(result).toBe('1.5.0')
+    expect(mockMakeHttpsGetRequest).toHaveBeenCalledTimes(2)
   })
 })
