@@ -101,6 +101,7 @@ export const POLARIS_WAITFORSCAN_KEY = 'polaris_waitForScan'
  */
 export const POLARIS_ASSESSMENT_MODE_KEY = 'polaris_assessment_mode'
 export const POLARIS_TEST_SAST_LOCATION_KEY = 'polaris_test_sast_location'
+
 export const POLARIS_TEST_SCA_LOCATION_KEY = 'polaris_test_sca_location'
 export const PROJECT_SOURCE_ARCHIVE_KEY = 'project_source_archive'
 export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLinks'
