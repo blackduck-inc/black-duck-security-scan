@@ -62,7 +62,7 @@ jobs:
       - name: update action version in files
         id: update-action-version
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "Updating action version in package.json and package-lock.json files"
           git config --local user.name "$(git log -n 1 --pretty=format:%an)"
