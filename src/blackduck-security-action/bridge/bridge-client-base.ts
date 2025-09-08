@@ -1,9 +1,9 @@
 import {exec, ExecOptions} from '@actions/exec'
-import {debug, error, info, warning} from '@actions/core'
+import {debug, info, warning} from '@actions/core'
 import * as constants from '../../application-constants'
 import {BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, WINDOWS_PLATFORM_NAME} from '../../application-constants'
 import path from 'path'
-import {checkIfPathExists, cleanupTempDir, parseToBoolean, sleep} from '../utility'
+import {checkIfPathExists, cleanupTempDir, getSharedHttpsAgent, parseToBoolean, sleep} from '../utility'
 import os from 'os'
 import {validateBlackDuckInputs, validateCoverityInputs, validatePolarisInputs, validateScanTypes, validateSRMInputs} from '../validators'
 import * as inputs from '../inputs'
@@ -16,6 +16,8 @@ import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import {rmRF} from '@actions/io'
 import semver from 'semver'
 import DomParser from 'dom-parser'
+import * as url from 'node:url'
+import * as https from 'node:https'
 
 export abstract class BridgeClientBase {
   bridgeExecutablePath: string
@@ -209,11 +211,8 @@ export abstract class BridgeClientBase {
    * @throws Error if no command was generated and there are validation errors
    */
   private handleValidationErrors(validationErrors: string[], formattedCommand: string): void {
-    if (formattedCommand.length === 0) {
+    if (validationErrors.length > 0 || formattedCommand.length === 0) {
       throw new Error(validationErrors.join(','))
-    }
-    if (validationErrors.length > 0) {
-      error(new Error(validationErrors.join(',')))
     }
   }
 
@@ -386,27 +385,29 @@ export abstract class BridgeClientBase {
 
   async getBridgeVersionFromLatestURL(latestVersionsUrl: string): Promise<string> {
     try {
-      const httpClient = new HttpClient('')
-
       let retryCountLocal = RETRY_COUNT
       let retryDelay = RETRY_DELAY_IN_MILLISECONDS
-      let httpResponse
+
       do {
-        httpResponse = await httpClient.get(latestVersionsUrl, {
-          Accept: 'text/html'
-        })
-        if (!NON_RETRY_HTTP_CODES.has(Number(httpResponse.message.statusCode))) {
-          retryDelay = await this.retrySleepHelper('Getting latest Bridge CLI versions has been failed, Retries left: ', retryCountLocal, retryDelay)
-          retryCountLocal--
-        } else if (httpResponse.message.statusCode === 200) {
-          retryCountLocal = 0
-          const htmlResponse = (await httpResponse.readBody()).trim()
-          const lines = htmlResponse.split('\n')
-          for (const line of lines) {
-            if (line.includes('bridge-cli-thin-client') || line.includes('bridge-cli-bundle')) {
-              return line.split(':')[1].trim()
+        try {
+          const response = await this.makeHttpsGetRequest(latestVersionsUrl)
+
+          if (!NON_RETRY_HTTP_CODES.has(Number(response.statusCode))) {
+            retryDelay = await this.retrySleepHelper('Getting latest Bridge CLI versions has been failed, Retries left: ', retryCountLocal, retryDelay)
+            retryCountLocal--
+          } else if (response.statusCode === 200) {
+            retryCountLocal = 0
+            const htmlResponse = response.body.trim()
+            const lines = htmlResponse.split('\n')
+            for (const line of lines) {
+              if (line.includes('bridge-cli-bundle')) {
+                return line.split(':')[1].trim()
+              }
             }
           }
+        } catch (err) {
+          retryDelay = await this.retrySleepHelper('Getting latest Bridge CLI versions has been failed, Retries left: ', retryCountLocal, retryDelay)
+          retryCountLocal--
         }
 
         if (retryCountLocal === 0) {
@@ -414,7 +415,7 @@ export abstract class BridgeClientBase {
         }
       } while (retryCountLocal > 0)
     } catch (e) {
-      debug('Error while reading version file content: '.concat((e as Error).message))
+      debug('Error reading version file content: '.concat((e as Error).message))
     }
     return ''
   }
@@ -529,5 +530,54 @@ export abstract class BridgeClientBase {
       }
     } while (retryCountLocal > 0)
     return versionArray
+  }
+
+  private async makeHttpsGetRequest(targetUrl: string): Promise<{statusCode: number; body: string}> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new url.URL(targetUrl)
+      const agent = getSharedHttpsAgent()
+
+      const requestOptions: https.RequestOptions = {
+        hostname: parsedUrl.hostname,
+        port: parsedUrl.port || 443,
+        path: parsedUrl.pathname + parsedUrl.search,
+        method: 'GET',
+        agent,
+        headers: {
+          Accept: 'text/html',
+          'User-Agent': 'BlackDuckSecurityAction'
+        }
+      }
+
+      const req = https.request(requestOptions, res => {
+        let body = ''
+
+        res.on('data', chunk => {
+          body += chunk
+        })
+
+        res.on('end', () => {
+          resolve({
+            statusCode: res.statusCode || 0,
+            body
+          })
+        })
+
+        res.on('error', err => {
+          reject(err)
+        })
+      })
+
+      req.on('error', err => {
+        reject(err)
+      })
+
+      req.setTimeout(30000, () => {
+        req.destroy()
+        reject(new Error('Request timeout'))
+      })
+
+      req.end()
+    })
   }
 }

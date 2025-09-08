@@ -1,7 +1,6 @@
 import {ExecOptions} from '@actions/exec'
 import {BridgeClientBase} from './bridge-client-base'
 import * as inputs from '../inputs'
-import {DISABLE_BRIDGE_WORKFLOW_UPDATE, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION} from '../inputs'
 import * as constants from '../../application-constants'
 import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 import {DownloadFileResponse, extractZipped} from '../download-utility'
@@ -61,10 +60,10 @@ export class BridgeThinClient extends BridgeClientBase {
     debug('Bridge archive extraction completed to '.concat(extractZippedFilePath))
   }
 
-  generateFormattedCommand(stage: string, stateFilePath: string): string {
+  generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
     debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
 
-    const command = this.buildCommand(stage, stateFilePath)
+    const command = this.buildCommand(stage, stateFilePath, workflowVersion)
 
     info(`Generated command: ${command}`)
     return command
@@ -110,14 +109,14 @@ export class BridgeThinClient extends BridgeClientBase {
 
     const platformFolderName = this.getBridgeFileType().concat('-').concat(getOSPlatform())
     this.bridgePath = path.join(basePath, platformFolderName)
-    const isAirGapMode = parseToBoolean(ENABLE_NETWORK_AIR_GAP)
+    const isAirGapMode = parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)
     if (isAirGapMode) await this.validateAirGapExecutable(this.bridgePath)
   }
 
-  private buildCommand(stage: string, stateFilePath: string): string {
+  private buildCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
     return BRIDGE_CLI_STAGE_OPTION.concat(BRIDGE_CLI_SPACE)
       .concat(stage)
-      .concat(POLARIS_WORKFLOW_VERSION ? '@'.concat(POLARIS_WORKFLOW_VERSION) : '')
+      .concat(workflowVersion ? '@'.concat(workflowVersion) : '')
       .concat(BRIDGE_CLI_SPACE)
       .concat(BRIDGE_CLI_INPUT_OPTION)
       .concat(BRIDGE_CLI_SPACE)
@@ -156,7 +155,7 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected async updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    if (parseToBoolean(ENABLE_NETWORK_AIR_GAP)) {
+    if (parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
       await this.executeUseBridgeCommand(this.getBridgeExecutablePath(), requestedVersion)
       return {bridgeUrl: '', bridgeVersion: requestedVersion}
     } else {
@@ -188,7 +187,7 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   private handleBridgeUpdateCommand(): string {
-    const isBridgeUpdateDisabled = parseToBoolean(DISABLE_BRIDGE_WORKFLOW_UPDATE)
+    const isBridgeUpdateDisabled = parseToBoolean(inputs.DISABLE_BRIDGE_WORKFLOW_UPDATE)
     info(isBridgeUpdateDisabled ? 'Bridge workflow update is disabled' : 'Bridge update command has been added.')
     return isBridgeUpdateDisabled ? '' : this.BRIDGE_CLI_UPDATE_COMMAND
   }

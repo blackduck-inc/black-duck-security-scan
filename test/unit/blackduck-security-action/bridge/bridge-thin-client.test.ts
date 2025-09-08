@@ -354,32 +354,25 @@ describe('BridgeThinClient', () => {
         jest.spyOn(bridgeThinClient as any, 'handleBridgeUpdateCommand').mockReturnValue('--update')
       })
 
+      it('should build command with workflow version', () => {
+        jest.resetModules()
+        let polarisWorkflowVersion = '2.0.0'
+        // Re-import BridgeThinClient to use the mocked inputs
+        const {BridgeThinClient} = require('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
+        const thinClient = new BridgeThinClient()
+        jest.spyOn(thinClient, 'handleBridgeUpdateCommand').mockReturnValue('--update')
+        const result = (thinClient as any).buildCommand('test', '/path/state.json', polarisWorkflowVersion)
+        expect(result).toBe('--stage test@2.0.0 --input /path/state.json --update')
+      })
+
       it('should build command without workflow version', () => {
         jest.resetModules()
-        jest.doMock('../../../../src/blackduck-security-action/inputs', () => ({
-          ...jest.requireActual('../../../../src/blackduck-security-action/inputs'),
-          POLARIS_WORKFLOW_VERSION: ''
-        }))
         // Re-import BridgeThinClient to use the mocked inputs
         const {BridgeThinClient} = require('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
         const thinClient = new BridgeThinClient()
         jest.spyOn(thinClient, 'handleBridgeUpdateCommand').mockReturnValue('--update')
         const result = (thinClient as any).buildCommand('test', '/path/state.json')
         expect(result).toBe('--stage test --input /path/state.json --update')
-      })
-
-      it('should build command with workflow version', () => {
-        jest.resetModules()
-        jest.doMock('../../../../src/blackduck-security-action/inputs', () => ({
-          ...jest.requireActual('../../../../src/blackduck-security-action/inputs'),
-          POLARIS_WORKFLOW_VERSION: '2.0.0'
-        }))
-        // Re-import BridgeThinClient to use the mocked inputs
-        const {BridgeThinClient} = require('../../../../src/blackduck-security-action/bridge/bridge-thin-client')
-        const thinClient = new BridgeThinClient()
-        jest.spyOn(thinClient, 'handleBridgeUpdateCommand').mockReturnValue('--update')
-        const result = (thinClient as any).buildCommand('test', '/path/state.json')
-        expect(result).toBe('--stage test@2.0.0 --input /path/state.json --update')
       })
     })
 
