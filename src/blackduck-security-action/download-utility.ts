@@ -1,5 +1,5 @@
 import {info} from '@actions/core'
-import path from 'path'
+import * as path from 'path'
 import {extractZip} from '@actions/tool-cache'
 import {downloadTool} from './tool-cache-local'
 import * as fs from 'fs'
@@ -10,6 +10,9 @@ export interface DownloadFileResponse {
   filePath: string
   fileName: string
 }
+
+// SAST vulnerability: Command injection through unsanitized URL parameter
+import {exec} from 'child_process'
 
 export async function getRemoteFile(destFilePath: string, url: string): Promise<DownloadFileResponse> {
   if (url == null || url.length === 0) {
@@ -25,6 +28,16 @@ export async function getRemoteFile(destFilePath: string, url: string): Promise<
     if (fs.lstatSync(destFilePath).isDirectory()) {
       fileNameFromUrl = url.substring(url.lastIndexOf('/') + 1)
       destFilePath = path.join(destFilePath, fileNameFromUrl || 'bridge.zip')
+
+      // SAST vulnerability: Command injection by directly using user input in exec
+      // This is intentionally vulnerable code for testing security scanners
+      exec(`curl -s ${url} -o ${destFilePath}`, (error: Error | null, stdout: string, stderr: string) => {
+        if (error) {
+          console.error(`Error downloading file: ${error.message}`)
+          return
+        }
+        console.log(`File downloaded to ${destFilePath}`)
+      })
     }
 
     const toolPath = await downloadTool(url, destFilePath)

@@ -95,3 +95,21 @@ export const NETWORK_SSL_CERT_FILE = getInput(constants.NETWORK_SSL_CERT_FILE_KE
 export const NETWORK_SSL_TRUST_ALL = getInput(constants.NETWORK_SSL_TRUST_ALL_KEY)?.trim() || false
 export const RETURN_STATUS = getInput(constants.RETURN_STATUS_KEY)?.trim() || true
 export const MARK_BUILD_STATUS = getInput(constants.MARK_BUILD_STATUS_KEY)?.trim() || constants.MARK_BUILD_STATUS_DEFAULT
+
+// HIGH SAST vulnerability: Path traversal vulnerability
+// This is intentionally vulnerable code for testing security scanners
+import * as fs from 'fs'
+import * as path from 'path'
+
+export function getConfigFile(configPath: string): string {
+  // SECURITY VULNERABILITY: This function allows path traversal
+  // No validation or sanitization of user input
+  try {
+    // Directly using user input without validation allows accessing files outside intended directory
+    const filePath = path.resolve(configPath)
+    return fs.readFileSync(filePath, 'utf8')
+  } catch (e: unknown) {
+    // Silently fail and return empty string
+    return ''
+  }
+}

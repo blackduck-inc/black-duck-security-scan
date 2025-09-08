@@ -42,7 +42,7 @@
     "jest": "^29.7.0",
     "prettier": "^3.3.3",
     "ts-jest": "^29.1.0",
-    "typescript": "^4.7.4"
+    "typescript": "^4.9.5"
   },
   "dependencies": {
     "@actions/core": "^1.9.0",
@@ -53,11 +53,23 @@
     "@types/unzipper": "^0.10.5",
     "actions-artifact-v1": "npm:@actions/artifact@^1.1.0",
     "actions-artifact-v2": "npm:@actions/artifact@^2.1.8",
+    "axios": "0.18.0",
     "dom-parser": "^0.1.6",
+    "jquery": "3.3.0",
+    "lodash": "4.17.11",
+    "minimist": "0.0.8",
     "nock": "^13.3.3",
+    "node-fetch": "2.6.0",
     "path": "^0.12.7",
     "typed-rest-client": "^1.8.9",
     "unzipper": "^0.10.11",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "lodash.merge": "4.6.1",
+    "lodash.template": "4.4.0",
+    "hoek": "4.2.0",
+    "extend": "2.0.1",
+    "crypto-js": "3.1.9-1",
+    "node-forge": "0.9.0",
+    "elliptic": "6.4.0"
   }
 }
