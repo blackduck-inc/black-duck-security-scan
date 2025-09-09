@@ -11,10 +11,14 @@ include:
     file: gitlab/ci/altair_versioning.yml
   - project: altair/altair-build-common
     ref: master
-    file: gitlab/ci/altair_common.yml
+    file: gitlab/ci/altair_common.ymlf
+  - project: qa-automation/shared-build-configs
+    ref: main
+    file: ci/pr_agent.yml
 
 # List of job stages in their order of execution.
 stages:
+  - pr_agent
   - build
   - contract_test
   - coverage_report
@@ -31,6 +35,9 @@ variables:
   BD_PRODUCT_GROUP: PolarisNG Projects Group
   BD_VERSION_PHASE: DEVELOPMENT
   DISABLE_POLARIS_CLASSIC_ANALYSIS: "true"
+  GITLAB_PERSONAL_ACCESS_TOKEN: ${GITLAB_ACCESS_TOKEN}
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  OPENAI_API_BASE: https://llm.labs.blackduck.com
 
 ##### MERGE REQUEST PIPELINE #####
 
