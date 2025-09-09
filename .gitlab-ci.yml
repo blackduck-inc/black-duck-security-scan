@@ -11,7 +11,7 @@ include:
     file: gitlab/ci/altair_versioning.yml
   - project: altair/altair-build-common
     ref: master
-    file: gitlab/ci/altair_common.ymlf
+    file: gitlab/ci/altair_common.yml
   - project: qa-automation/shared-build-configs
     ref: main
     file: ci/pr_agent.yml
