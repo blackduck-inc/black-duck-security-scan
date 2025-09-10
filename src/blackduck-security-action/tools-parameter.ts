@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import path from 'path'
 import {debug, info} from '@actions/core'
-import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam, validateCoverityPrCommentImpacts} from './validators'
+import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam} from './validators'
 import * as inputs from './inputs'
 import {Polaris} from './input-data/polaris'
 import {InputData} from './input-data/input-data'
@@ -364,19 +364,11 @@ export class BridgeToolsParameter {
               prCommentImpacts.push(impact.trim().toUpperCase())
             }
           }
-          // Validate impacts
-          if (!validateCoverityPrCommentImpacts(prCommentImpacts)) {
-            throw new Error(`Invalid coverity_prComment_impacts values: ${inputs.COVERITY_PRCOMMENT_IMPACTS}`)
-          }
         }
 
         covData.data.coverity.prcomment = {
           enabled: true,
           ...(prCommentImpacts.length > 0 && {impacts: prCommentImpacts})
-        }
-
-        if (prCommentImpacts.length > 0) {
-          info(`Coverity PR comment impacts filter: ${prCommentImpacts.join(', ')}`)
         }
       } else {
         /** Log info if Coverity PR comment is enabled in case of non PR context */

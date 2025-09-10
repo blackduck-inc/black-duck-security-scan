@@ -102,21 +102,6 @@ export function isNullOrEmptyValue(param: string): boolean {
   return param == null || param.length === 0
 }
 
-export function validateCoverityPrCommentImpacts(impacts: string[]): boolean {
-  if (impacts == null || impacts.length === 0) {
-    return true
-  }
-
-  const validImpacts = ['HIGH', 'MEDIUM', 'LOW', 'AUDIT']
-  for (const impact of impacts) {
-    if (!validImpacts.includes(impact.toUpperCase().trim())) {
-      error(`Invalid impact value '${impact}'. Supported values are: ${validImpacts.join(', ')}`)
-      return false
-    }
-  }
-  return true
-}
-
 export function validateBridgeUrl(url: string): boolean {
   if (!url.match('.*\\.(zip|ZIP)$')) {
     return false

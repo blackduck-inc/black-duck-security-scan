@@ -1,4 +1,4 @@
-import {validateBlackduckFailureSeverities, validateBlackDuckInputs, validateCoverityInputs, validateCoverityInstallDirectoryParam, validateCoverityPrCommentImpacts, validateParameters, validatePolarisInputs, validateSRMInputs} from '../../../src/blackduck-security-action/validators'
+import {validateBlackduckFailureSeverities, validateBlackDuckInputs, validateCoverityInputs, validateCoverityInstallDirectoryParam, validateParameters, validatePolarisInputs, validateSRMInputs} from '../../../src/blackduck-security-action/validators'
 import * as constants from '../../../src/application-constants'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 
@@ -188,22 +188,4 @@ test('SRM - With mandatory fields', async () => {
   expect(response.length).toBe(0)
 
   Object.defineProperty(inputs, 'SRM_URL', {value: null})
-})
-
-// COVERITY PR COMMENT IMPACTS
-test('Coverity PR Comment Impacts - Valid impacts', () => {
-  expect(validateCoverityPrCommentImpacts(['HIGH', 'MEDIUM'])).toBe(true)
-  expect(validateCoverityPrCommentImpacts(['high', 'medium', 'low'])).toBe(true)
-  expect(validateCoverityPrCommentImpacts(['HIGH', 'MEDIUM', 'LOW', 'AUDIT'])).toBe(true)
-})
-
-test('Coverity PR Comment Impacts - Empty impacts (should be valid)', () => {
-  expect(validateCoverityPrCommentImpacts([])).toBe(true)
-  expect(validateCoverityPrCommentImpacts(null as any)).toBe(true)
-})
-
-test('Coverity PR Comment Impacts - Invalid impacts', () => {
-  expect(validateCoverityPrCommentImpacts(['INVALID'])).toBe(false)
-  expect(validateCoverityPrCommentImpacts(['HIGH', 'INVALID'])).toBe(false)
-  expect(validateCoverityPrCommentImpacts(['CRITICAL'])).toBe(false)
 })
