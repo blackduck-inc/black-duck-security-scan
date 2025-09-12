@@ -88,35 +88,23 @@ export class BridgeToolsParameter {
     if (inputs.POLARIS_BRANCH_NAME) {
       polData.data.polaris.branch = {name: inputs.POLARIS_BRANCH_NAME}
     }
-    info(`SAST Type: ${inputs.POLARIS_TEST_SAST_TYPE}`)
-    info(`SSCA Type: ${inputs.POLARIS_TEST_SCA_TYPE}`)
-    if (inputs.POLARIS_TEST_SCA_TYPE || inputs.POLARIS_TEST_SAST_TYPE) {
+
+    if (inputs.POLARIS_TEST_SCA_TYPE || inputs.POLARIS_TEST_SAST_TYPE || inputs.POLARIS_TEST_SCA_LOCATION || inputs.POLARIS_TEST_SAST_LOCATION) {
       polData.data.polaris.test = {}
 
-      if (inputs.POLARIS_TEST_SCA_TYPE) {
+      if (inputs.POLARIS_TEST_SCA_TYPE || inputs.POLARIS_TEST_SCA_LOCATION) {
         polData.data.polaris.test.sca = {
-          type: inputs.POLARIS_TEST_SCA_TYPE
+          ...(inputs.POLARIS_TEST_SCA_TYPE && {type: inputs.POLARIS_TEST_SCA_TYPE}),
+          ...(inputs.POLARIS_TEST_SCA_LOCATION && {location: inputs.POLARIS_TEST_SCA_LOCATION})
         }
       }
 
-      if (inputs.POLARIS_TEST_SAST_TYPE) {
-        const polarisTestSastTypeList: string[] = inputs.POLARIS_TEST_SAST_TYPE.split(',').map(polarisTestSastType => polarisTestSastType.trim())
-
+      if (inputs.POLARIS_TEST_SAST_TYPE || inputs.POLARIS_TEST_SAST_LOCATION) {
         polData.data.polaris.test.sast = {
-          type: polarisTestSastTypeList
-        }
-      }
-    }
-    if (inputs.POLARIS_TEST_SCA_LOCATION || inputs.POLARIS_TEST_SAST_LOCATION) {
-      polData.data.polaris.test = {}
-      if (inputs.POLARIS_TEST_SCA_LOCATION) {
-        polData.data.polaris.test.sca = {
-          location: inputs.POLARIS_TEST_SCA_LOCATION
-        }
-      }
-      if (inputs.POLARIS_TEST_SAST_LOCATION) {
-        polData.data.polaris.test.sast = {
-          location: inputs.POLARIS_TEST_SAST_LOCATION
+          ...(inputs.POLARIS_TEST_SAST_TYPE && {
+            type: inputs.POLARIS_TEST_SAST_TYPE.split(',').map(polarisTestSastType => polarisTestSastType.trim())
+          }),
+          ...(inputs.POLARIS_TEST_SAST_LOCATION && {location: inputs.POLARIS_TEST_SAST_LOCATION})
         }
       }
     }
