@@ -1,4 +1,8 @@
-// Mock @actions/core before other imports
+import {createBridgeClient} from '../../../../src/blackduck-security-action/bridge/bridge-client-factory'
+import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeCliBundle} from '../../../../src/blackduck-security-action/bridge/bridge-cli-bundle' // Mock @actions/core
+
+// Mock @actions/core
 jest.mock('@actions/core', () => ({
   getInput: jest.fn(() => ''),
   info: jest.fn(),
@@ -20,18 +24,10 @@ jest.mock('../../../../src/blackduck-security-action/utility', () => ({
 }))
 
 // Mock download-utility
-jest.mock('../../../../src/blackduck-security-action/download-utility', () => ({
-  extractZipped: jest.fn()
-}))
+jest.mock('../../../../src/blackduck-security-action/download-utility')
 
 // Mock child_process
-jest.mock('node:child_process', () => ({
-  execSync: jest.fn()
-}))
-
-import {createBridgeClient} from '../../../../src/blackduck-security-action/bridge/bridge-client-factory'
-import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
-import {BridgeCliBundle} from '../../../../src/blackduck-security-action/bridge/bridge-cli-bundle'
+jest.mock('node:child_process')
 
 describe('createBridgeClient', () => {
   beforeEach(() => {
