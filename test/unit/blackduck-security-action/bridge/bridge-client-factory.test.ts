@@ -1,6 +1,6 @@
 import {createBridgeClient} from '../../../../src/blackduck-security-action/bridge/bridge-client-factory'
 import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
-import {BridgeCliBundle} from '../../../../src/blackduck-security-action/bridge/bridge-cli-bundle' // Mock @actions/core
+import {BridgeCliBundle} from '../../../../src/blackduck-security-action/bridge/bridge-cli-bundle'
 
 // Mock @actions/core
 jest.mock('@actions/core', () => ({
