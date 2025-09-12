@@ -1,4 +1,3 @@
-import * as configVariables from 'actions-artifact-v2/lib/internal/shared/config'
 import {tmpdir} from 'os'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/blackduck-security-action/artifacts'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
@@ -6,14 +5,42 @@ import * as utility from '../../../src/blackduck-security-action/utility'
 
 const fs = require('fs')
 
-// Mock the artifact module
-const mockUploadArtifact = jest.fn()
+// Mock the artifact modules - define all mocks without external variable references
 jest.mock('actions-artifact-v2', () => ({
   DefaultArtifactClient: jest.fn().mockImplementation(() => ({
-    uploadArtifact: mockUploadArtifact,
+    uploadArtifact: jest.fn(),
     downloadArtifact: jest.fn()
   }))
 }))
+
+jest.mock('actions-artifact-v2/lib/internal/shared/config', () => ({
+  getGitHubWorkspaceDir: jest.fn()
+}))
+
+jest.mock('actions-artifact-v1', () => ({
+  create: jest.fn().mockReturnValue({
+    uploadArtifact: jest.fn()
+  })
+}))
+
+// Get references to the mocked functions
+const {DefaultArtifactClient} = require('actions-artifact-v2')
+const {getGitHubWorkspaceDir: mockGetGitHubWorkspaceDir} = require('actions-artifact-v2/lib/internal/shared/config')
+const artifactV1 = require('actions-artifact-v1')
+
+// Create a shared mock function and assign it to both artifact clients
+const mockUploadArtifact = jest.fn()
+
+// Mock the DefaultArtifactClient to use our shared mock
+DefaultArtifactClient.mockImplementation(() => ({
+  uploadArtifact: mockUploadArtifact,
+  downloadArtifact: jest.fn()
+}))
+
+// Mock the v1 artifact client to use our shared mock
+artifactV1.create.mockReturnValue({
+  uploadArtifact: mockUploadArtifact
+})
 
 let tempPath = '/temp'
 beforeEach(() => {
@@ -34,7 +61,10 @@ describe('uploadDiagnostics - success', () => {
     process.env['GITHUB_SERVER_URL'] = 'https://github.com'
     jest.spyOn(fs, 'existsSync').mockReturnValue(true)
     jest.spyOn(fs, 'readdirSync').mockReturnValue(['bridge.log'])
-    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValue('.')
+    jest.spyOn(fs, 'statSync').mockReturnValue({
+      isDirectory: () => false
+    } as any)
+    mockGetGitHubWorkspaceDir.mockReturnValue('.')
 
     await uploadDiagnostics()
 
@@ -46,22 +76,28 @@ describe('uploadDiagnostics - success', () => {
 test('Test uploadDiagnostics expect API error', () => {
   let files: string[] = ['bridge.log']
   Object.defineProperty(inputs, 'DIAGNOSTICS_RETENTION_DAYS', {value: 10})
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValue('.')
+  mockGetGitHubWorkspaceDir.mockReturnValue('.')
+  jest.spyOn(fs, 'existsSync').mockReturnValue(true)
 
   const dir = (fs.readdirSync = jest.fn())
   dir.mockReturnValue(files)
-  jest.spyOn(fs.statSync('./.bridge/bridge.log'), 'isDirectory').mockReturnValue(false)
+  jest.spyOn(fs, 'statSync').mockReturnValue({
+    isDirectory: () => false
+  } as any)
   uploadDiagnostics().catch(Error)
 })
 
 test('Test uploadDiagnostics - invalid value for retention days', () => {
   let files: string[] = ['bridge.log']
   Object.defineProperty(inputs, 'DIAGNOSTICS_RETENTION_DAYS', {value: 'invalid'})
-  jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValue('.')
+  mockGetGitHubWorkspaceDir.mockReturnValue('.')
+  jest.spyOn(fs, 'existsSync').mockReturnValue(true)
 
   const dir = (fs.readdirSync = jest.fn())
   dir.mockReturnValue(files)
-  jest.spyOn(fs.statSync('./.bridge/bridge.log'), 'isDirectory').mockReturnValue(false)
+  jest.spyOn(fs, 'statSync').mockReturnValue({
+    isDirectory: () => false
+  } as any)
   uploadDiagnostics().catch(Error)
 })
 
