@@ -1,6 +1,5 @@
 import mock = jest.mock
 import {extractZipped, getRemoteFile} from '../../../src/blackduck-security-action/download-utility'
-import {cleanupTempDir, createTempDir} from '../../../src/blackduck-security-action/utility'
 import {tmpdir} from 'os'
 
 const path = require('path')

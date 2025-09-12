@@ -3,9 +3,9 @@ import {HttpClient, HttpClientResponse} from 'typed-rest-client/HttpClient'
 import {GitHubClientServiceFactory} from '../../../../src/blackduck-security-action/factory/github-client-service-factory'
 import {IncomingMessage} from 'http'
 import {Socket} from 'net'
-import Mocked = jest.Mocked
 import {GithubClientServiceCloud} from '../../../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
 import {GithubClientServiceV1} from '../../../../src/blackduck-security-action/service/impl/enterprise/v1/github-client-service-v1'
+import Mocked = jest.Mocked
 
 describe('fetchVersion()', () => {
   beforeEach(() => {

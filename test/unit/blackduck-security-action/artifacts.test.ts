@@ -2,14 +2,15 @@ import * as configVariables from 'actions-artifact-v2/lib/internal/shared/config
 import {tmpdir} from 'os'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/blackduck-security-action/artifacts'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
-import * as artifact from 'actions-artifact-v2/lib/artifact'
-const fs = require('fs')
 import * as utility from '../../../src/blackduck-security-action/utility'
 
+const fs = require('fs')
+
 // Mock the artifact module
+const mockUploadArtifact = jest.fn()
 jest.mock('actions-artifact-v2', () => ({
   DefaultArtifactClient: jest.fn().mockImplementation(() => ({
-    uploadArtifact: jest.fn(),
+    uploadArtifact: mockUploadArtifact,
     downloadArtifact: jest.fn()
   }))
 }))
@@ -25,17 +26,12 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.restoreAllMocks() // Restore original implementation after each test
+  mockUploadArtifact.mockClear() // Clear mock call history
 })
 
 describe('uploadDiagnostics - success', () => {
   it('should call uploadArtifact with the correct arguments', async () => {
-    // Mocking artifact client and its uploadArtifact function
-    const mockUploadArtifact = jest.fn()
-    const mockArtifactClient: Partial<artifact.ArtifactClient> = {
-      uploadArtifact: mockUploadArtifact as any // Casting to any due to typing issues
-    }
     process.env['GITHUB_SERVER_URL'] = 'https://github.com'
-    jest.spyOn(artifact, 'DefaultArtifactClient').mockReturnValue(mockArtifactClient as artifact.ArtifactClient)
     jest.spyOn(fs, 'existsSync').mockReturnValue(true)
     jest.spyOn(fs, 'readdirSync').mockReturnValue(['bridge.log'])
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValue('.')
@@ -71,13 +67,7 @@ test('Test uploadDiagnostics - invalid value for retention days', () => {
 
 describe('uploadSarifReport', () => {
   it('should upload Sarif report as artifact', async () => {
-    // Mocking artifact client and its uploadArtifact function
-    const mockUploadArtifact = jest.fn()
-    const mockArtifactClient: Partial<artifact.ArtifactClient> = {
-      uploadArtifact: mockUploadArtifact as any // Casting to any due to typing issues
-    }
     process.env['GITHUB_SERVER_URL'] = 'https://github.com'
-    jest.spyOn(artifact, 'DefaultArtifactClient').mockReturnValue(mockArtifactClient as artifact.ArtifactClient)
     jest.spyOn(utility, 'getDefaultSarifReportPath').mockReturnValue('mocked-sarif-path')
     jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
 
