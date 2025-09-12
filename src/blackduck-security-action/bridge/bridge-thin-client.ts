@@ -1,13 +1,12 @@
 import {ExecOptions} from '@actions/exec'
 import {BridgeClientBase} from './bridge-client-base'
 import * as inputs from '../inputs'
-import * as constants from '../../application-constants'
-import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 import {DownloadFileResponse, extractZipped} from '../download-utility'
 import {debug, info} from '@actions/core'
 import path from 'path'
 import {checkIfPathExists, getOSPlatform, parseToBoolean} from '../utility'
 import {execSync} from 'node:child_process'
+import {BRIDGE_CLI_ARTIFACTORY_URL, BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 
 export class BridgeThinClient extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-thin-client'
@@ -21,8 +20,8 @@ export class BridgeThinClient extends BridgeClientBase {
   private isBridgeCLIInstalled: boolean | undefined
 
   protected initializeUrls(): void {
-    this.bridgeArtifactoryURL = constants.BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/')
-    this.bridgeUrlLatestPattern = constants.BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeFileType()).concat(`-${getOSPlatform()}.zip`)
+    this.bridgeArtifactoryURL = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/')
+    this.bridgeUrlLatestPattern = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeFileType()).concat(`-${getOSPlatform()}.zip`)
     this.bridgeUrlPattern = this.bridgeArtifactoryURL.concat('$version/').concat(this.getBridgeFileType()).concat('-$platform.zip')
   }
 
@@ -195,11 +194,6 @@ export class BridgeThinClient extends BridgeClientBase {
   protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
     await this.validateAndSetBridgePath()
     return Promise.resolve(true)
-  }
-
-  async validateBridgeVersion(version: string): Promise<boolean> {
-    const versions = await this.getAllAvailableBridgeVersions()
-    return versions.includes(version.trim())
   }
 
   protected getLatestVersionRegexPattern(): RegExp {

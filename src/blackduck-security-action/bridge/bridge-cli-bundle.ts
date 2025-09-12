@@ -1,7 +1,5 @@
 import {ExecOptions} from '@actions/exec'
 import {BridgeClientBase} from './bridge-client-base'
-import * as constants from '../../application-constants'
-import {BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
 import {DownloadFileResponse, extractZipped} from '../download-utility'
 import fs, {readFileSync} from 'fs'
 import {debug, info} from '@actions/core'
@@ -10,6 +8,7 @@ import {checkIfPathExists, getOSPlatform, parseToBoolean} from '../utility'
 import * as inputs from '../inputs'
 import {BLACKDUCKSCA_WORKFLOW_VERSION, BRIDGE_CLI_DOWNLOAD_URL, COVERITY_WORKFLOW_VERSION, ENABLE_NETWORK_AIR_GAP, POLARIS_WORKFLOW_VERSION, SRM_WORKFLOW_VERSION} from '../inputs'
 import {rmRF} from '@actions/io'
+import {BRIDGE_CLI_ARTIFACTORY_URL, BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION, BRIDGE_VERSION_NOT_FOUND_ERROR} from '../../application-constants'
 
 export class BridgeCliBundle extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-bundle'
@@ -119,9 +118,9 @@ export class BridgeCliBundle extends BridgeClientBase {
 
   protected initializeUrls(): void {
     this.osPlatform = getOSPlatform()
-    this.bridgeArtifactoryURL = constants.BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/')
+    this.bridgeArtifactoryURL = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/')
     this.bridgeUrlPattern = this.bridgeArtifactoryURL.concat('$version/').concat(this.getBridgeType()).concat('-$version-$platform.zip')
-    this.bridgeUrlLatestPattern = constants.BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeType()).concat(`-${this.osPlatform}.zip`)
+    this.bridgeUrlLatestPattern = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeType()).concat(`-${this.osPlatform}.zip`)
   }
 
   getBridgeType(): string {
@@ -157,7 +156,7 @@ export class BridgeCliBundle extends BridgeClientBase {
         const bridgeUrl = this.getVersionUrl(requestedVersion).trim()
         return {bridgeUrl, bridgeVersion: requestedVersion}
       }
-      throw new Error(constants.BRIDGE_VERSION_NOT_FOUND_ERROR)
+      throw new Error(BRIDGE_VERSION_NOT_FOUND_ERROR)
     }
   }
 
