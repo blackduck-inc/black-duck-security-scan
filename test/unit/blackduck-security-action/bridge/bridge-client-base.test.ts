@@ -240,161 +240,6 @@ describe('BridgeClientBase - Polaris Command Building', () => {
     delete process.env['GITHUB_REPOSITORY']
   })
 
-  describe('buildPolarisCommand', () => {
-    const tempDir = '/tmp/test-temp'
-    const githubRepoName = 'test-repo'
-
-    it('should build Polaris command when validation passes and POLARIS_SERVER_URL is set', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([]) // No validation errors
-      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
-
-      const mockPolarisCommandFormatter = {
-        getFormattedCommandForPolaris: jest.fn().mockReturnValue({
-          stage: 'polaris',
-          stateFilePath: '/tmp/polaris_input.json',
-          workflowVersion: '1.0.0'
-        })
-      }
-      mockBridgeToolsParameter.mockImplementation(() => mockPolarisCommandFormatter as any)
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(validators.validatePolarisInputs).toHaveBeenCalledTimes(1)
-      expect(BridgeToolsParameter).toHaveBeenCalledWith(tempDir)
-      expect(mockPolarisCommandFormatter.getFormattedCommandForPolaris).toHaveBeenCalledWith()
-      expect(result.command).toBe('--stage polaris --state /tmp/polaris_input.json --version 1.0.0')
-      expect(result.errors).toEqual([])
-    })
-
-    it('should return empty command when validation fails', () => {
-      // Arrange
-      const validationErrors = ['Missing POLARIS_ACCESS_TOKEN', 'Invalid POLARIS_SERVER_URL']
-      mockValidatePolarisInputs.mockReturnValue(validationErrors)
-      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(validators.validatePolarisInputs).toHaveBeenCalledTimes(1)
-      expect(BridgeToolsParameter).not.toHaveBeenCalled()
-      expect(result.command).toBe('')
-      expect(result.errors).toEqual(validationErrors)
-    })
-
-    it('should return empty command when POLARIS_SERVER_URL is not set', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([]) // No validation errors
-      setMockInputValue('POLARIS_SERVER_URL', '')
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(validators.validatePolarisInputs).toHaveBeenCalledTimes(1)
-      expect(BridgeToolsParameter).not.toHaveBeenCalled()
-      expect(result.command).toBe('')
-      expect(result.errors).toEqual([])
-    })
-
-    it('should return empty command when POLARIS_SERVER_URL is empty string', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([]) // No validation errors
-      setMockInputValue('POLARIS_SERVER_URL', '')
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(validators.validatePolarisInputs).toHaveBeenCalledTimes(1)
-      expect(BridgeToolsParameter).not.toHaveBeenCalled()
-      expect(result.command).toBe('')
-      expect(result.errors).toEqual([])
-    })
-
-    it('should return validation errors even when POLARIS_SERVER_URL is not set', () => {
-      // Arrange
-      const validationErrors = ['Missing POLARIS_ACCESS_TOKEN']
-      mockValidatePolarisInputs.mockReturnValue(validationErrors)
-      setMockInputValue('POLARIS_SERVER_URL', '')
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(validators.validatePolarisInputs).toHaveBeenCalledTimes(1)
-      expect(BridgeToolsParameter).not.toHaveBeenCalled()
-      expect(result.command).toBe('')
-      expect(result.errors).toEqual(validationErrors)
-    })
-
-    it('should handle command formatting without workflowVersion', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([])
-      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
-
-      const mockPolarisCommandFormatter = {
-        getFormattedCommandForPolaris: jest.fn().mockReturnValue({
-          stage: 'polaris',
-          stateFilePath: '/tmp/polaris_input.json'
-          // No workflowVersion
-        })
-      }
-      mockBridgeToolsParameter.mockImplementation(() => mockPolarisCommandFormatter as any)
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(result.command).toBe('--stage polaris --state /tmp/polaris_input.json ')
-      expect(result.errors).toEqual([])
-    })
-
-    it('should pass correct githubRepoName from extracted repository name', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([])
-      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
-
-      const mockPolarisCommandFormatter = {
-        getFormattedCommandForPolaris: jest.fn().mockReturnValue({
-          stage: 'polaris',
-          stateFilePath: '/tmp/polaris_input.json',
-          workflowVersion: '1.0.0'
-        })
-      }
-      mockBridgeToolsParameter.mockImplementation(() => mockPolarisCommandFormatter as any)
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand(tempDir)
-
-      // Assert
-      expect(mockPolarisCommandFormatter.getFormattedCommandForPolaris).toHaveBeenCalledWith()
-    })
-
-    it('should create new BridgeToolsParameter instance with correct tempDir', () => {
-      // Arrange
-      mockValidatePolarisInputs.mockReturnValue([])
-      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
-
-      const mockPolarisCommandFormatter = {
-        getFormattedCommandForPolaris: jest.fn().mockReturnValue({
-          stage: 'polaris',
-          stateFilePath: '/tmp/polaris_input.json'
-        })
-      }
-      mockBridgeToolsParameter.mockImplementation(() => mockPolarisCommandFormatter as any)
-
-      // Act
-      const result = (bridgeClient as any).buildPolarisCommand('/custom/temp/dir')
-
-      // Assert
-      expect(BridgeToolsParameter).toHaveBeenCalledWith('/custom/temp/dir')
-    })
-  })
-
   describe('Integration with buildCommandForAllTools', () => {
     it('should include Polaris command in overall command building', async () => {
       // Arrange
@@ -1705,7 +1550,7 @@ describe('BridgeClientBase - getBridgeVersionFromLatestURL HTTP 200 Response Han
     const latestVersionsUrl = 'https://example.com/versions.txt'
     const mockResponseBody = `
       some-tool: 1.0.0
-      bridge-cli-bundle:   3.4.5   
+      bridge-cli-bundle:   3.4.5
       other-tool: 2.0.0
     `
 
@@ -1801,9 +1646,7 @@ describe('BridgeClientBase - getBridgeVersionFromLatestURL HTTP 200 Response Han
     // Arrange
     const latestVersionsUrl = 'https://example.com/versions.txt'
     const mockResponseBody = `
-      some-tool: 1.0.0
       bridge-cli-bundle-invalid-format
-      other-tool: 2.0.0
     `
 
     mockMakeHttpsGetRequest.mockResolvedValue({

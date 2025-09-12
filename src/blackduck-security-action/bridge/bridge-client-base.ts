@@ -3,7 +3,7 @@ import {debug, info, warning} from '@actions/core'
 import * as constants from '../../application-constants'
 import {BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, WINDOWS_PLATFORM_NAME} from '../../application-constants'
 import path from 'path'
-import {checkIfPathExists, cleanupTempDir, getSharedHttpsAgent, parseToBoolean, sleep} from '../utility'
+import {checkIfPathExists, cleanupTempDir, getSharedHttpClient, getSharedHttpsAgent, parseToBoolean, sleep} from '../utility'
 import os from 'os'
 import {validateBlackDuckInputs, validateCoverityInputs, validatePolarisInputs, validateScanTypes, validateSRMInputs} from '../validators'
 import * as inputs from '../inputs'
@@ -11,7 +11,6 @@ import {ENABLE_NETWORK_AIR_GAP} from '../inputs'
 import {BridgeToolsParameter} from '../tools-parameter'
 import {DownloadFileResponse, getRemoteFile} from '../download-utility'
 import fs from 'fs'
-import {HttpClient} from 'typed-rest-client/HttpClient'
 import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import {rmRF} from '@actions/io'
 import semver from 'semver'
@@ -490,7 +489,7 @@ export abstract class BridgeClientBase {
 
   async getAllAvailableBridgeVersions(): Promise<string[]> {
     let htmlResponse = ''
-    const httpClient = new HttpClient('blackduck-task')
+    const httpClient = getSharedHttpClient()
     let retryCountLocal = RETRY_COUNT
     let retryDelay = RETRY_DELAY_IN_MILLISECONDS
     let httpResponse

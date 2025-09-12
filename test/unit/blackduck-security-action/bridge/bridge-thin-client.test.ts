@@ -4,7 +4,7 @@ import * as downloadUtility from '../../../../src/blackduck-security-action/down
 import * as utility from '../../../../src/blackduck-security-action/utility'
 import * as core from '@actions/core'
 import {execSync} from 'node:child_process'
-import * as inputs from '../../../../src/blackduck-security-action/inputs'
+import * as inputs from '../../../../src/blackduck-security-action/inputs' // Mock external dependencies
 
 // Mock external dependencies
 jest.mock('@actions/core')
@@ -249,7 +249,10 @@ describe('BridgeThinClient', () => {
   describe('downloadBridge', () => {
     it('should call super.downloadBridge with debug logging', async () => {
       const superDownloadBridge = jest.spyOn(Object.getPrototypeOf(BridgeThinClient.prototype), 'downloadBridge').mockResolvedValue(undefined)
-
+      Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {
+        value: true,
+        configurable: true
+      })
       await bridgeThinClient.downloadBridge('/temp/dir')
 
       expect(mockDebug).toHaveBeenCalledWith('Starting bridge download process...')

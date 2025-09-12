@@ -8,7 +8,7 @@ import * as constants from '../../../../src/application-constants'
 import os from 'os'
 import {BridgeToolsParameter} from '../../../../src/blackduck-security-action/tools-parameter' // Mock @actions/core before other imports
 import mock = jest.mock
-import Mocked = jest.Mocked
+import Mocked = jest.Mocked // Mock @actions/core before other imports
 
 // Mock @actions/core before other imports
 jest.mock('@actions/core', () => ({
@@ -33,6 +33,10 @@ mock('@actions/exec')
 
 const fs = require('fs')
 mock('fs')
+
+// Mock utility module
+const utility = require('../../../../src/blackduck-security-action/utility')
+mock('../../../../src/blackduck-security-action/utility')
 
 beforeEach(() => {
   Object.defineProperty(constants, 'RETRY_COUNT', {value: 3})
@@ -551,6 +555,10 @@ class TestBridgeCliBundle extends BridgeCliBundle {
   public testVerifyRegexCheck(bridgeUrl: string): RegExpMatchArray | null {
     return this.verifyRegexCheck(bridgeUrl)
   }
+
+  public testGetLatestVersionRegexPattern(): RegExp {
+    return this.getLatestVersionRegexPattern()
+  }
 }
 
 test('Test verifyRegexCheck with valid bridge URL - returns match array', () => {
@@ -655,4 +663,399 @@ test('Test verifyRegexCheck with URL containing additional parameters', () => {
   expect(result).not.toBeNull()
   expect(result).toHaveLength(2)
   expect(result![1]).toBe('1.0.0')
+})
+
+describe('checkIfBridgeExistsInAirGap', () => {
+  let bridgeCliBundle: BridgeCliBundle
+
+  beforeEach(() => {
+    bridgeCliBundle = new BridgeCliBundle()
+    jest.clearAllMocks()
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('should validate and set bridge path and return true', async () => {
+    // Mock the validateAndSetBridgePath method
+    jest.spyOn(bridgeCliBundle, 'validateAndSetBridgePath').mockResolvedValue()
+
+    // Call the protected method using type assertion
+    const result = await (bridgeCliBundle as any).checkIfBridgeExistsInAirGap()
+
+    // Verify the method calls validateAndSetBridgePath
+    expect(bridgeCliBundle.validateAndSetBridgePath).toHaveBeenCalled()
+    expect(bridgeCliBundle.validateAndSetBridgePath).toHaveBeenCalledTimes(1)
+
+    // Verify the method returns true
+    expect(result).toBe(true)
+  })
+
+  test('should propagate error if validateAndSetBridgePath throws', async () => {
+    const mockError = new Error('Validation failed')
+
+    // Mock validateAndSetBridgePath to throw an error
+    jest.spyOn(bridgeCliBundle, 'validateAndSetBridgePath').mockRejectedValue(mockError)
+
+    // Verify that the error is propagated
+    await expect((bridgeCliBundle as any).checkIfBridgeExistsInAirGap()).rejects.toThrow('Validation failed')
+
+    // Verify validateAndSetBridgePath was called
+    expect(bridgeCliBundle.validateAndSetBridgePath).toHaveBeenCalled()
+  })
+})
+
+describe('logWorkflowVersionInfo', () => {
+  let bridgeCliBundle: BridgeCliBundle
+  const mockInfo = require('@actions/core').info
+
+  beforeEach(() => {
+    bridgeCliBundle = new BridgeCliBundle()
+    jest.clearAllMocks()
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('should log info message when POLARIS_WORKFLOW_VERSION is set', () => {
+    // Mock POLARIS_WORKFLOW_VERSION to be truthy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '1.0.0', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should log info message when BLACKDUCKSCA_WORKFLOW_VERSION is set', () => {
+    // Mock BLACKDUCKSCA_WORKFLOW_VERSION to be truthy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '2.0.0', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should log info message when SRM_WORKFLOW_VERSION is set', () => {
+    // Mock SRM_WORKFLOW_VERSION to be truthy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '1.5.0', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should log info message when COVERITY_WORKFLOW_VERSION is set', () => {
+    // Mock COVERITY_WORKFLOW_VERSION to be truthy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '3.0.0', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should log info message when multiple workflow versions are set', () => {
+    // Mock multiple workflow versions to be truthy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '1.0.0', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '2.0.0', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '1.5.0', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '3.0.0', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should not log info message when no workflow versions are set', () => {
+    // Mock all workflow versions to be falsy
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: '', configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).not.toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+
+  test('should not log info message when workflow versions are undefined', () => {
+    // Mock all workflow versions to be undefined
+    Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: undefined, configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_WORKFLOW_VERSION', {value: undefined, configurable: true})
+    Object.defineProperty(inputs, 'SRM_WORKFLOW_VERSION', {value: undefined, configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_WORKFLOW_VERSION', {value: undefined, configurable: true})
+
+    // Call generateFormattedCommand which internally calls logWorkflowVersionInfo
+    bridgeCliBundle.generateFormattedCommand('test-stage', '/path/to/state.json')
+
+    expect(mockInfo).not.toHaveBeenCalledWith('Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.')
+  })
+})
+
+describe('getLatestVersionRegexPattern', () => {
+  let testBridgeCliBundle: TestBridgeCliBundle
+
+  beforeEach(() => {
+    testBridgeCliBundle = new TestBridgeCliBundle()
+  })
+
+  test('should return correct regex pattern for bridge-cli-bundle', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+
+    expect(pattern).toBeInstanceOf(RegExp)
+    expect(pattern.source).toBe('(bridge-cli-bundle-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)')
+  })
+
+  test('should match bridge-cli-bundle with win64 platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-win64.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-win64.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-win64.zip')
+    expect(match![2]).toBe('win64')
+  })
+
+  test('should match bridge-cli-bundle with linux64 platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-linux64.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-linux64.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-linux64.zip')
+    expect(match![2]).toBe('linux64')
+  })
+
+  test('should match bridge-cli-bundle with linux_arm platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-linux_arm.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-linux_arm.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-linux_arm.zip')
+    expect(match![2]).toBe('linux_arm')
+  })
+
+  test('should match bridge-cli-bundle with macosx platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-macosx.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-macosx.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-macosx.zip')
+    expect(match![2]).toBe('macosx')
+  })
+
+  test('should match bridge-cli-bundle with macos_arm platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-macos_arm.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-macos_arm.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-macos_arm.zip')
+    expect(match![2]).toBe('macos_arm')
+  })
+
+  test('should match bridge-cli-bundle with version in URL', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'https://repo.blackduck.com/bridge-cli-bundle-macosx.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-macosx.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-macosx.zip')
+    expect(match![2]).toBe('macosx')
+  })
+
+  test('should not match bridge-thin-client', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-thin-client-win64.zip'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should not match unsupported platform', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-freebsd.zip'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should not match non-zip files', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-macosx.tar.gz'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should not match incomplete platform names', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-mac.zip'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should match in complex URL paths', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle-linux64.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-linux64.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-linux64.zip')
+    expect(match![2]).toBe('linux64')
+  })
+
+  test('should match multiple occurrences and return first match', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-win64.zip and bridge-cli-bundle-macosx.zip'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-win64.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-win64.zip')
+    expect(match![2]).toBe('win64')
+  })
+
+  test('should handle case sensitivity correctly', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'BRIDGE-CLI-BUNDLE-WIN64.ZIP'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should not match with extra characters in platform name', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'bridge-cli-bundle-win64x.zip'
+
+    const match = testString.match(pattern)
+    expect(match).toBeNull()
+  })
+
+  test('should match with query parameters in URL', () => {
+    const pattern = testBridgeCliBundle.testGetLatestVersionRegexPattern()
+    const testString = 'https://repo.blackduck.com/bridge-cli-bundle-macos_arm.zip?auth=token&download=true'
+
+    const match = testString.match(pattern)
+    expect(match).not.toBeNull()
+    expect(match![0]).toBe('bridge-cli-bundle-macos_arm.zip')
+    expect(match![1]).toBe('bridge-cli-bundle-macos_arm.zip')
+    expect(match![2]).toBe('macos_arm')
+  })
+})
+describe('validateAndSetBridgePath', () => {
+  let bridgeCliBundle: BridgeCliBundle
+  const mockInfo = require('@actions/core').info
+
+  beforeEach(() => {
+    bridgeCliBundle = new BridgeCliBundle()
+    jest.clearAllMocks()
+
+    // Set up default mocks
+    utility.parseToBoolean = jest.fn().mockReturnValue(false)
+    utility.getOSPlatform = jest.fn().mockReturnValue('linux64')
+
+    // Mock other required methods
+    jest.spyOn(bridgeCliBundle as any, 'getBridgeDefaultPath').mockReturnValue('/default/bridge/path')
+    jest.spyOn(bridgeCliBundle as any, 'validateAirGapExecutable').mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  test('should call validateAirGapExecutable when air gap mode is enabled', async () => {
+    // Arrange
+    Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+      value: '/custom/install/dir',
+      configurable: true
+    })
+    utility.parseToBoolean.mockReturnValue(true)
+    const validateAirGapSpy = jest.spyOn(bridgeCliBundle as any, 'validateAirGapExecutable')
+
+    // Act
+    await bridgeCliBundle.validateAndSetBridgePath()
+
+    // Assert
+    expect(validateAirGapSpy).toHaveBeenCalled()
+  })
+
+  test('should not call validateAirGapExecutable when air gap mode is disabled', async () => {
+    // Arrange
+    Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+      value: '/custom/install/dir',
+      configurable: true
+    })
+    utility.parseToBoolean.mockReturnValue(false)
+    const validateAirGapSpy = jest.spyOn(bridgeCliBundle as any, 'validateAirGapExecutable')
+
+    // Act
+    await bridgeCliBundle.validateAndSetBridgePath()
+
+    // Assert
+    expect(validateAirGapSpy).not.toHaveBeenCalled()
+  })
+
+  test('should correctly construct basePath using path.join with getBridgeType', async () => {
+    // Arrange
+    const customInstallDir = '/test/custom/path'
+    Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+      value: customInstallDir,
+      configurable: true
+    })
+
+    const getBridgeTypeSpy = jest.spyOn(bridgeCliBundle, 'getBridgeType')
+    getBridgeTypeSpy.mockReturnValue('bridge-cli-bundle')
+
+    // Mock path.join to verify it's called correctly
+    const originalJoin = path.join
+    path.join = jest.fn().mockImplementation((...args) => originalJoin(...args))
+
+    // Act
+    await bridgeCliBundle.validateAndSetBridgePath()
+
+    // Assert
+    expect(path.join).toHaveBeenCalledWith(customInstallDir, 'bridge-cli-bundle')
+    expect(getBridgeTypeSpy).toHaveBeenCalled()
+
+    // Restore original path.join
+    path.join = originalJoin
+  })
+})
+
+test('Test getBridgeFileType returns correct bridge file type', () => {
+  const bridgeCliBundle = new BridgeCliBundle()
+
+  const result = bridgeCliBundle.getBridgeFileType()
+
+  expect(result).toBe('bridge-cli')
 })
