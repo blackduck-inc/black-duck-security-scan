@@ -88,7 +88,8 @@ export class BridgeToolsParameter {
     if (inputs.POLARIS_BRANCH_NAME) {
       polData.data.polaris.branch = {name: inputs.POLARIS_BRANCH_NAME}
     }
-
+    info(`SAST Type: ${inputs.POLARIS_TEST_SAST_TYPE}`)
+    info(`SSCA Type: ${inputs.POLARIS_TEST_SCA_TYPE}`)
     if (inputs.POLARIS_TEST_SCA_TYPE || inputs.POLARIS_TEST_SAST_TYPE) {
       polData.data.polaris.test = {}
 
