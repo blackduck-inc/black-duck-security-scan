@@ -57,12 +57,11 @@ export interface Branch {
 }
 
 export interface Test {
-  sca?: {
-    type?: string
-    location?: string
-  }
-  sast?: {
-    type?: string[]
-    location?: string
-  }
+  sca?: TestDetails
+  sast?: TestDetails
+}
+
+interface TestDetails {
+  type?: string | string[]
+  location?: string
 }
