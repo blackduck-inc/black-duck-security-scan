@@ -1,19 +1,48 @@
-import * as inputs from '../../../../src/blackduck-security-action/inputs'
+// Mock typed-rest-client module
+jest.mock('typed-rest-client/HttpClient', () => {
+  const mockGet = jest.fn()
+  const mockPost = jest.fn()
+  const mockPut = jest.fn()
+  const mockDelete = jest.fn()
+
+  const MockHttpClient = jest.fn().mockImplementation(() => ({
+    get: mockGet,
+    post: mockPost,
+    put: mockPut,
+    delete: mockDelete
+  }))
+
+  // Add methods to prototype so spyOn works
+  MockHttpClient.prototype.get = mockGet
+  MockHttpClient.prototype.post = mockPost
+  MockHttpClient.prototype.put = mockPut
+  MockHttpClient.prototype.delete = mockDelete
+
+  return {
+    HttpClient: MockHttpClient,
+    HttpClientResponse: jest.fn()
+  }
+})
+
 import {HttpClient, HttpClientResponse} from 'typed-rest-client/HttpClient'
 import {GitHubClientServiceFactory} from '../../../../src/blackduck-security-action/factory/github-client-service-factory'
 import {IncomingMessage} from 'http'
 import {Socket} from 'net'
-import Mocked = jest.Mocked
 import {GithubClientServiceCloud} from '../../../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
 import {GithubClientServiceV1} from '../../../../src/blackduck-security-action/service/impl/enterprise/v1/github-client-service-v1'
+import Mocked = jest.Mocked
 
 describe('fetchVersion()', () => {
   beforeEach(() => {
-    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
+    // Mock the inputs module with GITHUB_TOKEN
+    jest.doMock('../../../../src/blackduck-security-action/inputs', () => ({
+      GITHUB_TOKEN: 'test-token'
+    }))
   })
 
   afterEach(() => {
     jest.restoreAllMocks()
+    jest.resetModules()
   })
 
   it('should fetch version successfully for supported version', async () => {
