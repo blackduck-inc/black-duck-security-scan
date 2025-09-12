@@ -20,7 +20,7 @@ test('Test invalid install directory for coverity', () => {
   }
 })
 
-test('Test validate Blackduck Failure Severities', () => {
+test('Test validate BlackduckSCA Failure Severities', () => {
   const failureSeverities: string[] = []
   try {
     validateBlackduckFailureSeverities(failureSeverities)
