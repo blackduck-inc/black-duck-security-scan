@@ -7,11 +7,5 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   verbose: true,
-  moduleDirectories: ['node_modules', 'src'],
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1'
-  },
-  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts']
+  moduleDirectories: ['node_modules', 'src']
 }
