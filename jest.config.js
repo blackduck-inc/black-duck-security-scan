@@ -8,13 +8,10 @@ module.exports = {
   },
   verbose: true,
   moduleDirectories: ['node_modules', 'src'],
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.test.json'
-    }
-  },
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
-  }
+  },
+  collectCoverageFrom: ['src/**/*.ts', '!src/**/*.d.ts']
 }
