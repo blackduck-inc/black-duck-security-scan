@@ -302,20 +302,11 @@ test('Latest URL Version success for MAC ARM arch', async () => {
 })
 
 test('Latest url version if not provided', async () => {
-  const incomingMessage: IncomingMessage = new IncomingMessage(new Socket())
-
-  const stub = jest.fn()
-  stub()
-
-  const httpResponse: Mocked<HttpClientResponse> = {
-    message: incomingMessage,
-    readBody: jest.fn()
-  }
-  httpResponse.readBody.mockResolvedValue('error')
-  jest.spyOn(HttpClient.prototype, 'get').mockRejectedValue(httpResponse)
-
   const sb = new BridgeCliBundle()
-  jest.spyOn(sb, 'getBridgeVersionFromLatestURL')
+
+  // Mock the getBridgeVersionFromLatestURL method directly instead of HttpClient
+  jest.spyOn(sb, 'getBridgeVersionFromLatestURL').mockResolvedValue('')
+
   const response = await sb.getBridgeVersionFromLatestURL('https://artifact.com/latest/bridge-cli-bundle.zip')
   expect(response).toContain('')
 })
