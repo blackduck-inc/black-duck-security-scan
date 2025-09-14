@@ -23,11 +23,10 @@ jest.mock('../../../../src/blackduck-security-action/utility', () => ({
   cleanupTempDir: jest.fn(() => Promise.resolve())
 }))
 
-// Mock download-utility
-jest.mock('../../../../src/blackduck-security-action/download-utility')
-
-// Mock child_process
-jest.mock('node:child_process')
+// Mock inputs
+jest.mock('../../../../src/blackduck-security-action/inputs', () => ({
+  ENABLE_BRIDGE_THIN_CLIENT: 'false'
+}))
 
 describe('createBridgeClient', () => {
   beforeEach(() => {
