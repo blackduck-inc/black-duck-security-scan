@@ -1,5 +1,6 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, clearHttpClientCache, createSSLConfiguredHttpClient, isBoolean, isPullRequestEvent} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
+
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
   const testUrl = `${validUrl}/`

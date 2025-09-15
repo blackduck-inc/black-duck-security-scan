@@ -3,8 +3,9 @@ import {tmpdir} from 'os'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/blackduck-security-action/artifacts'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as artifact from 'actions-artifact-v2/lib/artifact'
-const fs = require('fs')
 import * as utility from '../../../src/blackduck-security-action/utility'
+
+const fs = require('fs')
 
 // Mock the artifact module
 jest.mock('actions-artifact-v2', () => ({

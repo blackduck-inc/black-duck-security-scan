@@ -1,6 +1,6 @@
-import {validateBlackduckFailureSeverities, validateBlackDuckInputs, validateCoverityInputs, validateCoverityInstallDirectoryParam, validateParameters, validatePolarisInputs, validateSRMInputs} from '../../../src/blackduck-security-action/validators'
-import * as constants from '../../../src/application-constants'
-import * as inputs from '../../../src/blackduck-security-action/inputs'
+import {validateBlackduckFailureSeverities, validateBlackDuckInputs, validateCoverityInputs, validateCoverityInstallDirectoryParam, validateParameters, validatePolarisInputs, validateSRMInputs} from 'blackduck-security-action/validators'
+import * as constants from 'application-constants'
+import * as inputs from 'blackduck-security-action/inputs'
 
 test('Test missing install directory for coverity', () => {
   try {
@@ -20,7 +20,7 @@ test('Test invalid install directory for coverity', () => {
   }
 })
 
-test('Test validate Blackduck Failure Severities', () => {
+test('Test validate BlackduckSCA Failure Severities', () => {
   const failureSeverities: string[] = []
   try {
     validateBlackduckFailureSeverities(failureSeverities)

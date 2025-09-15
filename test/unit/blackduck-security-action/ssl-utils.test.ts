@@ -1,4 +1,4 @@
-import {describe, test, expect, jest, beforeEach} from '@jest/globals'
+import {beforeEach, describe, expect, jest, test} from '@jest/globals'
 
 describe('SSL Utils Unit Tests', () => {
   let sslUtils: any
