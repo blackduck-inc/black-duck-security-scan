@@ -4,6 +4,9 @@
   "private": true,
   "description": "Perform security scan using Blackduck Tools",
   "main": "lib/main.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "build": "NODE_OPTIONS=--openssl-legacy-provider tsc",
     "format": "prettier --write '**/*.ts'",
