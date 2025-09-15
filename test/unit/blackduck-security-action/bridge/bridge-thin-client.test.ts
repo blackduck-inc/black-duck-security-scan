@@ -1,16 +1,16 @@
-import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeThinClient} from 'blackduck-security-action/bridge/bridge-thin-client'
 import {ExecOptions} from '@actions/exec'
-import * as downloadUtility from '../../../../src/blackduck-security-action/download-utility'
-import * as utility from '../../../../src/blackduck-security-action/utility'
+import * as downloadUtility from 'blackduck-security-action/download-utility'
+import * as utility from 'blackduck-security-action/utility'
 import * as core from '@actions/core'
 import {execSync} from 'node:child_process'
-import * as inputs from '../../../../src/blackduck-security-action/inputs' // Mock external dependencies
+import * as inputs from 'blackduck-security-action/inputs' // Mock external dependencies
 
 // Mock external dependencies
 jest.mock('@actions/core')
 jest.mock('node:child_process')
-jest.mock('../../../../src/blackduck-security-action/utility')
-jest.mock('../../../../src/blackduck-security-action/download-utility')
+jest.mock('blackduck-security-action/utility')
+jest.mock('blackduck-security-action/download-utility')
 
 describe('BridgeThinClient', () => {
   let bridgeThinClient: BridgeThinClient
