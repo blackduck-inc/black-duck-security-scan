@@ -20,3 +20,16 @@ To use Black Duck Security Action, please follow the steps below:
 
 As an alternative to Black Duck Security Action, you also have the option to use Bridge CLI. <br/>
 Detailed documentation for Bridge CLI can be found [here](https://documentation.blackduck.com/bundle/bridge/page/documentation/c_overview.html).
+
+## 📚 Black Duck Academy Resources
+
+Get started with these platform specific resources from Black Duck Academy:
+
+| Platform               | Resource                                                                                 |
+|------------------------|------------------------------------------------------------------------------------------|
+| Black Duck SCA         | [Getting Started](https://blackduck.skilljar.com/page/getting-started-black-duck-roles)  |
+| Coverity               | [Getting Started](https://blackduck.skilljar.com/page/getting-started-coverity-roles)    |
+| Polaris                | [Getting Started](https://blackduck.skilljar.com/page/getting-started-polaris-roles)     |
+| Software Risk Manager  | [Getting Started](https://blackduck.skilljar.com/page/getting-started-srm-roles)         |
+
+> 📚 Explore more courses at [Black Duck Academy](https://blackduck.skilljar.com/).
