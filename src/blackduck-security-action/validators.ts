@@ -1,7 +1,7 @@
-import * as fs from 'fs'
-import {error} from '@actions/core'
 import * as constants from '../application-constants'
+import * as fs from 'fs'
 import * as inputs from './inputs'
+import {error} from '@actions/core'
 
 export function validateCoverityInstallDirectoryParam(installDir: string): boolean {
   if (installDir == null || installDir.length === 0) {

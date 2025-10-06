@@ -11,10 +11,10 @@ import {BlackDuckSCA} from './input-data/blackduck'
 import {Polaris} from './input-data/polaris'
 import {isNullOrEmptyValue} from './validators'
 import * as inputs from './inputs'
-import {debug, warning, info} from '@actions/core'
+import {debug, info, warning} from '@actions/core'
 import * as https from 'https'
 import {HttpClient} from 'typed-rest-client/HttpClient'
-import {getSSLConfig, getSSLConfigHash, createHTTPSAgent} from './ssl-utils'
+import {createHTTPSAgent, getSSLConfig, getSSLConfigHash} from './ssl-utils'
 
 export function cleanUrl(url: string): string {
   if (url && url.endsWith('/')) {

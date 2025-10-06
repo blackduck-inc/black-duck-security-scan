@@ -7,7 +7,7 @@ import * as inputs from './blackduck-security-action/inputs'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import * as util from './blackduck-security-action/utility'
 import {readFileSync} from 'fs'
-import {join, basename} from 'path'
+import {basename, join} from 'path'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
 
