@@ -1,5 +1,6 @@
-import {getInput} from '@actions/core'
 import * as constants from '../application-constants'
+
+import {getInput} from '@actions/core'
 
 export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = getInput(constants.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)?.trim() || getInput(constants.BRIDGE_INSTALL_DIRECTORY_KEY)?.trim() || ''
 export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.trim() || getInput(constants.BRIDGE_NETWORK_AIRGAP_KEY)?.trim() || ''

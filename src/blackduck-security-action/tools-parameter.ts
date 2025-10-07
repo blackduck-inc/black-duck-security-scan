@@ -1,17 +1,19 @@
-import * as fs from 'fs'
-import path from 'path'
-import {debug, info} from '@actions/core'
-import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam} from './validators'
-import * as inputs from './inputs'
-import {Polaris} from './input-data/polaris'
-import {InputData} from './input-data/input-data'
-import {Coverity, CoverityDetect} from './input-data/coverity'
-import {BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData, BlackDuckSCA} from './input-data/blackduck'
-import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
+import * as fs from 'fs'
+import * as inputs from './inputs'
+
+import {BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData, BlackDuckSCA} from './input-data/blackduck'
+import {Coverity, CoverityDetect} from './input-data/coverity'
+import {debug, info} from '@actions/core'
 import {isBoolean, isPullRequestEvent, parseToBoolean} from './utility'
-import {SRM} from './input-data/srm'
+import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam} from './validators'
+
+import {GithubData} from './input-data/github'
+import {InputData} from './input-data/input-data'
 import {Network} from './input-data/common'
+import {Polaris} from './input-data/polaris'
+import {SRM} from './input-data/srm'
+import path from 'path'
 
 export class BridgeToolsParameter {
   tempDir: string

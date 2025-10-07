@@ -1,13 +1,15 @@
-import {UploadArtifactOptions, UploadArtifactResponse} from 'actions-artifact-v2/lib/internal/shared/interfaces'
-import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
+import * as artifact from 'actions-artifact-v1'
+import * as constants from '../application-constants'
 import * as fs from 'fs'
 import * as inputs from './inputs'
+
+import {UploadArtifactOptions, UploadArtifactResponse} from 'actions-artifact-v2/lib/internal/shared/interfaces'
 import {getDefaultSarifReportPath, getIntegrationDefaultSarifReportPath, getRealSystemTime, isGitHubCloud} from './utility'
-import {warning} from '@actions/core'
-import path from 'path'
-import * as artifact from 'actions-artifact-v1'
+
 import {DefaultArtifactClient} from 'actions-artifact-v2'
-import * as constants from '../application-constants'
+import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
+import path from 'path'
+import {warning} from '@actions/core'
 
 export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void> {
   let artifactClient

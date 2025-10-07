@@ -1,10 +1,11 @@
+import * as constants from '../application-constants'
+import * as fs from 'fs'
+
+import {downloadTool} from './tool-cache-local'
+import {extractZip} from '@actions/tool-cache'
 import {info} from '@actions/core'
 import path from 'path'
-import {extractZip} from '@actions/tool-cache'
-import {downloadTool} from './tool-cache-local'
-import * as fs from 'fs'
 import {validateBridgeUrl} from './validators'
-import * as constants from '../application-constants'
 
 export interface DownloadFileResponse {
   filePath: string

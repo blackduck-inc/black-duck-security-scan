@@ -1,6 +1,7 @@
-import * as core from '@actions/core'
-import {sleep} from './utility'
 import * as constants from '../application-constants'
+import * as core from '@actions/core'
+
+import {sleep} from './utility'
 
 /**
  * Internal class for retries

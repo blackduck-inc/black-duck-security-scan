@@ -1,21 +1,21 @@
-import {RetryHelper} from './retry-helper'
 import * as core from '@actions/core'
-import * as io from '@actions/io'
 import * as fs from 'fs'
-import * as path from 'path'
 import * as httpm from '@actions/http-client'
-import * as ifm from '@actions/http-client/lib/interfaces'
-
-import * as stream from 'stream'
-import * as util from 'util'
 import * as https from 'https'
+import * as ifm from '@actions/http-client/lib/interfaces'
+import * as io from '@actions/io'
+import * as path from 'path'
+import * as stream from 'stream'
 import * as url from 'url'
+import * as util from 'util'
 
-import {OutgoingHttpHeaders} from 'http'
-import {v4 as uuidv4} from 'uuid'
-import os from 'os'
 import {NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS} from '../application-constants'
 import {createHTTPSRequestOptions, getSSLConfig} from './ssl-utils'
+
+import {OutgoingHttpHeaders} from 'http'
+import {RetryHelper} from './retry-helper'
+import os from 'os'
+import {v4 as uuidv4} from 'uuid'
 
 export class HTTPError extends Error {
   constructor(readonly httpStatusCode: number | undefined) {

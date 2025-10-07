@@ -1,8 +1,9 @@
 import * as fs from 'fs'
-import * as tls from 'tls'
 import * as https from 'https'
-import {debug, warning} from '@actions/core'
 import * as inputs from './inputs'
+import * as tls from 'tls'
+
+import {debug, warning} from '@actions/core'
 
 export interface SSLConfig {
   trustAllCerts: boolean
