@@ -1,49 +1,64 @@
 import {ExecOptions} from '@actions/exec'
 import {BridgeClientBase} from './bridge-client-base'
 import * as inputs from '../inputs'
-import {DownloadFileResponse, extractZipped} from '../download-utility'
 import {debug, info} from '@actions/core'
 import path from 'path'
 import {checkIfPathExists, getOSPlatform, parseToBoolean} from '../utility'
 import {execSync} from 'node:child_process'
-import {BRIDGE_CLI_ARTIFACTORY_URL, BRIDGE_CLI_INPUT_OPTION, BRIDGE_CLI_SPACE, BRIDGE_CLI_STAGE_OPTION} from '../../application-constants'
+import * as constants from '../../application-constants'
+import {DownloadFileResponse, extractZipped} from '../download-utility'
+
+interface BridgeVersionInfo {
+  bridgeUrl: string
+  bridgeVersion: string
+}
 
 export class BridgeThinClient extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-thin-client'
   private static readonly BRIDGE_FILE_TYPE = 'bridge-cli'
-  private readonly BRIDGE_CLI_UPDATE_COMMAND = '--update'
-  private readonly BRIDGE_CLI_VERSION_COMMAND = '--version'
-  private readonly BRIDGE_CLI_REGISTER_COMMAND = ' --register'
-  private readonly BRIDGE_CLI_USE_COMMAND = '--use'
+  private static readonly BRIDGE_FILE_NAME = 'bridge-cli'
+  private static readonly BRIDGE_CLI_COMMANDS = {
+    UPDATE: '--update',
+    VERSION: '--version',
+    REGISTER: ' --register',
+    USE: '--use'
+  } as const
 
   private currentVersion: string | undefined
   private isBridgeCLIInstalled: boolean | undefined
 
+  private static readonly ERROR_MESSAGES = {
+    AIR_GAP_VERSION_ERROR: "Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_BASE_URL'.",
+    AIR_GAP_URL_ERROR: 'Air gap mode enabled and no BRIDGE_CLI_BASE_URL provided',
+    LATEST_VERSION_ERROR: 'Unable to retrieve the latest Bridge CLI version from',
+    WORKFLOW_VERSION_WARNING: 'Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.'
+  } as const
+
   protected initializeUrls(): void {
-    this.bridgeArtifactoryURL = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/')
-    this.bridgeUrlLatestPattern = BRIDGE_CLI_ARTIFACTORY_URL.concat(this.getBridgeType()).concat('/').concat('latest/').concat(this.getBridgeFileType()).concat(`-${getOSPlatform()}.zip`)
-    this.bridgeUrlPattern = this.bridgeArtifactoryURL.concat('$version/').concat(this.getBridgeFileType()).concat('-$platform.zip')
+    const baseUrl = this.determineBaseUrl()
+
+    if (baseUrl) {
+      this.setupBridgeUrls(baseUrl)
+    }
   }
 
   getBridgeType(): string {
     return BridgeThinClient.BRIDGE_TYPE
   }
 
+  getBridgeFileNameType(): string {
+    return BridgeThinClient.BRIDGE_FILE_NAME
+  }
   getBridgeFileType(): string {
     return BridgeThinClient.BRIDGE_FILE_TYPE
   }
 
   protected async executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
     if (!inputs.BRIDGE_REGISTRY_URL) debug('Registry URL is empty')
-    if (inputs.BRIDGE_REGISTRY_URL && (await this.runBridgeCommand(this.appendRegisterCommand(), execOptions)) !== 0) {
+    if (inputs.BRIDGE_REGISTRY_URL && (await this.runBridgeCommand(this.buildRegisterCommand(), execOptions)) !== 0) {
       throw new Error('Register command failed, returning early')
     }
     return this.runBridgeCommand(bridgeCommand, execOptions)
-  }
-
-  async downloadBridge(tempDir: string): Promise<void> {
-    debug('Starting bridge download process...')
-    return super.downloadBridge(tempDir)
   }
 
   protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string): Promise<void> {
@@ -61,9 +76,7 @@ export class BridgeThinClient extends BridgeClientBase {
 
   generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
     debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
-
     const command = this.buildCommand(stage, stateFilePath, workflowVersion)
-
     info(`Generated command: ${command}`)
     return command
   }
@@ -77,7 +90,7 @@ export class BridgeThinClient extends BridgeClientBase {
       return ['', ''] as RegExpMatchArray
     }
 
-    const pattern = new RegExp(`${this.getBridgeType()}\\/([\\d.]+)\\/.*${bridgeType}\\.zip`)
+    const pattern = new RegExp(`${BridgeThinClient.BRIDGE_TYPE}\\/([\\d.]+)\\/.*${bridgeType}\\.zip`)
     debug(`Verifying URL pattern for bridge type: ${bridgeType}`)
 
     const result = bridgeUrl.match(pattern)
@@ -87,11 +100,11 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   async getBridgeVersion(): Promise<string> {
-    const bridgeExecutable = path.join(this.bridgePath, this.getBridgeFileType())
+    const bridgeExecutable = this.getBridgeExecutablePath()
     debug(`Getting bridge version from executable: ${bridgeExecutable}`)
 
     try {
-      return execSync(`${bridgeExecutable} ${this.BRIDGE_CLI_VERSION_COMMAND}`).toString().trim()
+      return execSync(`${bridgeExecutable} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.VERSION}`).toString().trim()
     } catch (error) {
       throw new Error(`Failed to get bridge version: ${(error as Error).message}`)
     }
@@ -108,25 +121,17 @@ export class BridgeThinClient extends BridgeClientBase {
 
     const platformFolderName = this.getBridgeFileType().concat('-').concat(getOSPlatform())
     this.bridgePath = path.join(basePath, platformFolderName)
-    const isAirGapMode = parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)
-    if (isAirGapMode) await this.validateAirGapExecutable(this.bridgePath)
+    if (this.isAirGapMode()) await this.validateAirGapExecutable(this.bridgePath)
   }
 
   private buildCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
-    return BRIDGE_CLI_STAGE_OPTION.concat(BRIDGE_CLI_SPACE)
-      .concat(stage)
-      .concat(workflowVersion ? '@'.concat(workflowVersion) : '')
-      .concat(BRIDGE_CLI_SPACE)
-      .concat(BRIDGE_CLI_INPUT_OPTION)
-      .concat(BRIDGE_CLI_SPACE)
-      .concat(stateFilePath)
-      .concat(BRIDGE_CLI_SPACE)
-      .concat(this.handleBridgeUpdateCommand())
+    const parts = [constants.BRIDGE_CLI_STAGE_OPTION, stage + (workflowVersion ? `@${workflowVersion}` : ''), constants.BRIDGE_CLI_INPUT_OPTION, stateFilePath, this.handleBridgeUpdateCommand()].filter(part => part)
+    return parts.join(constants.BRIDGE_CLI_SPACE)
   }
 
-  private appendRegisterCommand(): string {
+  private buildRegisterCommand(): string {
     debug('Building register command')
-    const registerCommand = `${this.bridgeExecutablePath} ${this.BRIDGE_CLI_REGISTER_COMMAND} ${inputs.BRIDGE_REGISTRY_URL}`
+    const registerCommand = `${this.bridgeExecutablePath} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.REGISTER} ${inputs.BRIDGE_REGISTRY_URL}`
     debug(`Register command built: ${registerCommand}`)
     return registerCommand
   }
@@ -135,17 +140,24 @@ export class BridgeThinClient extends BridgeClientBase {
     return this.getBridgeCLIDownloadPathCommon(true)
   }
 
+  private handleBridgeUpdateCommand(): string {
+    const isBridgeUpdateEnabled = parseToBoolean(inputs.ENABLE_WORKFLOW_UPDATE)
+    info(isBridgeUpdateEnabled ? 'Bridge update command has been added.' : 'Bridge workflow update is disabled')
+    return isBridgeUpdateEnabled ? BridgeThinClient.BRIDGE_CLI_COMMANDS.UPDATE : ''
+  }
+
   async isBridgeInstalled(bridgeVersion: string): Promise<boolean> {
     try {
       await this.ensureBridgePathIsSet()
       const bridgeExecutable = this.getBridgeExecutablePath()
 
-      if (!this.isBridgeExecutableAvailable(bridgeExecutable)) {
+      if (!checkIfPathExists(bridgeExecutable)) {
+        debug('Bridge executable does not exist')
         return false
       }
 
       this.currentVersion = await this.getBridgeVersion()
-      this.isBridgeCLIInstalled = this.isVersionMatch(bridgeVersion, this.currentVersion)
+      this.isBridgeCLIInstalled = this.currentVersion === bridgeVersion
       return this.isBridgeCLIInstalled
     } catch (error: unknown) {
       debug(`Failed to get bridge version: ${(error as Error).message}`)
@@ -154,13 +166,23 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected async updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    if (parseToBoolean(inputs.ENABLE_NETWORK_AIR_GAP)) {
-      await this.executeUseBridgeCommand(this.getBridgeExecutablePath(), requestedVersion)
-      return {bridgeUrl: '', bridgeVersion: requestedVersion}
-    } else {
-      const bridgeUrl = this.getVersionUrl(requestedVersion).trim()
-      return {bridgeUrl, bridgeVersion: requestedVersion}
+    const bridgeExecutablePath = this.getBridgeExecutablePath()
+    const executableExists = checkIfPathExists(bridgeExecutablePath)
+
+    // Always validate version for both air gap and non-air gap modes
+    const isValidVersion = await this.validateBridgeVersion(requestedVersion)
+    if (!isValidVersion) {
+      throw new Error(constants.BRIDGE_VERSION_NOT_FOUND_ERROR)
     }
+
+    // Use existing executable or provide download URL
+    if (executableExists) {
+      info(`Bridge CLI already exists`)
+      await this.executeUseBridgeCommand(bridgeExecutablePath, requestedVersion)
+      return {bridgeUrl: '', bridgeVersion: requestedVersion}
+    }
+
+    return {bridgeUrl: this.getVersionUrl(requestedVersion), bridgeVersion: requestedVersion}
   }
 
   private async ensureBridgePathIsSet(): Promise<void> {
@@ -169,31 +191,17 @@ export class BridgeThinClient extends BridgeClientBase {
     }
   }
 
-  private getBridgeExecutablePath(): string {
+  protected getBridgeExecutablePath(): string {
     return path.join(this.bridgePath, this.getBridgeFileType())
   }
 
-  private isBridgeExecutableAvailable(bridgeExecutable: string): boolean {
-    if (!checkIfPathExists(bridgeExecutable)) {
-      debug('Bridge executable does not exist')
-      return false
-    }
-    return true
-  }
-
-  private isVersionMatch(expectedVersion: string, currentVersion: string): boolean {
-    return expectedVersion === currentVersion
-  }
-
-  private handleBridgeUpdateCommand(): string {
-    const isBridgeUpdateDisabled = parseToBoolean(inputs.DISABLE_BRIDGE_WORKFLOW_UPDATE)
-    info(isBridgeUpdateDisabled ? 'Bridge workflow update is disabled' : 'Bridge update command has been added.')
-    return isBridgeUpdateDisabled ? '' : this.BRIDGE_CLI_UPDATE_COMMAND
-  }
-
   protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
-    await this.validateAndSetBridgePath()
-    return Promise.resolve(true)
+    if (!this.bridgePath) {
+      await this.validateAndSetBridgePath()
+    }
+    const executablePath = this.getBridgeExecutablePath()
+    debug(`Validating air gap executable at: ${executablePath}`)
+    return checkIfPathExists(executablePath)
   }
 
   protected getLatestVersionRegexPattern(): RegExp {
@@ -202,13 +210,56 @@ export class BridgeThinClient extends BridgeClientBase {
 
   private async executeUseBridgeCommand(bridgeExecutable: string, bridgeVersion: string): Promise<void> {
     debug('Different bridge version found, running --use bridge command')
-    const useBridgeCommand = `${bridgeExecutable} ${this.BRIDGE_CLI_USE_COMMAND} ${this.getBridgeFileType()}@${bridgeVersion}`
+    const useBridgeCommand = `${bridgeExecutable} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.USE} ${this.getBridgeFileType()}@${bridgeVersion}`
     try {
       execSync(useBridgeCommand, {stdio: 'pipe'})
       debug(`Successfully executed --use bridge command: ${useBridgeCommand} with version ${bridgeVersion}`)
     } catch (err) {
       debug(`Failed to execute --use bridge command: ${(err as Error).message}`)
       throw err
+    }
+  }
+
+  async validateBridgeVersion(version: string): Promise<boolean> {
+    const versions = await this.getAllAvailableBridgeVersions()
+    return versions.includes(version.trim())
+  }
+
+  protected async processBaseUrlWithLatest(): Promise<BridgeVersionInfo> {
+    const normalizedVersionUrl = this.getNormalizedVersionUrl()
+    const bridgeVersion = await this.getBridgeVersionFromLatestURL(normalizedVersionUrl)
+
+    if (!bridgeVersion) {
+      throw new Error(`${BridgeThinClient.ERROR_MESSAGES.LATEST_VERSION_ERROR} ${normalizedVersionUrl}. Stopping execution.`)
+    }
+
+    debug(`Retrieved bridge version: ${bridgeVersion}`)
+    return {bridgeUrl: this.bridgeUrlLatestPattern, bridgeVersion}
+  }
+
+  protected async processLatestVersion(): Promise<BridgeVersionInfo> {
+    if (!(await this.checkIfBridgeExistsLocally())) {
+      return this.processBaseUrlWithLatest()
+    }
+
+    try {
+      // Use cached version if available, otherwise get it once
+      this.currentVersion ??= await this.getBridgeVersion()
+      const latestVersionInfo = await this.getLatestVersionInfo()
+
+      if (latestVersionInfo.bridgeVersion && this.currentVersion !== latestVersionInfo.bridgeVersion) {
+        info(`Bridge CLI already exists`)
+        debug(`Bridge CLI already exists with version ${this.currentVersion}, but latest version ${latestVersionInfo.bridgeVersion} is available. Updating to latest.`)
+        await this.executeUseBridgeCommand(this.getBridgeExecutablePath(), latestVersionInfo.bridgeVersion)
+        this.currentVersion = latestVersionInfo.bridgeVersion
+        return {bridgeUrl: '', bridgeVersion: latestVersionInfo.bridgeVersion}
+      }
+
+      info('Bridge CLI already exists with the latest version')
+      return {bridgeUrl: '', bridgeVersion: this.currentVersion}
+    } catch (error) {
+      debug(`Error checking bridge version: ${(error as Error).message}. Proceeding with latest version download.`)
+      return this.processBaseUrlWithLatest()
     }
   }
 }

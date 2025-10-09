@@ -1,7 +1,6 @@
 import {exec, ExecOptions} from '@actions/exec'
 import {debug, info, warning} from '@actions/core'
 import * as constants from '../../application-constants'
-import {BRIDGE_CLI_DEFAULT_PATH_LINUX, BRIDGE_CLI_DEFAULT_PATH_MAC, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, LINUX_PLATFORM_NAME, MAC_PLATFORM_NAME, NON_RETRY_HTTP_CODES, RETRY_COUNT, RETRY_DELAY_IN_MILLISECONDS, WINDOWS_PLATFORM_NAME} from '../../application-constants'
 import path from 'path'
 import {checkIfPathExists, cleanupTempDir, getSharedHttpClient, getSharedHttpsAgent, parseToBoolean, sleep} from '../utility'
 import os from 'os'
@@ -15,7 +14,6 @@ import {tryGetExecutablePath} from '@actions/io/lib/io-util'
 import {rmRF} from '@actions/io'
 import semver from 'semver'
 import DomParser from 'dom-parser'
-import * as url from 'node:url'
 import * as https from 'node:https'
 
 export abstract class BridgeClientBase {
@@ -42,6 +40,7 @@ export abstract class BridgeClientBase {
 
   abstract getBridgeFileType(): string
   abstract getBridgeVersion(): Promise<string>
+  abstract getBridgeFileNameType(): string
   abstract getBridgeType(): string
   abstract generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string
   abstract isBridgeInstalled(bridgeVersion: string): Promise<boolean>
@@ -53,8 +52,10 @@ export abstract class BridgeClientBase {
   protected abstract getBridgeCLIDownloadDefaultPath(): string
   protected abstract handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string, bridgePathType?: string, pathSeparator?: string): Promise<void>
   protected abstract initializeUrls(): void
+  protected abstract processBaseUrlWithLatest(): Promise<{bridgeUrl: string; bridgeVersion: string}>
+  protected abstract processLatestVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}>
   protected abstract updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}>
-  protected abstract verifyRegexCheck(url: string): RegExpMatchArray | null
+  protected abstract verifyRegexCheck(bridgeUrl: string): RegExpMatchArray | null
 
   async prepareCommand(tempDir: string): Promise<string> {
     try {
@@ -236,9 +237,9 @@ export abstract class BridgeClientBase {
   private getBasePath(): string {
     const osName = process.platform
     const basePaths: Record<string, {env: string; dir: string}> = {
-      [MAC_PLATFORM_NAME]: {env: 'HOME', dir: BRIDGE_CLI_DEFAULT_PATH_MAC},
-      [LINUX_PLATFORM_NAME]: {env: 'HOME', dir: BRIDGE_CLI_DEFAULT_PATH_LINUX},
-      [WINDOWS_PLATFORM_NAME]: {env: 'USERPROFILE', dir: BRIDGE_CLI_DEFAULT_PATH_WINDOWS}
+      [constants.MAC_PLATFORM_NAME]: {env: 'HOME', dir: constants.BRIDGE_CLI_DEFAULT_PATH_MAC},
+      [constants.LINUX_PLATFORM_NAME]: {env: 'HOME', dir: constants.BRIDGE_CLI_DEFAULT_PATH_LINUX},
+      [constants.WINDOWS_PLATFORM_NAME]: {env: 'USERPROFILE', dir: constants.BRIDGE_CLI_DEFAULT_PATH_WINDOWS}
     }
     const base = basePaths[osName]
     return base ? path.join(process.env[base.env] as string, base.dir) : ''
@@ -265,7 +266,6 @@ export abstract class BridgeClientBase {
         return
       }
       info('Downloading and configuring Bridge from URL - '.concat(bridgeUrl))
-
       const downloadResponse: DownloadFileResponse = await getRemoteFile(tempDir, bridgeUrl)
       let extractZippedFilePath: string = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY || this.getBridgeCLIDownloadDefaultPath()
       if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
@@ -297,19 +297,39 @@ export abstract class BridgeClientBase {
   }
 
   private async getBridgeUrlAndVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    debug(`Bridge CLI download URL: ${inputs.BRIDGE_CLI_DOWNLOAD_URL}`)
+    // Give precedence to BRIDGE_CLI_BASE_URL over BRIDGE_CLI_DOWNLOAD_URL
+    if (inputs.BRIDGE_CLI_BASE_URL && inputs.BRIDGE_CLI_DOWNLOAD_URL) {
+      debug('Both BRIDGE_CLI_BASE_URL and BRIDGE_CLI_DOWNLOAD_URL provided. Using BRIDGE_CLI_BASE_URL.')
+      warning('BRIDGE_CLI_DOWNLOAD_URL is ignored when BRIDGE_CLI_BASE_URL is provided.')
+    }
+
+    // Check if BRIDGE_CLI_BASE_URL is provided (with or without version)
+    if (inputs.BRIDGE_CLI_BASE_URL) {
+      if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
+        debug(`Using BRIDGE_CLI_BASE_URL with specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
+        return this.processVersion()
+      } else {
+        debug('Using BRIDGE_CLI_BASE_URL to fetch the latest version.')
+        return this.processLatestVersion(isAirGap)
+      }
+    }
+
+    // Fall back to BRIDGE_CLI_DOWNLOAD_URL if BRIDGE_CLI_BASE_URL is not provided
     if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
-      debug('Using provided Bridge CLI download URL')
-      return await this.processDownloadUrl()
+      warning('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
+      return this.processDownloadUrl()
     }
 
     if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
-      debug(`Using specified Bridge CLI version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
-      return await this.processVersion()
+      debug(`Using specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
+      if (isAirGap && !inputs.BRIDGE_CLI_BASE_URL) {
+        throw new Error('No BRIDGE_CLI_BASE_URL provided')
+      }
+      return this.processVersion()
     }
 
-    debug('No specific URL or version provided, using latest version')
-    return await this.processLatestVersion(isAirGap)
+    debug('No specific Bridge CLI version provided, fetching the latest version.')
+    return this.processLatestVersion(isAirGap)
   }
 
   private async processDownloadUrl(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
@@ -336,40 +356,44 @@ export abstract class BridgeClientBase {
     return await this.updateBridgeCLIVersion(requestedVersion)
   }
 
-  private async processLatestVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    if (isAirGap && (await this.checkIfBridgeExistsInAirGap())) {
-      info('Bridge CLI already exists')
-      return {bridgeUrl: '', bridgeVersion: ''}
+  /**
+   * Checks if bridge exists locally (for non-airgap scenarios)
+   * @returns Promise<boolean> indicating if bridge exists
+   */
+  protected async checkIfBridgeExistsLocally(): Promise<boolean> {
+    try {
+      await this.validateAndSetBridgePath()
+      const bridgeExecutablePath = this.getBridgeExecutablePath()
+      return checkIfPathExists(bridgeExecutablePath)
+    } catch (error) {
+      debug(`Error checking if bridge exists locally: ${(error as Error).message}`)
+      return false
     }
-
-    info('Checking for latest version of Bridge to download and configure')
-    const bridgeVersion = await this.getBridgeVersionFromLatestURL(this.bridgeArtifactoryURL.concat('latest/versions.txt'))
-    const bridgeUrl = this.bridgeUrlLatestPattern
-
-    return {bridgeUrl, bridgeVersion}
   }
 
   /**
-   * Executes a bridge command with consistent debug logging
-   * @param bridgeCommand The command to execute
-   * @param execOptions Execution options
-   * @returns Promise with exit code
+   * Gets the latest version information from the remote source
+   * @returns Promise with latest version info
    */
-  protected async runBridgeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
-    await this.setBridgeExecutablePath()
-    debug('Bridge executable path:'.concat(this.bridgePath))
-    if (!this.bridgeExecutablePath) {
-      throw new Error(constants.BRIDGE_EXECUTABLE_NOT_FOUND_ERROR.concat(this.bridgePath))
+  protected async getLatestVersionInfo(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    return await this.processBaseUrlWithLatest()
+  }
+
+  /**
+   * Gets the bridge executable path for existence checks
+   * @returns The bridge executable path
+   */
+  protected getBridgeExecutablePath(): string {
+    if (process.platform === constants.WINDOWS_PLATFORM_NAME) {
+      return path.join(this.bridgePath, 'bridge-cli.exe')
+    } else {
+      return path.join(this.bridgePath, 'bridge-cli')
     }
-    debug(`Executing bridge command: ${bridgeCommand}`)
-    const result = await exec(this.bridgeExecutablePath.concat(' ', bridgeCommand), [], execOptions)
-    debug(`Bridge command execution completed with exit code: ${result}`)
-    return result
   }
 
   async executeBridgeCommand(bridgeCommand: string, workingDirectory: string): Promise<number> {
     const osName: string = process.platform
-    if (osName === MAC_PLATFORM_NAME || osName === LINUX_PLATFORM_NAME || osName === WINDOWS_PLATFORM_NAME) {
+    if (osName === constants.MAC_PLATFORM_NAME || osName === constants.LINUX_PLATFORM_NAME || osName === constants.WINDOWS_PLATFORM_NAME) {
       const execOp: ExecOptions = {
         cwd: workingDirectory
       }
@@ -384,14 +408,14 @@ export abstract class BridgeClientBase {
 
   async getBridgeVersionFromLatestURL(latestVersionsUrl: string): Promise<string> {
     try {
-      let retryCountLocal = RETRY_COUNT
-      let retryDelay = RETRY_DELAY_IN_MILLISECONDS
+      let retryCountLocal = constants.RETRY_COUNT
+      let retryDelay = constants.RETRY_DELAY_IN_MILLISECONDS
 
       do {
         try {
           const response = await this.makeHttpsGetRequest(latestVersionsUrl)
 
-          if (!NON_RETRY_HTTP_CODES.has(Number(response.statusCode))) {
+          if (!constants.NON_RETRY_HTTP_CODES.has(Number(response.statusCode))) {
             retryDelay = await this.retrySleepHelper('Getting latest Bridge CLI versions has been failed, Retries left: ', retryCountLocal, retryDelay)
             retryCountLocal--
           } else if (response.statusCode === 200) {
@@ -399,7 +423,7 @@ export abstract class BridgeClientBase {
             const htmlResponse = response.body.trim()
             const lines = htmlResponse.split('\n')
             for (const line of lines) {
-              if (line.includes('bridge-cli-bundle')) {
+              if (line.includes(this.getBridgeType())) {
                 return line.split(':')[1].trim()
               }
             }
@@ -442,26 +466,25 @@ export abstract class BridgeClientBase {
   }
 
   async setBridgeExecutablePath(): Promise<void> {
-    if (process.platform === WINDOWS_PLATFORM_NAME) {
+    if (process.platform === constants.WINDOWS_PLATFORM_NAME) {
       this.bridgeExecutablePath = await tryGetExecutablePath(this.bridgePath.concat('\\bridge-cli'), ['.exe'])
-    } else if (process.platform === MAC_PLATFORM_NAME || process.platform === LINUX_PLATFORM_NAME) {
+    } else if (process.platform === constants.MAC_PLATFORM_NAME || process.platform === constants.LINUX_PLATFORM_NAME) {
       this.bridgeExecutablePath = await tryGetExecutablePath(this.bridgePath.concat('/bridge-cli'), [])
     }
   }
-
   getVersionUrl(version: string): string {
     const platform = this.getPlatformForVersion(version)
     return this.bridgeUrlPattern.replace(/\$version/g, version).replace('$platform', platform)
   }
 
   private getPlatformForVersion(version: string): string {
-    if (process.platform === MAC_PLATFORM_NAME) {
+    if (process.platform === constants.MAC_PLATFORM_NAME) {
       const isARM = !os.cpus()[0].model.includes('Intel')
       const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
       return this.selectPlatform(version, isARM, isValidVersionForARM, this.MAC_ARM_PLATFORM, this.MAC_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
     }
 
-    if (process.platform === LINUX_PLATFORM_NAME) {
+    if (process.platform === constants.LINUX_PLATFORM_NAME) {
       const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
       const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
       return this.selectPlatform(version, isARM, isValidVersionForARM, this.LINUX_ARM_PLATFORM, this.LINUX_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION)
@@ -475,14 +498,10 @@ export abstract class BridgeClientBase {
     debug(`Validating air gap executable at: ${executablePath}`)
 
     const executableExists = checkIfPathExists(executablePath)
-
     if (!executableExists) {
-      if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
-        debug(`Executable missing in air gap mode, will download from: ${inputs.BRIDGE_CLI_DOWNLOAD_URL}`)
-      } else {
-        const errorMessage = constants.BRIDGE_EXECUTABLE_NOT_FOUND_ERROR.concat(bridgePath)
-        debug(`Air gap validation failed: ${errorMessage}`)
-        throw new Error(errorMessage)
+      if (!inputs.BRIDGE_CLI_BASE_URL) {
+        debug(`No BRIDGE_CLI_BASE_URL provided`)
+        throw new Error('No BRIDGE_CLI_BASE_URL provided')
       }
     }
   }
@@ -490,8 +509,8 @@ export abstract class BridgeClientBase {
   async getAllAvailableBridgeVersions(): Promise<string[]> {
     let htmlResponse = ''
     const httpClient = getSharedHttpClient()
-    let retryCountLocal = RETRY_COUNT
-    let retryDelay = RETRY_DELAY_IN_MILLISECONDS
+    let retryCountLocal = constants.RETRY_COUNT
+    let retryDelay = constants.RETRY_DELAY_IN_MILLISECONDS
     let httpResponse
     const versionArray: string[] = []
     do {
@@ -499,7 +518,7 @@ export abstract class BridgeClientBase {
         Accept: 'text/html'
       })
 
-      if (!NON_RETRY_HTTP_CODES.has(Number(httpResponse.message.statusCode))) {
+      if (!constants.NON_RETRY_HTTP_CODES.has(Number(httpResponse.message.statusCode))) {
         retryDelay = await this.retrySleepHelper('Getting all available bridge versions has been failed, Retries left: ', retryCountLocal, retryDelay)
         retryCountLocal--
       } else {
@@ -508,7 +527,7 @@ export abstract class BridgeClientBase {
 
         const domParser = new DomParser()
         const doms = domParser.parseFromString(htmlResponse)
-        const elems = doms.getElementsByTagName('a') //querySelectorAll('a')
+        const elems = doms.getElementsByTagName('a')
 
         if (elems != null) {
           for (const el of elems) {
@@ -531,52 +550,87 @@ export abstract class BridgeClientBase {
     return versionArray
   }
 
-  private async makeHttpsGetRequest(targetUrl: string): Promise<{statusCode: number; body: string}> {
-    return new Promise((resolve, reject) => {
-      const parsedUrl = new url.URL(targetUrl)
-      const agent = getSharedHttpsAgent()
+  protected async runBridgeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
+    await this.setBridgeExecutablePath()
+    debug('Bridge executable path:'.concat(this.bridgePath))
+    if (!this.bridgeExecutablePath) {
+      throw new Error(constants.BRIDGE_EXECUTABLE_NOT_FOUND_ERROR.concat(this.bridgePath))
+    }
+    debug(`Executing bridge command: ${bridgeCommand}`)
+    const result = await exec(this.bridgeExecutablePath.concat(' ', bridgeCommand), [], execOptions)
+    debug(`Bridge command execution completed with exit code: ${result}`)
+    return result
+  }
 
-      const requestOptions: https.RequestOptions = {
+  protected determineBaseUrl(): string {
+    if (this.isAirGapMode() && !inputs.BRIDGE_CLI_BASE_URL) {
+      throw new Error('No BRIDGE_CLI_BASE_URL provided')
+    }
+    return inputs.BRIDGE_CLI_BASE_URL || constants.BRIDGE_CLI_ARTIFACTORY_URL
+  }
+
+  protected setupBridgeUrls(baseUrl: string): void {
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    this.bridgeArtifactoryURL = `${normalizedBaseUrl}${this.getBridgeType()}`
+    this.bridgeUrlPattern = `${normalizedBaseUrl}${this.getBridgeType()}/$version/${this.getBridgeFileNameType()}-$version-$platform.zip`
+    this.bridgeUrlLatestPattern = `${normalizedBaseUrl}${this.getBridgeType()}/latest/${this.getBridgeFileNameType()}-${this.getPlatformName()}.zip`
+  }
+
+  protected isAirGapMode(): boolean {
+    return parseToBoolean(ENABLE_NETWORK_AIR_GAP)
+  }
+
+  protected getNormalizedVersionUrl(): string {
+    return this.bridgeUrlLatestPattern.replace(this.getLatestVersionRegexPattern(), 'versions.txt')
+  }
+
+  protected getPlatformName(): string {
+    if (process.platform === constants.MAC_PLATFORM_NAME) {
+      const isARM = !os.cpus()[0].model.includes('Intel')
+      return isARM ? this.MAC_ARM_PLATFORM : this.MAC_PLATFORM
+    }
+
+    if (process.platform === constants.LINUX_PLATFORM_NAME) {
+      const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
+      return isARM ? this.LINUX_ARM_PLATFORM : this.LINUX_PLATFORM
+    }
+
+    return this.WINDOWS_PLATFORM
+  }
+
+  protected async makeHttpsGetRequest(requestUrl: string): Promise<{statusCode: number; body: string}> {
+    return new Promise((resolve, reject) => {
+      const parsedUrl = new URL(requestUrl)
+      const options = {
         hostname: parsedUrl.hostname,
         port: parsedUrl.port || 443,
         path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
-        agent,
-        headers: {
-          Accept: 'text/html',
-          'User-Agent': 'BlackDuckSecurityAction'
-        }
+        agent: getSharedHttpsAgent()
       }
 
-      const req = https.request(requestOptions, res => {
+      const req = https.request(options, res => {
         let body = ''
-
         res.on('data', chunk => {
           body += chunk
         })
-
         res.on('end', () => {
           resolve({
             statusCode: res.statusCode || 0,
             body
           })
         })
-
-        res.on('error', err => {
-          reject(err)
-        })
       })
 
-      req.on('error', err => {
-        reject(err)
-      })
-
-      req.setTimeout(30000, () => {
-        req.destroy()
-        reject(new Error('Request timeout'))
+      req.on('error', error => {
+        reject(error)
       })
 
       req.end()
     })
+  }
+
+  protected shouldUpdateBridge(currentVersion: string, latestVersion: string): boolean {
+    return currentVersion !== latestVersion
   }
 }

@@ -138,7 +138,10 @@ inputs:
     description: 'Bridge CLI Install Directory'
     required: false
   bridgecli_download_url:
-    description: 'URL to download bridge from'
+    description: 'description: '[DEPRECATED] Use bridgecli_download_version with bridgeBaseUrl instead of this URL to download Bridge.''
+    required: false
+  bridgecli_base_url:
+    description: 'Base URL for Bridge CLI URL'
     required: false
   blackducksca_url:
     description: 'URL for blackduck hub'
@@ -174,12 +177,12 @@ inputs:
     description: 'Flag to enable thin client mode. Default: true. If set to false, it will use bridge-cli-bundle.'
     required: false
     default: true
-  disable_bridge_workflow_update:
-    description: 'Flag to disable workflow updates for thin client. Default: false.'
+  enable_workflow_update:
+    description: 'Flag to enable workflow updates for thin client. Default: true'
     required: false
     default: false
-  bridge_register_url:
-    description: 'Register URL for thin client in airgap mode to use custom root registry'
+  bridge_registry_url:
+    description: 'Registry URL for thin client in airgap mode to use custom root registry'
     required: false
   polaris_workflow_version:
     description: 'Specific workflow version for Polaris (thin client only)'

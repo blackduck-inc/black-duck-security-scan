@@ -6,12 +6,14 @@ export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.tr
 export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || getInput(constants.BRIDGE_DOWNLOAD_URL_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || ''
 
+export const BRIDGE_CLI_BASE_URL = getInput(constants.BRIDGE_CLI_BASE_URL_KEY)?.trim() || ''
+
 // Thin Client Configuration
 export const ENABLE_BRIDGE_THIN_CLIENT = getInput(constants.ENABLE_BRIDGE_THIN_CLIENT)?.trim() || ''
-export const DISABLE_BRIDGE_WORKFLOW_UPDATE = getInput(constants.DISABLE_BRIDGE_WORKFLOW_UPDATE_KEY)?.trim() || 'false'
+export const ENABLE_WORKFLOW_UPDATE = getInput(constants.ENABLE_WORKFLOW_UPDATE_KEY)?.trim() || 'true'
 export const BRIDGE_REGISTRY_URL = getInput(constants.BRIDGE_REGISTRY_URL_KEY)?.trim() || ''
 
-// Workflow Versions
+// Workflow Version
 export const POLARIS_WORKFLOW_VERSION = getInput(constants.POLARIS_WORKFLOW_VERSION_KEY)?.trim() || ''
 export const COVERITY_WORKFLOW_VERSION = getInput(constants.COVERITY_WORKFLOW_VERSION_KEY)?.trim() || ''
 export const SRM_WORKFLOW_VERSION = getInput(constants.SRM_WORKFLOW_VERSION_KEY)?.trim() || ''

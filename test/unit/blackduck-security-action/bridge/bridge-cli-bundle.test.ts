@@ -38,6 +38,22 @@ mock('fs')
 const utility = require('../../../../src/blackduck-security-action/utility')
 mock('../../../../src/blackduck-security-action/utility')
 
+// Mock inputs module
+jest.mock('../../../../src/blackduck-security-action/inputs', () => ({
+  ENABLE_NETWORK_AIR_GAP: 'false',
+  BRIDGE_CLI_DOWNLOAD_URL: '',
+  BRIDGE_CLI_BASE_URL: '',
+  COVERITY_URL: '',
+  COVERITY_USER: '',
+  COVERITY_PASSPHRASE: '',
+  COVERITY_PROJECT_NAME: '',
+  COVERITY_STREAM_NAME: '',
+  SRM_URL: '',
+  SRM_TOKEN: '',
+  SRM_PROJECT_NAME: '',
+  SRM_PROJECT_ID: ''
+}))
+
 beforeEach(() => {
   Object.defineProperty(constants, 'RETRY_COUNT', {value: 3})
   Object.defineProperty(constants, 'RETRY_DELAY_IN_MILLISECONDS', {value: 100})
@@ -357,18 +373,21 @@ describe('updateBridgeCLIVersion', () => {
     expect(bridgeCliBundle.validateBridgeVersion).toHaveBeenCalledWith('1.2.3')
   })
 
-  test('should throw error when air gap is enabled, download URL is empty, and version is provided', async () => {
+  test('should throw error when air gap is enabled, bridge CLI base URL is empty, and version is provided', async () => {
     // Mock inputs for air gap mode
     Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: 'true', configurable: true})
-    Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
 
-    await expect((bridgeCliBundle as any).updateBridgeCLIVersion('1.2.3')).rejects.toThrow("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_DOWNLOAD_URL'.")
+    // Mock the isAirGapMode method to return true
+    jest.spyOn(bridgeCliBundle as any, 'isAirGapMode').mockReturnValue(true)
+
+    await expect((bridgeCliBundle as any).updateBridgeCLIVersion('1.2.3')).rejects.toThrow("Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_BASE_URL'.")
   })
 
   test('should return bridge URL and version when air gap is enabled but download URL is provided', async () => {
     // Mock inputs for air gap mode with download URL
     Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: 'true', configurable: true})
-    Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://custom.com/bridge.zip', configurable: true})
+    Object.defineProperty(inputs, 'BRIDGE_CLI_BASEURL', {value: 'https://custom.com/bridge.zip', configurable: true})
 
     // Mock validateBridgeVersion to return true
     jest.spyOn(bridgeCliBundle, 'validateBridgeVersion').mockResolvedValue(true)
