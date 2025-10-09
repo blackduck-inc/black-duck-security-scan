@@ -189,8 +189,12 @@ class TestBridgeClient extends BridgeClientBase {
     return '1.0.0'
   }
 
+  getBridgeFileNameType(): string {
+    return 'bridge-cli'
+  }
+
   getBridgeType(): string {
-    return 'test-bridge'
+    return 'bridge-cli-bundle'
   }
 
   generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
@@ -201,7 +205,7 @@ class TestBridgeClient extends BridgeClientBase {
     return false
   }
 
-  async validateAndSetBridgePath(): Promise<boolean> {
+  async validateAndSetBridgePath(): Promise<void> {
     this.bridgePath = '/test/bridge/path'
   }
 
@@ -221,21 +225,27 @@ class TestBridgeClient extends BridgeClientBase {
     return '/test/download/path'
   }
 
-  protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string): Promise<void> {
+  protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string, bridgePathType?: string, pathSeparator?: string): Promise<void> {
     // Mock implementation
   }
 
   protected initializeUrls(): void {
-    this.bridgeArtifactoryURL = 'https://test.artifactory.url/'
-    this.bridgeUrlPattern = 'https://test.url.pattern'
-    this.bridgeUrlLatestPattern = 'https://test.latest.pattern'
+    // Mock implementation
+  }
+
+  protected async processBaseUrlWithLatest(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    return {bridgeUrl: 'https://test-url.com', bridgeVersion: '1.0.0'}
+  }
+
+  protected async processLatestVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    return {bridgeUrl: 'https://test-url.com', bridgeVersion: '1.0.0'}
   }
 
   protected async updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}> {
-    return {bridgeUrl: 'https://test.url', bridgeVersion: requestedVersion}
+    return {bridgeUrl: 'https://test-url.com', bridgeVersion: requestedVersion}
   }
 
-  protected verifyRegexCheck(url: string): RegExpMatchArray | null {
+  protected verifyRegexCheck(bridgeUrl: string): RegExpMatchArray | null {
     return null
   }
 }

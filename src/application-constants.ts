@@ -26,7 +26,7 @@ export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
 // Thin Client Configuration
 export const ENABLE_BRIDGE_THIN_CLIENT = 'enable_bridge_thin_client'
 export const ENABLE_WORKFLOW_UPDATE_KEY = 'enable_workflow_update'
-export const BRIDGE_REGISTRY_URL_KEY = 'bridge_registry_url'
+export const BRIDGE_CLI_REGISTRY_URL_KEY = 'bridgecli_registry_url'
 
 // Workflow Version Keys
 export const POLARIS_WORKFLOW_VERSION_KEY = 'polaris_workflow_version'

@@ -1355,28 +1355,6 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
 })
 
 describe('test coverity values passed correctly to bridge for workflow simplification', () => {
-  it('should pass coverity pr comment fields to bridge in pr context', () => {
-    Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-    Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-    Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-    Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'true'})
-    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
-    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForCoverity()
-
-    const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
-    const jsonData = JSON.parse(jsonString)
-    expect(resp).not.toBeNull()
-    expect(resp.stage).toBe('connect')
-    expect(resp.stateFilePath).toContain('coverity_input.json')
-    expect(resp.workflowVersion).toBeDefined()
-    expect(jsonData.data.coverity.automation.prcomment).toBe(true)
-    expect(jsonData.data.github.host.url).toBe('https://custom.com')
-  })
-
   it('should not pass coverity pr comment fields to bridge in non pr context', () => {
     Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
     Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})

@@ -23,7 +23,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   private static readonly REGEX = {
     VERSION_PATTERN: new RegExp(`${BridgeCliBundle.BRIDGE_FILE_NAME}:\\s*([0-9.]+)`),
     LATEST_VERSION: new RegExp(`(${BridgeCliBundle.BRIDGE_FILE_NAME}-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)`),
-    URL_PATTERN: new RegExp(`.*${BridgeCliBundle.BRIDGE_FILE_NAME}-([0-9.]*) .*`)
+    URL_PATTERN: new RegExp(`.*${BridgeCliBundle.BRIDGE_FILE_NAME}-([0-9.]*).*`)
   }
 
   private static readonly ERROR_MESSAGES = {
@@ -39,19 +39,114 @@ export class BridgeCliBundle extends BridgeClientBase {
     return BridgeCliBundle.REGEX.VERSION_PATTERN
   }
 
+  // ---------------- Protected Methods ----------------
+  protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string): Promise<void> {
+    const extractPath = path.join(extractZippedFilePath, this.getBridgeType())
+    debug(`Starting bridge download handling - extracting to: ${extractPath}`)
+
+    await this.extractAndMoveBridge(downloadResponse, extractPath)
+    await this.cleanupEmptyDirectory(extractPath)
+  }
+
+  protected async updateBridgeCLIVersion(requestedVersion: string): Promise<BridgeVersionInfo> {
+    if (await this.validateBridgeVersion(requestedVersion)) {
+      const bridgeUrl = this.getVersionUrl(requestedVersion).trim()
+      return {bridgeUrl, bridgeVersion: requestedVersion}
+    }
+
+    throw new Error(constants.BRIDGE_VERSION_NOT_FOUND_ERROR)
+  }
+
+  protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
+    if (!this.bridgePath) {
+      await this.validateAndSetBridgePath()
+    }
+    const executablePath = path.join(this.bridgePath, this.getBridgeFileType())
+    return checkIfPathExists(executablePath)
+  }
+
+  protected getLatestVersionRegexPattern(): RegExp {
+    return BridgeCliBundle.REGEX.LATEST_VERSION
+  }
+
+  protected async processBaseUrlWithLatest(): Promise<BridgeVersionInfo> {
+    const normalizedVersionUrl = this.getNormalizedVersionUrl()
+    const bridgeVersion = await this.getBridgeVersionFromLatestURL(normalizedVersionUrl)
+
+    if (!bridgeVersion) {
+      throw new Error(`${BridgeCliBundle.ERROR_MESSAGES.LATEST_VERSION_ERROR} ${normalizedVersionUrl}. Stopping execution.`)
+    }
+
+    if (await this.isBridgeInstalled(bridgeVersion)) {
+      info('Bridge CLI already exists')
+      return {bridgeUrl: '', bridgeVersion}
+    }
+
+    debug(`Retrieved bridge version: ${bridgeVersion}`)
+    return {bridgeUrl: this.bridgeUrlLatestPattern, bridgeVersion}
+  }
+
+  protected async processLatestVersion(): Promise<BridgeVersionInfo> {
+    const bridgeExists = await this.checkIfBridgeExistsLocally()
+
+    if (bridgeExists) {
+      try {
+        const versionInfo = await this.handleExistingBridge()
+        if (versionInfo) {
+          return versionInfo
+        }
+      } catch (error) {
+        debug(`Error checking bridge version: ${(error as Error).message}. Proceeding with latest version download.`)
+      }
+    }
+
+    return this.processBaseUrlWithLatest()
+  }
+
+  protected createUpdateVersionInfo(currentVersion: string, latestVersion: string): BridgeVersionInfo {
+    info(`Bridge CLI already exists`)
+    debug(`Bridge CLI exists with version ${currentVersion}, but latest version ${latestVersion} is available. Updating to latest.`)
+    return {
+      bridgeUrl: this.bridgeUrlLatestPattern,
+      bridgeVersion: latestVersion
+    }
+  }
+
+  protected createCurrentVersionInfo(currentVersion: string): BridgeVersionInfo {
+    info('Bridge CLI already exists with the latest version')
+    return {
+      bridgeUrl: '',
+      bridgeVersion: currentVersion
+    }
+  }
+
+  protected setupBridgeUrls(baseUrl: string): void {
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    this.bridgeArtifactoryURL = `${normalizedBaseUrl}${this.getBridgeType()}`
+    this.bridgeUrlPattern = `${normalizedBaseUrl}${this.getBridgeType()}/$version/${this.getBridgeFileNameType()}-$version-$platform.zip`
+    this.bridgeUrlLatestPattern = `${normalizedBaseUrl}${this.getBridgeType()}/latest/${this.getBridgeFileNameType()}-${this.getPlatformName()}.zip`
+  }
+
+  protected initializeUrls(): void {
+    this.osPlatform = this.getPlatformName()
+    const baseUrl = this.determineBaseUrl()
+
+    if (baseUrl) {
+      this.setupBridgeUrls(baseUrl)
+    }
+  }
+
+  // ---------------- Public Methods ----------------
   async downloadBridge(tempDir: string): Promise<void> {
     debug('Starting bridge download process...')
-
     await this.clearExistingBridge()
     return super.downloadBridge(tempDir)
   }
 
   generateFormattedCommand(stage: string, stateFilePath: string): string {
     debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
-
     this.logWorkflowVersionInfo()
     const command = this.buildCommand(stage, stateFilePath)
-
     info(`Generated command: ${command}`)
     return command
   }
@@ -61,7 +156,7 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   async validateAndSetBridgePath(): Promise<void> {
-    const basePath = this.determineBasePath()
+    const basePath = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY ? path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType()) : this.getBridgeDefaultPath()
     info(`Bridge CLI directory ${basePath}`)
 
     this.bridgePath = this.constructBridgePath(basePath)
@@ -125,15 +220,6 @@ export class BridgeCliBundle extends BridgeClientBase {
     return this.runBridgeCommand(bridgeCommand, execOptions)
   }
 
-  protected initializeUrls(): void {
-    this.osPlatform = this.getPlatformName()
-    const baseUrl = this.determineBaseUrl()
-
-    if (baseUrl) {
-      this.setupBridgeUrls(baseUrl)
-    }
-  }
-
   getBridgeType(): string {
     return BridgeCliBundle.BRIDGE_TYPE
   }
@@ -146,88 +232,16 @@ export class BridgeCliBundle extends BridgeClientBase {
     return BridgeCliBundle.BRIDGE_FILE_NAME
   }
 
-  protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string): Promise<void> {
-    const extractPath = path.join(extractZippedFilePath, this.getBridgeType())
-    debug(`Starting bridge download handling - extracting to: ${extractPath}`)
-
-    await this.extractAndMoveBridge(downloadResponse, extractPath)
-    await this.cleanupEmptyDirectory(extractPath)
-  }
-
-  protected async updateBridgeCLIVersion(requestedVersion: string): Promise<BridgeVersionInfo> {
-    this.validateAirGapVersionRequest(requestedVersion)
-
-    if (await this.validateBridgeVersion(requestedVersion)) {
-      const bridgeUrl = this.getVersionUrl(requestedVersion).trim()
-      return {bridgeUrl, bridgeVersion: requestedVersion}
-    }
-
-    throw new Error(constants.BRIDGE_VERSION_NOT_FOUND_ERROR)
-  }
-
-  protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
-    if (!this.bridgePath) {
-      await this.validateAndSetBridgePath()
-    }
-    const executablePath = path.join(this.bridgePath, this.getBridgeFileType())
-    return checkIfPathExists(executablePath)
-  }
-
   verifyRegexCheck(bridgeUrl: string): RegExpMatchArray | null {
-    debug(`Verifying URL pattern for bridge type: ${this.getBridgeType()}`)
-    const result = bridgeUrl.match(BridgeCliBundle.REGEX.URL_PATTERN)
-    debug(`URL pattern verification result: ${result ? 'match found' : 'no match'}`)
-    return result
+    return bridgeUrl.match(BridgeCliBundle.REGEX.URL_PATTERN)
   }
 
-  protected getLatestVersionRegexPattern(): RegExp {
-    return BridgeCliBundle.REGEX.LATEST_VERSION
-  }
-
-  protected async processBaseUrlWithLatest(): Promise<BridgeVersionInfo> {
-    const normalizedVersionUrl = this.getNormalizedVersionUrl()
-    const bridgeVersion = await this.getBridgeVersionFromLatestURL(normalizedVersionUrl)
-
-    if (!bridgeVersion) {
-      throw new Error(`${BridgeCliBundle.ERROR_MESSAGES.LATEST_VERSION_ERROR} ${normalizedVersionUrl}. Stopping execution.`)
-    }
-
-    if (await this.isBridgeInstalled(bridgeVersion)) {
-      info('Bridge CLI already exists')
-      return {bridgeUrl: '', bridgeVersion}
-    }
-
-    debug(`Retrieved bridge version: ${bridgeVersion}`)
-    return {bridgeUrl: this.bridgeUrlLatestPattern, bridgeVersion}
-  }
-
-  protected async processLatestVersion(): Promise<BridgeVersionInfo> {
-    const bridgeExists = await this.checkIfBridgeExistsLocally()
-
-    if (bridgeExists) {
-      try {
-        const versionInfo = await this.handleExistingBridge()
-        if (versionInfo) {
-          return versionInfo
-        }
-      } catch (error) {
-        debug(`Error checking bridge version: ${(error as Error).message}. Proceeding with latest version download.`)
-      }
-    }
-
-    return this.processBaseUrlWithLatest()
-  }
-
-  // Private helper methods
+  // ---------------- Private Methods ----------------
   private async clearExistingBridge(): Promise<void> {
     if (fs.existsSync(this.bridgePath)) {
       info(`Clear the existing bridge folder, if available from ${this.bridgePath}`)
       await rmRF(this.bridgePath)
     }
-  }
-
-  private determineBasePath(): string {
-    return inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY ? path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType()) : this.getBridgeDefaultPath()
   }
 
   private constructBridgePath(basePath: string): string {
@@ -281,12 +295,6 @@ export class BridgeCliBundle extends BridgeClientBase {
     return path.join(this.bridgePath, BridgeCliBundle.VERSIONS_TXT)
   }
 
-  private validateAirGapVersionRequest(requestedVersion: string): void {
-    if (this.isAirGapMode() && inputs.BRIDGE_CLI_BASE_URL === '' && requestedVersion !== '') {
-      throw new Error(BridgeCliBundle.ERROR_MESSAGES.AIR_GAP_VERSION_ERROR)
-    }
-  }
-
   private async handleExistingBridge(): Promise<BridgeVersionInfo | null> {
     const currentVersion = await this.getBridgeVersion()
 
@@ -301,22 +309,5 @@ export class BridgeCliBundle extends BridgeClientBase {
     }
 
     return this.createCurrentVersionInfo(currentVersion)
-  }
-
-  protected createUpdateVersionInfo(currentVersion: string, latestVersion: string): BridgeVersionInfo {
-    info(`Bridge CLI already exists`)
-    debug(`Bridge CLI exists with version ${currentVersion}, but latest version ${latestVersion} is available. Updating to latest.`)
-    return {
-      bridgeUrl: this.bridgeUrlLatestPattern,
-      bridgeVersion: latestVersion
-    }
-  }
-
-  protected createCurrentVersionInfo(currentVersion: string): BridgeVersionInfo {
-    info('Bridge CLI already exists with the latest version')
-    return {
-      bridgeUrl: '',
-      bridgeVersion: currentVersion
-    }
   }
 }
