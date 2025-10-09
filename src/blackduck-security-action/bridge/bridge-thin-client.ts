@@ -25,7 +25,6 @@ export class BridgeThinClient extends BridgeClientBase {
   } as const
 
   private currentVersion: string | undefined
-  private isBridgeCLIInstalled: boolean | undefined
 
   private static readonly ERROR_MESSAGES = {
     AIR_GAP_VERSION_ERROR: "Unable to use the specified Bridge CLI version in air gap mode. Please provide a valid 'BRIDGE_CLI_BASE_URL'.",
@@ -54,8 +53,8 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected async executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
-    if (!inputs.BRIDGE_REGISTRY_URL) debug('Registry URL is empty')
-    if (inputs.BRIDGE_REGISTRY_URL && (await this.runBridgeCommand(this.buildRegisterCommand(), execOptions)) !== 0) {
+    if (!inputs.BRIDGE_CLI_REGISTRY_URL) debug('Registry URL is empty')
+    if (inputs.BRIDGE_CLI_REGISTRY_URL && (await this.runBridgeCommand(this.buildRegisterCommand(), execOptions)) !== 0) {
       throw new Error('Register command failed, returning early')
     }
     return this.runBridgeCommand(bridgeCommand, execOptions)
@@ -131,7 +130,7 @@ export class BridgeThinClient extends BridgeClientBase {
 
   private buildRegisterCommand(): string {
     debug('Building register command')
-    const registerCommand = `${this.bridgeExecutablePath} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.REGISTER} ${inputs.BRIDGE_REGISTRY_URL}`
+    const registerCommand = `${this.bridgeExecutablePath} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.REGISTER} ${inputs.BRIDGE_CLI_REGISTRY_URL}`
     debug(`Register command built: ${registerCommand}`)
     return registerCommand
   }
@@ -157,8 +156,7 @@ export class BridgeThinClient extends BridgeClientBase {
       }
 
       this.currentVersion = await this.getBridgeVersion()
-      this.isBridgeCLIInstalled = this.currentVersion === bridgeVersion
-      return this.isBridgeCLIInstalled
+      return this.currentVersion === bridgeVersion
     } catch (error: unknown) {
       debug(`Failed to get bridge version: ${(error as Error).message}`)
       throw error
@@ -189,10 +187,6 @@ export class BridgeThinClient extends BridgeClientBase {
     if (!this.bridgePath) {
       await this.validateAndSetBridgePath()
     }
-  }
-
-  protected getBridgeExecutablePath(): string {
-    return path.join(this.bridgePath, this.getBridgeFileType())
   }
 
   protected async checkIfBridgeExistsInAirGap(): Promise<boolean> {
@@ -261,5 +255,12 @@ export class BridgeThinClient extends BridgeClientBase {
       debug(`Error checking bridge version: ${(error as Error).message}. Proceeding with latest version download.`)
       return this.processBaseUrlWithLatest()
     }
+  }
+
+  setupBridgeUrls(baseUrl: string): void {
+    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+    this.bridgeArtifactoryURL = `${normalizedBaseUrl}${this.getBridgeType()}`
+    this.bridgeUrlPattern = `${normalizedBaseUrl}${this.getBridgeType()}/$version/${this.getBridgeFileNameType()}-$platform.zip`
+    this.bridgeUrlLatestPattern = `${normalizedBaseUrl}${this.getBridgeType()}/latest/${this.getBridgeFileNameType()}-${this.getPlatformName()}.zip`
   }
 }

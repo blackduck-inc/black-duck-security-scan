@@ -7,6 +7,18 @@ import * as utility from '../../../src/blackduck-security-action/utility'
 
 const fs = require('fs')
 
+jest.mock('actions-artifact-v2/lib/artifact', () => ({
+  DefaultArtifactClient: jest.fn().mockImplementation(() => ({
+    uploadArtifact: jest.fn(),
+    downloadArtifact: jest.fn()
+  }))
+}))
+
+// Mock the internal config module
+jest.mock('actions-artifact-v2/lib/internal/shared/config', () => ({
+  getGitHubWorkspaceDir: jest.fn().mockReturnValue('.')
+}))
+
 // Mock the artifact module
 jest.mock('actions-artifact-v2', () => ({
   DefaultArtifactClient: jest.fn().mockImplementation(() => ({

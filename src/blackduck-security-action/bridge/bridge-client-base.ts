@@ -299,36 +299,33 @@ export abstract class BridgeClientBase {
   private async getBridgeUrlAndVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
     // Give precedence to BRIDGE_CLI_BASE_URL over BRIDGE_CLI_DOWNLOAD_URL
     if (inputs.BRIDGE_CLI_BASE_URL && inputs.BRIDGE_CLI_DOWNLOAD_URL) {
-      debug('Both BRIDGE_CLI_BASE_URL and BRIDGE_CLI_DOWNLOAD_URL provided. Using BRIDGE_CLI_BASE_URL.')
-      warning('BRIDGE_CLI_DOWNLOAD_URL is ignored when BRIDGE_CLI_BASE_URL is provided.')
+      info('Both BRIDGE_CLI_BASE_URL and BRIDGE_CLI_DOWNLOAD_URL provided. Using BRIDGE_CLI_BASE_URL.')
+      debug('BRIDGE_CLI_DOWNLOAD_URL is ignored when BRIDGE_CLI_BASE_URL is provided.')
     }
 
     // Check if BRIDGE_CLI_BASE_URL is provided (with or without version)
     if (inputs.BRIDGE_CLI_BASE_URL) {
       if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
-        debug(`Using BRIDGE_CLI_BASE_URL with specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
+        info(`Using BRIDGE_CLI_BASE_URL with specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
         return this.processVersion()
       } else {
-        debug('Using BRIDGE_CLI_BASE_URL to fetch the latest version.')
+        info('Using BRIDGE_CLI_BASE_URL to fetch the latest version.')
         return this.processLatestVersion(isAirGap)
       }
     }
 
     // Fall back to BRIDGE_CLI_DOWNLOAD_URL if BRIDGE_CLI_BASE_URL is not provided
     if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
-      warning('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
+      info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
       return this.processDownloadUrl()
     }
 
     if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
-      debug(`Using specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
-      if (isAirGap && !inputs.BRIDGE_CLI_BASE_URL) {
-        throw new Error('No BRIDGE_CLI_BASE_URL provided')
-      }
+      info(`Using specified version: ${inputs.BRIDGE_CLI_DOWNLOAD_VERSION}`)
       return this.processVersion()
     }
 
-    debug('No specific Bridge CLI version provided, fetching the latest version.')
+    info('No specific Bridge CLI version provided, fetching the latest version.')
     return this.processLatestVersion(isAirGap)
   }
 
@@ -569,14 +566,7 @@ export abstract class BridgeClientBase {
     return inputs.BRIDGE_CLI_BASE_URL || constants.BRIDGE_CLI_ARTIFACTORY_URL
   }
 
-  protected setupBridgeUrls(baseUrl: string): void {
-    const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
-    this.bridgeArtifactoryURL = `${normalizedBaseUrl}${this.getBridgeType()}`
-    this.bridgeUrlPattern = `${normalizedBaseUrl}${this.getBridgeType()}/$version/${this.getBridgeFileNameType()}-$version-$platform.zip`
-    this.bridgeUrlLatestPattern = `${normalizedBaseUrl}${this.getBridgeType()}/latest/${this.getBridgeFileNameType()}-${this.getPlatformName()}.zip`
-  }
-
-  protected isAirGapMode(): boolean {
+  isAirGapMode(): boolean {
     return parseToBoolean(ENABLE_NETWORK_AIR_GAP)
   }
 

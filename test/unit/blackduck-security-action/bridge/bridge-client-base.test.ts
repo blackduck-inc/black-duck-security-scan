@@ -2,7 +2,7 @@ import {BridgeClientBase} from '../../../../src/blackduck-security-action/bridge
 import {BridgeToolsParameter} from '../../../../src/blackduck-security-action/tools-parameter'
 import * as validators from '../../../../src/blackduck-security-action/validators'
 import {ExecOptions} from '@actions/exec'
-import {DownloadFileResponse} from '../../../../src/blackduck-security-action/download-utility' // Mock fs module first to provide chmod
+import {DownloadFileResponse} from '../../../../src/blackduck-security-action/download-utility'
 
 // Mock fs module first to provide chmod
 jest.mock('fs', () => ({
@@ -72,10 +72,15 @@ jest.mock('../../../../src/application-constants', () => ({
   SCAN_TYPE_REQUIRED_ERROR: 'At least one scan type must be configured: {0}, {1}, {2}, or {3}',
   BRIDGE_CLI_URL_NOT_VALID_OS_ERROR: 'Provided Bridge CLI url is not valid for the configured ',
   PROVIDED_BRIDGE_CLI_URL_EMPTY_ERROR: 'Provided Bridge CLI URL cannot be empty ',
+  BRIDGE_CLI_ARTIFACTORY_URL: 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/',
   POLARIS_SERVER_URL_KEY: 'POLARIS_SERVER_URL',
   COVERITY_URL_KEY: 'COVERITY_URL',
   BLACKDUCKSCA_URL_KEY: 'BLACKDUCKSCA_URL',
   SRM_URL_KEY: 'SRM_URL',
+  // Add platform name constants
+  MAC_PLATFORM_NAME: 'darwin',
+  LINUX_PLATFORM_NAME: 'linux',
+  WINDOWS_PLATFORM_NAME: 'win32',
   // Add the missing retry-related constants
   RETRY_COUNT: 3,
   RETRY_DELAY_IN_MILLISECONDS: 15000,
@@ -91,6 +96,11 @@ jest.mock('../../../../src/application-constants', () => ({
     GITHUB_EVENT_NAME: 'GITHUB_EVENT_NAME',
     GITHUB_SERVER_URL: 'GITHUB_SERVER_URL'
   }
+}))
+
+// Mock os module
+jest.mock('os', () => ({
+  cpus: jest.fn().mockReturnValue([{model: 'Intel CPU'}])
 }))
 
 // Mock the inputs module with a factory function that returns mutable values
@@ -120,7 +130,10 @@ jest.mock('../../../../src/blackduck-security-action/inputs', () => {
     POLARIS_WAITFORSCAN: '',
     POLARIS_ASSESSMENT_MODE: '',
     BRIDGE_CLI_DOWNLOAD_URL: '',
-    BRIDGE_CLI_DOWNLOAD_VERSION: ''
+    BRIDGE_CLI_DOWNLOAD_VERSION: '',
+    BRIDGE_CLI_BASE_URL: '',
+    ENABLE_NETWORK_AIR_GAP: '',
+    BRIDGE_CLI_INSTALL_DIRECTORY_KEY: ''
   }
 
   // Create getters that return the current state values
@@ -153,7 +166,15 @@ function setMockInputValue(key: string, value: string) {
 
 // Create a concrete implementation for testing
 class TestBridgeClient extends BridgeClientBase {
+  public callGetBridgeCLIDownloadPathCommon(includeBridgeType = false): string {
+    return this.getBridgeCLIDownloadPathCommon(includeBridgeType)
+  }
+
   getBridgeFileType(): string {
+    return 'bridge-cli'
+  }
+
+  getBridgeFileNameType(): string {
     return 'bridge-cli'
   }
 
@@ -162,7 +183,7 @@ class TestBridgeClient extends BridgeClientBase {
   }
 
   getBridgeType(): string {
-    return 'test-bridge'
+    return 'bridge-cli-bundle'
   }
 
   generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
@@ -193,14 +214,18 @@ class TestBridgeClient extends BridgeClientBase {
     return '/test/download/path'
   }
 
-  protected async handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string): Promise<void> {
-    // Mock implementation
-  }
-
   protected initializeUrls(): void {
     this.bridgeArtifactoryURL = 'https://test.artifactory.url/'
     this.bridgeUrlPattern = 'https://test.url.pattern'
     this.bridgeUrlLatestPattern = 'https://test.latest.pattern'
+  }
+
+  protected async processBaseUrlWithLatest(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    return {bridgeUrl: 'https://test.url', bridgeVersion: '1.0.0'}
+  }
+
+  protected async processLatestVersion(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    return {bridgeUrl: 'https://test.url', bridgeVersion: '1.0.0'}
   }
 
   protected async updateBridgeCLIVersion(requestedVersion: string): Promise<{bridgeUrl: string; bridgeVersion: string}> {
@@ -209,6 +234,15 @@ class TestBridgeClient extends BridgeClientBase {
 
   protected verifyRegexCheck(url: string): RegExpMatchArray | null {
     return null
+  }
+
+  protected handleBridgeDownload(downloadResponse: DownloadFileResponse, extractZippedFilePath: string, bridgePathType?: string, pathSeparator?: string): Promise<void> {
+    return Promise.resolve(undefined)
+  }
+
+  getBridgeExecutablePath(): string {
+    const bridgeExecutableName = process.platform === 'win32' ? 'bridge-cli.exe' : 'bridge-cli'
+    return `${this.bridgePath}/${bridgeExecutableName}`
   }
 }
 
@@ -309,55 +343,6 @@ describe('BridgeClientBase - Polaris Command Building', () => {
       expect(mockDebug).toHaveBeenCalledWith(`Validating air gap executable at: ${expectedExecutablePath}`)
     })
 
-    it('should log debug message and not throw when executable is missing but download URL is provided', async () => {
-      // Arrange
-      const bridgePath = '/test/bridge/path'
-      const downloadUrl = 'https://example.com/bridge-cli.zip'
-      const expectedExecutablePath = '/test/bridge/path/bridge-cli'
-
-      mockCheckIfPathExists.mockReturnValue(false)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', downloadUrl)
-
-      // Act
-      await expect(bridgeClient.validateAirGapExecutable(bridgePath)).resolves.not.toThrow()
-
-      // Assert
-      expect(mockCheckIfPathExists).toHaveBeenCalledWith(expectedExecutablePath)
-      expect(mockDebug).toHaveBeenCalledWith(`Validating air gap executable at: ${expectedExecutablePath}`)
-      expect(mockDebug).toHaveBeenCalledWith(`Executable missing in air gap mode, will download from: ${downloadUrl}`)
-    })
-
-    it('should throw error when executable is missing and no download URL is provided', async () => {
-      // Arrange
-      const bridgePath = '/test/bridge/path'
-      const expectedExecutablePath = '/test/bridge/path/bridge-cli'
-      const expectedErrorMessage = 'Bridge executable not found at /test/bridge/path'
-
-      mockCheckIfPathExists.mockReturnValue(false)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-
-      // Act & Assert
-      await expect(bridgeClient.validateAirGapExecutable(bridgePath)).rejects.toThrow(expectedErrorMessage)
-
-      expect(mockCheckIfPathExists).toHaveBeenCalledWith(expectedExecutablePath)
-      expect(mockDebug).toHaveBeenCalledWith(`Validating air gap executable at: ${expectedExecutablePath}`)
-      expect(mockDebug).toHaveBeenCalledWith(`Air gap validation failed: ${expectedErrorMessage}`)
-    })
-
-    it('should handle empty bridge path correctly', async () => {
-      // Arrange
-      const bridgePath = ''
-      const expectedExecutablePath = 'bridge-cli'
-
-      mockCheckIfPathExists.mockReturnValue(false)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-
-      // Act & Assert
-      await expect(bridgeClient.validateAirGapExecutable(bridgePath)).rejects.toThrow('Bridge executable not found at ')
-
-      expect(mockCheckIfPathExists).toHaveBeenCalledWith(expectedExecutablePath)
-    })
-
     it('should handle path with special characters correctly', async () => {
       // Arrange
       const bridgePath = '/test/bridge path with spaces/special-chars_123'
@@ -393,1308 +378,1342 @@ describe('BridgeClientBase - Polaris Command Building', () => {
       expect(mockDebug).toHaveBeenCalledWith(`Validating air gap executable at: ${expectedExecutablePath}`)
     })
 
-    it('should handle undefined/null BRIDGE_CLI_DOWNLOAD_URL correctly', async () => {
+    it('should throw error when BRIDGE_CLI_BASE_URL is not provided in air gap mode and executable does not exist', async () => {
       // Arrange
       const bridgePath = '/test/bridge/path'
-      const expectedExecutablePath = '/test/bridge/path/bridge-cli'
-      const expectedErrorMessage = 'Bridge executable not found at /test/bridge/path'
-
       mockCheckIfPathExists.mockReturnValue(false)
-
-      // Mock the constants module
-      const constants = require('../../../../src/application-constants')
-      constants.BRIDGE_EXECUTABLE_NOT_FOUND_ERROR = 'Bridge executable not found at '
-
-      // Test with undefined (default mock state)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
+      setMockInputValue('BRIDGE_CLI_BASE_URL', '')
 
       // Act & Assert
-      await expect(bridgeClient.validateAirGapExecutable(bridgePath)).rejects.toThrow(expectedErrorMessage)
-
-      expect(mockDebug).not.toHaveBeenCalledWith(expect.stringContaining('will download from:'))
+      await expect(bridgeClient.validateAirGapExecutable(bridgePath)).rejects.toThrow('No BRIDGE_CLI_BASE_URL provided')
     })
   })
 
-  describe('processDownloadUrl', () => {
-    let bridgeClient: TestBridgeClient
-    let mockVerifyRegexCheck: jest.SpyInstance
-    let mockGetBridgeVersionFromLatestURL: jest.SpyInstance
-    let mockGetLatestVersionRegexPattern: jest.SpyInstance
+  describe('prepareCommand', () => {
+    let mockValidateScanTypes: jest.SpyInstance
+    let mockBuildCommandForAllTools: jest.SpyInstance
+    let mockCleanupTempDir: jest.SpyInstance
+    let mockParseToBoolean: jest.SpyInstance
 
     beforeEach(() => {
       jest.clearAllMocks()
-      bridgeClient = new TestBridgeClient()
 
-      // Mock the methods used by processDownloadUrl
-      mockVerifyRegexCheck = jest.spyOn(bridgeClient as any, 'verifyRegexCheck')
-      mockGetBridgeVersionFromLatestURL = jest.spyOn(bridgeClient, 'getBridgeVersionFromLatestURL')
-      mockGetLatestVersionRegexPattern = jest.spyOn(bridgeClient as any, 'getLatestVersionRegexPattern')
+      const utility = require('../../../../src/blackduck-security-action/utility')
+
+      mockValidateScanTypes = jest.spyOn(validators, 'validateScanTypes')
+      mockBuildCommandForAllTools = jest.spyOn(bridgeClient as any, 'buildCommandForAllTools')
+      mockCleanupTempDir = jest.spyOn(utility, 'cleanupTempDir')
+      mockParseToBoolean = jest.spyOn(utility, 'parseToBoolean')
+
+      // Mock all validators to return no errors by default
+      jest.spyOn(validators, 'validatePolarisInputs').mockReturnValue([])
+      jest.spyOn(validators, 'validateCoverityInputs').mockReturnValue([])
+      jest.spyOn(validators, 'validateBlackDuckInputs').mockReturnValue([])
+      jest.spyOn(validators, 'validateSRMInputs').mockReturnValue([])
     })
 
-    afterEach(() => {
-      jest.restoreAllMocks()
-    })
-
-    test('should return bridge URL and version when regex match has version', async () => {
+    it('should successfully prepare command when scan types are valid', async () => {
       // Arrange
-      const testUrl = 'https://example.com/bridge-1.2.3.zip'
-      const expectedVersion = '1.2.3'
+      const tempDir = '/tmp/test'
+      const expectedCommand = '--stage polaris --state /tmp/polaris_input.json'
 
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', expectedVersion])
+      mockValidateScanTypes.mockReturnValue([])
+      mockBuildCommandForAllTools.mockResolvedValue({
+        formattedCommand: expectedCommand,
+        validationErrors: []
+      })
+      mockParseToBoolean.mockReturnValue(false)
+
+      setMockInputValue('POLARIS_SERVER_URL', 'https://polaris.example.com')
+
+      // Act
+      const result = await bridgeClient.prepareCommand(tempDir)
+
+      // Assert
+      expect(result).toBe(expectedCommand)
+      expect(mockValidateScanTypes).toHaveBeenCalled()
+      expect(mockBuildCommandForAllTools).toHaveBeenCalledWith(tempDir)
+    })
+
+    it('should add diagnostics option when INCLUDE_DIAGNOSTICS is true', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const baseCommand = '--stage polaris --state /tmp/polaris_input.json'
+      const expectedCommand = `${baseCommand} --diagnostics`
+
+      mockValidateScanTypes.mockReturnValue([])
+      mockBuildCommandForAllTools.mockResolvedValue({
+        formattedCommand: baseCommand,
+        validationErrors: []
+      })
+      mockParseToBoolean.mockReturnValue(true)
+
+      // Mock DIAGNOSTICS_OPTION from BridgeToolsParameter
+      const toolsParameter = require('../../../../src/blackduck-security-action/tools-parameter')
+      toolsParameter.BridgeToolsParameter = {
+        SPACE: ' ',
+        DIAGNOSTICS_OPTION: '--diagnostics'
+      }
+
+      // Act
+      const result = await bridgeClient.prepareCommand(tempDir)
+
+      // Assert
+      expect(result).toBe(expectedCommand)
+      expect(mockParseToBoolean).toHaveBeenCalled()
+    })
+
+    it('should throw error when no scan types are configured', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      mockValidateScanTypes.mockReturnValue(['error1', 'error2', 'error3', 'error4'])
+
+      // Act & Assert
+      await expect(bridgeClient.prepareCommand(tempDir)).rejects.toThrow()
+      expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    })
+
+    it('should throw error when validation errors exist', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const validationErrors = ['Validation error 1', 'Validation error 2']
+
+      mockValidateScanTypes.mockReturnValue([])
+      mockBuildCommandForAllTools.mockResolvedValue({
+        formattedCommand: '',
+        validationErrors
+      })
+
+      // Act & Assert
+      await expect(bridgeClient.prepareCommand(tempDir)).rejects.toThrow('Validation error 1,Validation error 2')
+      expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    })
+
+    it('should cleanup temp directory on error', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      mockValidateScanTypes.mockImplementation(() => {
+        throw new Error('Test error')
+      })
+
+      // Act & Assert
+      await expect(bridgeClient.prepareCommand(tempDir)).rejects.toThrow('Test error')
+      expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    })
+  })
+
+  describe('downloadBridge', () => {
+    let mockGetRemoteFile: jest.SpyInstance
+    let mockParseToBoolean: jest.SpyInstance
+    let mockInfo: jest.SpyInstance
+    let mockCleanupTempDir: jest.SpyInstance
+    let mockRmRF: jest.SpyInstance
+    let mockExistsSync: jest.SpyInstance
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+
+      const downloadUtility = require('../../../../src/blackduck-security-action/download-utility')
+      const utility = require('../../../../src/blackduck-security-action/utility')
+      const core = require('@actions/core')
+      const io = require('@actions/io')
+      const fs = require('fs')
+
+      mockGetRemoteFile = jest.spyOn(downloadUtility, 'getRemoteFile')
+      mockParseToBoolean = jest.spyOn(utility, 'parseToBoolean')
+      mockCleanupTempDir = jest.spyOn(utility, 'cleanupTempDir')
+      mockInfo = jest.spyOn(core, 'info')
+      mockRmRF = jest.spyOn(io, 'rmRF')
+      mockExistsSync = jest.spyOn(fs, 'existsSync')
+
+      // Mock getBridgeUrlAndVersion method
+      jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
+        bridgeUrl: 'https://test.url/bridge.zip',
+        bridgeVersion: '1.2.3'
+      })
+
+      // Mock isBridgeInstalled to return false by default
+      jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
+
+      // Mock handleBridgeDownload
+      jest.spyOn(bridgeClient as any, 'handleBridgeDownload').mockResolvedValue(undefined)
+    })
+
+    it('should download bridge successfully when not in air gap mode', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const mockDownloadResponse: DownloadFileResponse = {
+        filePath: '/tmp/bridge.zip',
+        fileName: 'https://test.url/bridge.zip'
+      }
+
+      mockParseToBoolean.mockReturnValue(false)
+      mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+      mockExistsSync.mockReturnValue(false)
+
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI version is - 1.2.3')
+      expect(mockGetRemoteFile).toHaveBeenCalledWith(tempDir, 'https://test.url/bridge.zip')
+      expect(mockInfo).toHaveBeenCalledWith('Downloading and configuring Bridge from URL - https://test.url/bridge.zip')
+      expect(mockInfo).toHaveBeenCalledWith('Download and configuration of Bridge CLI completed')
+    })
+
+    it('should download bridge successfully when not in air gap mode and empty path', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const mockDownloadResponse: DownloadFileResponse = {
+        filePath: '/tmp/bridge.zip',
+        fileName: 'https://test.url/bridge.zip'
+      }
+
+      mockParseToBoolean.mockReturnValue(false)
+      mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+      mockExistsSync.mockReturnValue(false)
+
+      // Mock getBridgeUrlAndVersion to return non-empty bridgeUrl
+      jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
+        bridgeUrl: '',
+        bridgeVersion: '1.2.3'
+      })
+
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI version is - 1.2.3')
+    })
+
+    it('should skip download when bridge is already installed', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      mockParseToBoolean.mockReturnValue(false)
+      jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(true)
+
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
+      expect(mockGetRemoteFile).not.toHaveBeenCalled()
+    })
+
+    it('should handle air gap mode', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      mockParseToBoolean.mockReturnValue(true)
+      mockExistsSync.mockReturnValue(false)
+
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockInfo).toHaveBeenCalledWith('Network air gap is enabled.')
+    })
+
+    it('should clear existing bridge folder if it exists', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const mockDownloadResponse: DownloadFileResponse = {
+        filePath: '/tmp/bridge.zip',
+        fileName: 'https://test.url/bridge.zip'
+      }
+
+      mockParseToBoolean.mockReturnValue(false)
+      mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+      mockExistsSync.mockReturnValue(true) // Bridge folder exists
+      bridgeClient.bridgePath = '/existing/bridge/path'
+
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockRmRF).toHaveBeenCalledWith('/existing/bridge/path')
+      expect(mockInfo).toHaveBeenCalledWith('Clear the existing bridge folder, if available from /existing/bridge/path')
+    })
+
+    it('should handle 404 error appropriately', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const error = new Error('Request failed with status code 404')
+
+      mockParseToBoolean.mockReturnValue(false)
+      mockGetRemoteFile.mockRejectedValue(error)
+      process.env['RUNNER_OS'] = 'Linux'
+
+      // Act & Assert
+      await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured Linux runner')
+      expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+
+      // Cleanup
+      delete process.env['RUNNER_OS']
+    })
+
+    it('should handle empty URL error', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const error = new Error('URL is empty')
+
+      mockParseToBoolean.mockReturnValue(false)
+      mockGetRemoteFile.mockRejectedValue(error)
+
+      // Act & Assert
+      await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI URL cannot be empty ')
+      expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    })
+
+    describe('BRIDGE_CLI_INSTALL_DIRECTORY_KEY path extraction logic', () => {
+      it('should use default path when BRIDGE_CLI_INSTALL_DIRECTORY_KEY is not provided', async () => {
+        // Arrange
+        const tempDir = '/tmp/test'
+        const mockDownloadResponse: DownloadFileResponse = {
+          filePath: '/tmp/bridge.zip',
+          fileName: 'https://test.url/bridge.zip'
+        }
+
+        mockParseToBoolean.mockReturnValue(false)
+        mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+        mockExistsSync.mockReturnValue(false)
+
+        // Ensure BRIDGE_CLI_INSTALL_DIRECTORY_KEY is empty
+        setMockInputValue('BRIDGE_CLI_INSTALL_DIRECTORY_KEY', '')
+
+        const mockHandleBridgeDownload = jest.spyOn(bridgeClient as any, 'handleBridgeDownload')
+        mockHandleBridgeDownload.mockResolvedValue(undefined)
+
+        // Act
+        await bridgeClient.downloadBridge(tempDir)
+
+        // Assert
+        // Verify that handleBridgeDownload was called with the default path
+        expect(mockHandleBridgeDownload).toHaveBeenCalledWith(
+          mockDownloadResponse,
+          '/test/download/path' // This should be the default path from getBridgeCLIDownloadDefaultPath()
+        )
+      })
+
+      it('should use custom install directory when BRIDGE_CLI_INSTALL_DIRECTORY_KEY is provided', async () => {
+        // Arrange
+        const tempDir = '/tmp/test'
+        const customInstallDir = '/custom/install/directory'
+        const mockDownloadResponse: DownloadFileResponse = {
+          filePath: '/tmp/bridge.zip',
+          fileName: 'https://test.url/bridge.zip'
+        }
+
+        mockParseToBoolean.mockReturnValue(false)
+        mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+        mockExistsSync.mockReturnValue(false)
+
+        // Set custom install directory
+        setMockInputValue('BRIDGE_CLI_INSTALL_DIRECTORY_KEY', customInstallDir)
+
+        const mockHandleBridgeDownload = jest.spyOn(bridgeClient as any, 'handleBridgeDownload')
+        mockHandleBridgeDownload.mockResolvedValue(undefined)
+
+        // Act
+        await bridgeClient.downloadBridge(tempDir)
+
+        // Assert
+        // Verify that handleBridgeDownload was called with custom path joined with bridge type
+        expect(mockHandleBridgeDownload).toHaveBeenCalledWith(
+          mockDownloadResponse,
+          '/custom/install/directory/bridge-cli-bundle' // Custom path + getBridgeType()
+        )
+      })
+
+      it('should handle custom install directory with trailing slash', async () => {
+        // Arrange
+        const tempDir = '/tmp/test'
+        const customInstallDirWithSlash = '/custom/install/directory/'
+        const mockDownloadResponse: DownloadFileResponse = {
+          filePath: '/tmp/bridge.zip',
+          fileName: 'https://test.url/bridge.zip'
+        }
+
+        mockParseToBoolean.mockReturnValue(false)
+        mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+        mockExistsSync.mockReturnValue(false)
+
+        // Set custom install directory with trailing slash
+        setMockInputValue('BRIDGE_CLI_INSTALL_DIRECTORY_KEY', customInstallDirWithSlash)
+
+        const mockHandleBridgeDownload = jest.spyOn(bridgeClient as any, 'handleBridgeDownload')
+        mockHandleBridgeDownload.mockResolvedValue(undefined)
+
+        // Act
+        await bridgeClient.downloadBridge(tempDir)
+
+        // Assert
+        // Verify that path.join correctly handles the trailing slash
+        expect(mockHandleBridgeDownload).toHaveBeenCalledWith(
+          mockDownloadResponse,
+          '/custom/install/directory/bridge-cli-bundle' // Should normalize the path correctly
+        )
+      })
+
+      it('should handle custom install directory with special characters and spaces', async () => {
+        // Arrange
+        const tempDir = '/tmp/test'
+        const customInstallDirWithSpaces = '/custom/install directory/with spaces & special-chars_123'
+        const mockDownloadResponse: DownloadFileResponse = {
+          filePath: '/tmp/bridge.zip',
+          fileName: 'https://test.url/bridge.zip'
+        }
+
+        mockParseToBoolean.mockReturnValue(false)
+        mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+        mockExistsSync.mockReturnValue(false)
+
+        // Set custom install directory with spaces and special characters
+        setMockInputValue('BRIDGE_CLI_INSTALL_DIRECTORY_KEY', customInstallDirWithSpaces)
+
+        const mockHandleBridgeDownload = jest.spyOn(bridgeClient as any, 'handleBridgeDownload')
+        mockHandleBridgeDownload.mockResolvedValue(undefined)
+
+        // Act
+        await bridgeClient.downloadBridge(tempDir)
+
+        // Assert
+        // Verify that path.join correctly handles paths with spaces and special characters
+        expect(mockHandleBridgeDownload).toHaveBeenCalledWith(mockDownloadResponse, '/custom/install directory/with spaces & special-chars_123/bridge-cli-bundle')
+      })
+
+      it('should use empty string as fallback when both BRIDGE_CLI_INSTALL_DIRECTORY_KEY and default path are empty', async () => {
+        // Arrange
+        const tempDir = '/tmp/test'
+        const mockDownloadResponse: DownloadFileResponse = {
+          filePath: '/tmp/bridge.zip',
+          fileName: 'https://test.url/bridge.zip'
+        }
+
+        mockParseToBoolean.mockReturnValue(false)
+        mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
+        mockExistsSync.mockReturnValue(false)
+
+        // Ensure BRIDGE_CLI_INSTALL_DIRECTORY_KEY is empty
+        setMockInputValue('BRIDGE_CLI_INSTALL_DIRECTORY_KEY', '')
+
+        // Mock getBridgeCLIDownloadDefaultPath to return empty string
+        const mockGetBridgeCLIDownloadDefaultPath = jest.spyOn(bridgeClient as any, 'getBridgeCLIDownloadDefaultPath')
+        mockGetBridgeCLIDownloadDefaultPath.mockReturnValue('')
+
+        const mockHandleBridgeDownload = jest.spyOn(bridgeClient as any, 'handleBridgeDownload')
+        mockHandleBridgeDownload.mockResolvedValue(undefined)
+
+        // Act
+        await bridgeClient.downloadBridge(tempDir)
+
+        // Assert
+        // When both are empty, should use empty string as extractZippedFilePath
+        expect(mockHandleBridgeDownload).toHaveBeenCalledWith(
+          mockDownloadResponse,
+          '' // Empty string when both sources are empty
+        )
+      })
+    })
+  })
+
+  describe('executeBridgeCommand', () => {
+    let mockExecuteCommand: jest.SpyInstance
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+      mockExecuteCommand = jest.spyOn(bridgeClient as any, 'executeCommand')
+    })
+
+    it('should execute bridge command on supported platforms', async () => {
+      // Arrange
+      const bridgeCommand = '--stage polaris --state /tmp/input.json'
+      const workingDirectory = '/test/working/dir'
+      const originalPlatform = process.platform
+
+      // Test macOS
+      Object.defineProperty(process, 'platform', {value: 'darwin'})
+      mockExecuteCommand.mockResolvedValue(0)
+
+      // Act
+      const result = await bridgeClient.executeBridgeCommand(bridgeCommand, workingDirectory)
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockExecuteCommand).toHaveBeenCalledWith(bridgeCommand, {cwd: workingDirectory})
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
+
+    it('should return -1 for unsupported platforms', async () => {
+      // Arrange
+      const bridgeCommand = '--stage polaris --state /tmp/input.json'
+      const workingDirectory = '/test/working/dir'
+      const originalPlatform = process.platform
+
+      // Test unsupported platform
+      Object.defineProperty(process, 'platform', {value: 'aix'})
+
+      // Act
+      const result = await bridgeClient.executeBridgeCommand(bridgeCommand, workingDirectory)
+
+      // Assert
+      expect(result).toBe(-1)
+      expect(mockExecuteCommand).not.toHaveBeenCalled()
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
+
+    it('should propagate errors from executeCommand', async () => {
+      // Arrange
+      const bridgeCommand = '--stage polaris --state /tmp/input.json'
+      const workingDirectory = '/test/working/dir'
+      const error = new Error('Execution failed')
+
+      mockExecuteCommand.mockRejectedValue(error)
+
+      // Act & Assert
+      await expect(bridgeClient.executeBridgeCommand(bridgeCommand, workingDirectory)).rejects.toThrow('Execution failed')
+    })
+  })
+
+  describe('getBridgeVersionFromLatestURL', () => {
+    let mockMakeHttpsGetRequest: jest.SpyInstance
+    let mockRetrySleepHelper: jest.SpyInstance
+    let mockWarning: jest.SpyInstance
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+
+      const core = require('@actions/core')
+      mockMakeHttpsGetRequest = jest.spyOn(bridgeClient as any, 'makeHttpsGetRequest')
+      mockRetrySleepHelper = jest.spyOn(bridgeClient as any, 'retrySleepHelper')
+      mockWarning = jest.spyOn(core, 'warning')
+
+      // Mock getBridgeType to return consistent value
+      jest.spyOn(bridgeClient, 'getBridgeType').mockReturnValue('bridge-cli-bundle')
+    })
+
+    it('should return version when found in response', async () => {
+      // Arrange
+      const latestVersionsUrl = 'https://test.url/versions.txt'
+      const mockResponse = {
+        statusCode: 200,
+        body: 'some-other-tool:1.0.0\nbridge-cli-bundle:2.1.0\nanother-tool:3.0.0'
+      }
+      mockMakeHttpsGetRequest.mockResolvedValue(mockResponse)
+
+      // Act
+      const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+      // Assert
+      expect(result).toBe('2.1.0')
+      expect(mockMakeHttpsGetRequest).toHaveBeenCalledWith(latestVersionsUrl)
+    })
+
+    it('should return empty string when version not found', async () => {
+      // Arrange
+      const latestVersionsUrl = 'https://test.url/versions.txt'
+      const mockResponse = {
+        statusCode: 200,
+        body: 'some-other-tool:1.0.0\nanother-tool:3.0.0'
+      }
+      mockMakeHttpsGetRequest.mockResolvedValue(mockResponse)
+
+      // Act
+      const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+      // Assert
+      expect(result).toBe('')
+    })
+
+    it('should retry on non-success status codes', async () => {
+      // Arrange
+      const latestVersionsUrl = 'https://test.url/versions.txt'
+      mockMakeHttpsGetRequest.mockResolvedValueOnce({statusCode: 500, body: ''}).mockResolvedValueOnce({statusCode: 500, body: ''}).mockResolvedValueOnce({
+        statusCode: 200,
+        body: 'bridge-cli-bundle:2.1.0'
+      })
+
+      mockRetrySleepHelper.mockResolvedValue(30000) // Mocked delay
+
+      // Act
+      const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+      // Assert
+      expect(result).toBe('2.1.0')
+      expect(mockMakeHttpsGetRequest).toHaveBeenCalledTimes(3)
+      expect(mockRetrySleepHelper).toHaveBeenCalledTimes(2)
+    })
+
+    it('should show warning when unable to retrieve version after retries', async () => {
+      // Arrange
+      const latestVersionsUrl = 'https://test.url/versions.txt'
+      mockMakeHttpsGetRequest.mockResolvedValue({statusCode: 500, body: ''})
+      mockRetrySleepHelper.mockResolvedValue(30000)
+
+      // Act
+      const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+
+      // Assert
+      expect(result).toBe('')
+      expect(mockWarning).toHaveBeenCalledWith('Unable to retrieve the most recent version from Artifactory URL')
+    })
+  })
+
+  describe('runBridgeCommand', () => {
+    let mockSetBridgeExecutablePath: jest.SpyInstance
+    let mockExec: jest.SpyInstance
+    let mockDebug: jest.SpyInstance
+
+    beforeEach(() => {
+      jest.clearAllMocks()
+
+      const exec = require('@actions/exec')
+      const core = require('@actions/core')
+
+      mockSetBridgeExecutablePath = jest.spyOn(bridgeClient as any, 'setBridgeExecutablePath')
+      mockExec = jest.spyOn(exec, 'exec')
+      mockDebug = jest.spyOn(core, 'debug')
+
+      // Set up bridge executable path
+      bridgeClient.bridgeExecutablePath = '/test/bridge/bridge-cli'
+      bridgeClient.bridgePath = '/test/bridge'
+    })
+
+    it('should execute bridge command successfully', async () => {
+      // Arrange
+      const bridgeCommand = '--stage polaris --state /tmp/input.json'
+      const execOptions: ExecOptions = {cwd: '/test/working/dir'}
+      const expectedExitCode = 0
+
+      mockSetBridgeExecutablePath.mockResolvedValue(undefined)
+      mockExec.mockResolvedValue(expectedExitCode)
+
+      // Act
+      const result = await (bridgeClient as any).runBridgeCommand(bridgeCommand, execOptions)
+
+      // Assert
+      expect(result).toBe(expectedExitCode)
+      expect(mockSetBridgeExecutablePath).toHaveBeenCalled()
+      expect(mockDebug).toHaveBeenCalledWith('Bridge executable path:/test/bridge')
+      expect(mockDebug).toHaveBeenCalledWith(`Executing bridge command: ${bridgeCommand}`)
+      expect(mockExec).toHaveBeenCalledWith('/test/bridge/bridge-cli --stage polaris --state /tmp/input.json', [], execOptions)
+      expect(mockDebug).toHaveBeenCalledWith(`Bridge command execution completed with exit code: ${expectedExitCode}`)
+    })
+
+    it('should throw error when bridge executable not found', async () => {
+      // Arrange
+      const bridgeCommand = '--stage polaris --state /tmp/input.json'
+      const execOptions: ExecOptions = {cwd: '/test/working/dir'}
+
+      mockSetBridgeExecutablePath.mockResolvedValue(undefined)
+      bridgeClient.bridgeExecutablePath = '' // Simulate executable not found
+
+      // Act & Assert
+      await expect((bridgeClient as any).runBridgeCommand(bridgeCommand, execOptions)).rejects.toThrow('Bridge executable not found at /test/bridge')
+    })
+  })
+})
+
+describe('BridgeClientBase - makeHttpsGetRequest', () => {
+  let bridgeClient: TestBridgeClient
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+  })
+
+  test('should handle HTTPS request error', async () => {
+    // Arrange
+    const testUrl = 'https://example.com/test'
+    const mockError = new Error('Network error')
+    const mockRequest = {
+      on: jest.fn(),
+      end: jest.fn()
+    }
+
+    // Mock https.request
+    const https = require('node:https')
+    jest.spyOn(https, 'request').mockImplementation(() => {
+      // Simulate error
+      setTimeout(() => {
+        const onErrorCallback = mockRequest.on.mock.calls.find(call => call[0] === 'error')[1]
+        onErrorCallback(mockError)
+      }, 0)
+
+      return mockRequest
+    })
+
+    // Act & Assert
+    await expect((bridgeClient as any).makeHttpsGetRequest(testUrl)).rejects.toThrow('Network error')
+  })
+})
+
+describe('BridgeClientBase - shouldUpdateBridge', () => {
+  let bridgeClient: TestBridgeClient
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+  })
+
+  test('should return true when versions are different', () => {
+    // Act & Assert
+    expect((bridgeClient as any).shouldUpdateBridge('1.0.0', '1.1.0')).toBe(true)
+    expect((bridgeClient as any).shouldUpdateBridge('2.0.0', '1.9.0')).toBe(true)
+  })
+
+  test('should return false when versions are the same', () => {
+    // Act & Assert
+    expect((bridgeClient as any).shouldUpdateBridge('1.0.0', '1.0.0')).toBe(false)
+    expect((bridgeClient as any).shouldUpdateBridge('2.1.5', '2.1.5')).toBe(false)
+  })
+})
+
+describe('BridgeClientBase - cleanupOnError', () => {
+  let bridgeClient: TestBridgeClient
+  let mockCleanupTempDir: jest.SpyInstance
+  let mockDebug: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+
+    const utility = require('../../../../src/blackduck-security-action/utility')
+    const core = require('@actions/core')
+
+    mockCleanupTempDir = jest.spyOn(utility, 'cleanupTempDir')
+    mockDebug = jest.spyOn(core, 'debug')
+  })
+
+  test('should cleanup temp directory successfully', async () => {
+    // Arrange
+    const tempDir = '/tmp/test'
+    mockCleanupTempDir.mockResolvedValue(undefined)
+
+    // Act
+    await (bridgeClient as any).cleanupOnError(tempDir)
+
+    // Assert
+    expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    expect(mockDebug).not.toHaveBeenCalledWith(expect.stringContaining('Failed to cleanup'))
+  })
+
+  test('should handle cleanup failure gracefully', async () => {
+    // Arrange
+    const tempDir = '/tmp/test'
+    const cleanupError = new Error('Cleanup failed')
+    mockCleanupTempDir.mockRejectedValue(cleanupError)
+
+    // Act
+    await (bridgeClient as any).cleanupOnError(tempDir)
+
+    // Assert
+    expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
+    expect(mockDebug).toHaveBeenCalledWith('Failed to cleanup temp directory: Error: Cleanup failed')
+  })
+})
+
+describe('BridgeClientBase - prepareCommand error handling', () => {
+  let bridgeClient: TestBridgeClient
+  let mockBuildCommandForAllTools: jest.SpyInstance
+  let mockCleanupOnError: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+
+    mockBuildCommandForAllTools = jest.spyOn(bridgeClient as any, 'buildCommandForAllTools')
+    mockCleanupOnError = jest.spyOn(bridgeClient as any, 'cleanupOnError').mockResolvedValue(undefined)
+
+    // Mock validators to pass validation
+    jest.spyOn(validators, 'validateScanTypes').mockReturnValue([])
+  })
+
+  test('should cleanup and rethrow error when buildCommandForAllTools fails', async () => {
+    // Arrange
+    const tempDir = '/tmp/test'
+    const originalError = new Error('Build command failed')
+    mockBuildCommandForAllTools.mockRejectedValue(originalError)
+
+    // Act & Assert
+    await expect(bridgeClient.prepareCommand(tempDir)).rejects.toThrow('Build command failed')
+    expect(mockCleanupOnError).toHaveBeenCalledWith(tempDir)
+  })
+
+  test('should handle non-Error objects thrown', async () => {
+    // Arrange
+    const tempDir = '/tmp/test'
+    const nonErrorObject = 'String error'
+    mockBuildCommandForAllTools.mockRejectedValue(nonErrorObject)
+
+    // Act & Assert
+    await expect(bridgeClient.prepareCommand(tempDir)).rejects.toThrow('String error')
+    expect(mockCleanupOnError).toHaveBeenCalledWith(tempDir)
+  })
+})
+
+describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
+  let bridgeClient: TestBridgeClient
+  let mockDebug: jest.SpyInstance
+  let mockWarning: jest.SpyInstance
+  let mockInfo: jest.SpyInstance
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    bridgeClient = new TestBridgeClient()
+
+    const core = require('@actions/core')
+    mockDebug = jest.spyOn(core, 'debug')
+    mockWarning = jest.spyOn(core, 'warning')
+    mockInfo = jest.spyOn(core, 'info')
+
+    // Reset all input values to empty
+    setMockInputValue('BRIDGE_CLI_BASE_URL', '')
+    setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
+    setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
+  })
+
+  describe('when both BRIDGE_CLI_BASE_URL and BRIDGE_CLI_DOWNLOAD_URL are provided', () => {
+    it('should prioritize BRIDGE_CLI_BASE_URL and show warning about BRIDGE_CLI_DOWNLOAD_URL being ignored', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.download.url/bridge.zip')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.2.3')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-1.2.3.zip', bridgeVersion: '1.2.3'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.base.url/bridge-1.2.3.zip', bridgeVersion: '1.2.3'})
+      expect(mockInfo).toHaveBeenCalledWith('Both BRIDGE_CLI_BASE_URL and BRIDGE_CLI_DOWNLOAD_URL provided. Using BRIDGE_CLI_BASE_URL.')
+      expect(mockDebug).toHaveBeenCalledWith('BRIDGE_CLI_DOWNLOAD_URL is ignored when BRIDGE_CLI_BASE_URL is provided.')
+      expect(mockInfo).toHaveBeenCalledWith('Using BRIDGE_CLI_BASE_URL with specified version: 1.2.3')
+      expect(mockProcessVersion).toHaveBeenCalled()
+    })
+  })
+
+  describe('when BRIDGE_CLI_BASE_URL is provided', () => {
+    it('should use processVersion when BRIDGE_CLI_DOWNLOAD_VERSION is also provided', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '2.1.0')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-2.1.0.zip', bridgeVersion: '2.1.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.base.url/bridge-2.1.0.zip', bridgeVersion: '2.1.0'})
+      expect(mockInfo).toHaveBeenCalledWith('Using BRIDGE_CLI_BASE_URL with specified version: 2.1.0')
+      expect(mockProcessVersion).toHaveBeenCalled()
+    })
+
+    it('should use processLatestVersion when no version is specified', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
+
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-latest.zip', bridgeVersion: '3.0.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.base.url/bridge-latest.zip', bridgeVersion: '3.0.0'})
+      expect(mockInfo).toHaveBeenCalledWith('Using BRIDGE_CLI_BASE_URL to fetch the latest version.')
+      expect(mockProcessLatestVersion).toHaveBeenCalledWith(false)
+    })
+
+    it('should pass air gap flag correctly to processLatestVersion', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
+
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-latest.zip', bridgeVersion: '3.0.0'})
+
+      // Act
+      await (bridgeClient as any).getBridgeUrlAndVersion(true)
+
+      // Assert
+      expect(mockProcessLatestVersion).toHaveBeenCalledWith(true)
+    })
+  })
+
+  describe('when BRIDGE_CLI_DOWNLOAD_URL is provided (fallback)', () => {
+    it('should use processDownloadUrl and show deprecation warning', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.download.url/bridge-1.5.0.zip')
+
+      const mockProcessDownloadUrl = jest.spyOn(bridgeClient as any, 'processDownloadUrl')
+      mockProcessDownloadUrl.mockResolvedValue({bridgeUrl: 'https://test.download.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.download.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+      expect(mockInfo).toHaveBeenCalledWith('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
+      expect(mockProcessDownloadUrl).toHaveBeenCalled()
+    })
+  })
+
+  describe('when only BRIDGE_CLI_DOWNLOAD_VERSION is provided', () => {
+    it('should use processVersion in non-airgap mode', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.8.0')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://default.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+      expect(mockInfo).toHaveBeenCalledWith('Using specified version: 1.8.0')
+      expect(mockProcessVersion).toHaveBeenCalled()
+    })
+
+    it('should work in airgap mode when BRIDGE_CLI_BASE_URL is provided', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.8.0')
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.base.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+      expect(mockProcessVersion).toHaveBeenCalled()
+    })
+  })
+
+  describe('when no specific configuration is provided', () => {
+    it('should fetch latest version in non-airgap mode', async () => {
+      // Arrange - all inputs are empty by default
+
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+      expect(mockInfo).toHaveBeenCalledWith('No specific Bridge CLI version provided, fetching the latest version.')
+      expect(mockProcessLatestVersion).toHaveBeenCalledWith(false)
+    })
+
+    it('should fetch latest version in airgap mode', async () => {
+      // Arrange - all inputs are empty by default
+
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+      expect(mockInfo).toHaveBeenCalledWith('No specific Bridge CLI version provided, fetching the latest version.')
+      expect(mockProcessLatestVersion).toHaveBeenCalledWith(true)
+    })
+  })
+
+  describe('processDownloadUrl method', () => {
+    it('should extract version from URL using regex and return it', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.url/bridge-1.2.3.zip')
+
+      const mockVerifyRegexCheck = jest.spyOn(bridgeClient as any, 'verifyRegexCheck')
+      mockVerifyRegexCheck.mockReturnValue(['bridge-1.2.3.zip', '1.2.3'])
 
       // Act
       const result = await (bridgeClient as any).processDownloadUrl()
 
       // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockVerifyRegexCheck).toHaveBeenCalledWith(testUrl)
-      expect(mockGetBridgeVersionFromLatestURL).not.toHaveBeenCalled()
+      expect(result).toEqual({bridgeUrl: 'https://test.url/bridge-1.2.3.zip', bridgeVersion: '1.2.3'})
+      expect(mockVerifyRegexCheck).toHaveBeenCalledWith('https://test.url/bridge-1.2.3.zip')
     })
 
-    test('should fetch version from latest URL when regex match exists but version is empty', async () => {
+    it('should fetch version from latest URL when regex does not return version', async () => {
       // Arrange
-      const testUrl = 'https://example.com/bridge-latest.zip'
-      const expectedVersion = '2.1.0'
-      const versionsUrl = 'https://example.com/bridge-versions.txt.zip'
-      const latestRegexPattern = /latest/g
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.url/bridge-latest.zip')
 
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', '']) // Empty version
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
+      const mockVerifyRegexCheck = jest.spyOn(bridgeClient as any, 'verifyRegexCheck')
+      mockVerifyRegexCheck.mockReturnValue(['bridge-latest.zip', '']) // Empty version
+
+      const mockGetBridgeVersionFromLatestURL = jest.spyOn(bridgeClient, 'getBridgeVersionFromLatestURL')
+      mockGetBridgeVersionFromLatestURL.mockResolvedValue('2.1.0')
+
+      const mockGetLatestVersionRegexPattern = jest.spyOn(bridgeClient as any, 'getLatestVersionRegexPattern')
+      mockGetLatestVersionRegexPattern.mockReturnValue(/latest/)
 
       // Act
       const result = await (bridgeClient as any).processDownloadUrl()
 
       // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockVerifyRegexCheck).toHaveBeenCalledWith(testUrl)
-      expect(mockGetLatestVersionRegexPattern).toHaveBeenCalled()
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith(versionsUrl)
+      expect(result).toEqual({bridgeUrl: 'https://test.url/bridge-latest.zip', bridgeVersion: '2.1.0'})
+      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalled()
     })
 
-    test('should fetch version from latest URL when regex match exists but version is undefined', async () => {
+    it('should return empty version when regex returns null', async () => {
       // Arrange
-      const testUrl = 'https://example.com/bridge-latest.zip'
-      const expectedVersion = '2.1.0'
-      const versionsUrl = 'https://example.com/bridge-versions.txt.zip'
-      const latestRegexPattern = /latest/g
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.url/invalid-bridge.zip')
 
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', undefined]) // Undefined version
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processDownloadUrl()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockVerifyRegexCheck).toHaveBeenCalledWith(testUrl)
-      expect(mockGetLatestVersionRegexPattern).toHaveBeenCalled()
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith(versionsUrl)
-    })
-
-    test('should return empty version when regex check returns null', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge.zip'
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
+      const mockVerifyRegexCheck = jest.spyOn(bridgeClient as any, 'verifyRegexCheck')
       mockVerifyRegexCheck.mockReturnValue(null)
 
       // Act
       const result = await (bridgeClient as any).processDownloadUrl()
 
       // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: ''
-      })
-      expect(mockVerifyRegexCheck).toHaveBeenCalledWith(testUrl)
-      expect(mockGetBridgeVersionFromLatestURL).not.toHaveBeenCalled()
-    })
-
-    test('should handle URL replacement correctly when fetching from latest URL', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge-latest-macosx.zip'
-      const expectedVersion = '3.0.1'
-      const latestRegexPattern = /latest/g
-      const expectedVersionsUrl = 'https://example.com/bridge-versions.txt-macosx.zip'
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', ''])
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processDownloadUrl()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith(expectedVersionsUrl)
-    })
-
-    test('should handle getBridgeVersionFromLatestURL returning empty string', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge-latest.zip'
-      const latestRegexPattern = /latest/g
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', ''])
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue('')
-
-      // Act
-      const result = await (bridgeClient as any).processDownloadUrl()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: ''
-      })
-    })
-
-    test('should handle getBridgeVersionFromLatestURL throwing an error', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge-latest.zip'
-      const latestRegexPattern = /latest/g
-      const expectedError = new Error('Network error')
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['full-match', ''])
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockRejectedValue(expectedError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).processDownloadUrl()).rejects.toThrow('Network error')
-    })
-
-    test('should handle complex URL patterns with multiple replacements', async () => {
-      // Arrange
-      const testUrl = 'https://repo.example.com/bridge-latest-linux64-v2.zip'
-      const expectedVersion = '2.5.0'
-      const latestRegexPattern = /latest/g
-      const expectedVersionsUrl = 'https://repo.example.com/bridge-versions.txt-linux64-v2.zip'
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockVerifyRegexCheck.mockReturnValue(['match', null]) // null version
-      mockGetLatestVersionRegexPattern.mockReturnValue(latestRegexPattern)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processDownloadUrl()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: testUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith(expectedVersionsUrl)
+      expect(result).toEqual({bridgeUrl: 'https://test.url/invalid-bridge.zip', bridgeVersion: ''})
     })
   })
 
-  describe('processVersion', () => {
-    let bridgeClient: TestBridgeClient
-    let mockIsBridgeInstalled: jest.SpyInstance
-    let mockUpdateBridgeCLIVersion: jest.SpyInstance
-    let mockInfo: jest.SpyInstance
-
-    beforeEach(() => {
-      jest.clearAllMocks()
-      bridgeClient = new TestBridgeClient()
-
-      // Mock the methods used by processVersion
-      mockIsBridgeInstalled = jest.spyOn(bridgeClient, 'isBridgeInstalled')
-      mockUpdateBridgeCLIVersion = jest.spyOn(bridgeClient as any, 'updateBridgeCLIVersion')
-
-      // Mock the core info function
-      const core = require('@actions/core')
-      mockInfo = jest.spyOn(core, 'info')
-
-      // Reset mock inputs
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
-    })
-
-    afterEach(() => {
-      jest.restoreAllMocks()
-    })
-
-    test('should return empty bridgeUrl and requested version when bridge is already installed', async () => {
+  describe('processVersion method', () => {
+    it('should return empty bridgeUrl when bridge is already installed', async () => {
       // Arrange
-      const requestedVersion = '2.1.5'
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-      mockIsBridgeInstalled.mockResolvedValue(true)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: requestedVersion
-      })
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
-      expect(mockUpdateBridgeCLIVersion).not.toHaveBeenCalled()
-    })
-
-    test('should call updateBridgeCLIVersion when bridge is not installed', async () => {
-      // Arrange
-      const requestedVersion = '2.1.5'
-      const expectedUpdateResult = {
-        bridgeUrl: 'https://example.com/bridge-2.1.5.zip',
-        bridgeVersion: requestedVersion
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-      mockIsBridgeInstalled.mockResolvedValue(false)
-      mockUpdateBridgeCLIVersion.mockResolvedValue(expectedUpdateResult)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(result).toEqual(expectedUpdateResult)
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
-      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith(requestedVersion)
-      expect(mockInfo).not.toHaveBeenCalledWith('Bridge CLI already exists')
-    })
-
-    test('should handle empty BRIDGE_CLI_DOWNLOAD_VERSION', async () => {
-      // Arrange
-      const emptyVersion = ''
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', emptyVersion)
-      mockIsBridgeInstalled.mockResolvedValue(false)
-      mockUpdateBridgeCLIVersion.mockResolvedValue({
-        bridgeUrl: 'https://example.com/bridge.zip',
-        bridgeVersion: emptyVersion
-      })
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(emptyVersion)
-      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith(emptyVersion)
-    })
-
-    test('should handle version string with special characters', async () => {
-      // Arrange
-      const specialVersion = '2.1.5-beta.1+build.123'
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', specialVersion)
-      mockIsBridgeInstalled.mockResolvedValue(true)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: specialVersion
-      })
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(specialVersion)
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
-    })
-
-    test('should handle isBridgeInstalled throwing an error', async () => {
-      // Arrange
-      const requestedVersion = '2.1.5'
-      const expectedError = new Error('Bridge installation check failed')
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-      mockIsBridgeInstalled.mockRejectedValue(expectedError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).processVersion()).rejects.toThrow('Bridge installation check failed')
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
-      expect(mockUpdateBridgeCLIVersion).not.toHaveBeenCalled()
-    })
-
-    test('should handle updateBridgeCLIVersion throwing an error', async () => {
-      // Arrange
-      const requestedVersion = '2.1.5'
-      const expectedError = new Error('Update failed')
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-      mockIsBridgeInstalled.mockResolvedValue(false)
-      mockUpdateBridgeCLIVersion.mockRejectedValue(expectedError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).processVersion()).rejects.toThrow('Update failed')
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
-      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith(requestedVersion)
-    })
-
-    test('should handle very long version strings', async () => {
-      // Arrange
-      const longVersion = '2.1.5.1234567890.abcdefghijklmnopqrstuvwxyz.1234567890'
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', longVersion)
-      mockIsBridgeInstalled.mockResolvedValue(true)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: longVersion
-      })
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(longVersion)
-    })
-
-    test('should handle version with leading/trailing whitespace', async () => {
-      // Arrange
-      const versionWithWhitespace = '  2.1.5  '
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', versionWithWhitespace)
-      mockIsBridgeInstalled.mockResolvedValue(false)
-      mockUpdateBridgeCLIVersion.mockResolvedValue({
-        bridgeUrl: 'https://example.com/bridge.zip',
-        bridgeVersion: versionWithWhitespace
-      })
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(mockIsBridgeInstalled).toHaveBeenCalledWith(versionWithWhitespace)
-      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith(versionWithWhitespace)
-    })
-
-    test('should correctly read BRIDGE_CLI_DOWNLOAD_VERSION from inputs module', async () => {
-      // Arrange
-      const testVersion = '3.0.0-rc1'
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', testVersion)
-      mockIsBridgeInstalled.mockResolvedValue(true)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      const inputs = require('../../../../src/blackduck-security-action/inputs')
-      expect(inputs.BRIDGE_CLI_DOWNLOAD_VERSION).toBe(testVersion)
-      expect(result.bridgeVersion).toBe(testVersion)
-    })
-
-    test('should handle concurrent calls to isBridgeInstalled properly', async () => {
-      // Arrange
-      const requestedVersion = '2.1.5'
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-
-      // Simulate a delay in isBridgeInstalled to test async behavior
-      mockIsBridgeInstalled.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(true), 10)))
-
-      // Act
-      const promise1 = (bridgeClient as any).processVersion()
-      const promise2 = (bridgeClient as any).processVersion()
-
-      const [result1, result2] = await Promise.all([promise1, promise2])
-
-      // Assert
-      expect(result1).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: requestedVersion
-      })
-      expect(result2).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: requestedVersion
-      })
-      expect(mockIsBridgeInstalled).toHaveBeenCalledTimes(2)
-    })
-
-    test('should preserve the exact version string returned by updateBridgeCLIVersion', async () => {
-      // Arrange
-      const requestedVersion = '2.1.5'
-      const actualReturnedVersion = '2.1.5-final' // Different from requested
-      const updateResult = {
-        bridgeUrl: 'https://example.com/bridge.zip',
-        bridgeVersion: actualReturnedVersion
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', requestedVersion)
-      mockIsBridgeInstalled.mockResolvedValue(false)
-      mockUpdateBridgeCLIVersion.mockResolvedValue(updateResult)
-
-      // Act
-      const result = await (bridgeClient as any).processVersion()
-
-      // Assert
-      expect(result).toEqual(updateResult)
-      expect(result.bridgeVersion).toBe(actualReturnedVersion)
-      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith(requestedVersion)
-    })
-  })
-
-  describe('processLatestVersion', () => {
-    let bridgeClient: TestBridgeClient
-    let mockCheckIfBridgeExistsInAirGap: jest.SpyInstance
-    let mockGetBridgeVersionFromLatestURL: jest.SpyInstance
-    let mockInfo: jest.SpyInstance
-
-    beforeEach(() => {
-      jest.clearAllMocks()
-      bridgeClient = new TestBridgeClient()
-
-      // Mock the methods used by processLatestVersion
-      mockCheckIfBridgeExistsInAirGap = jest.spyOn(bridgeClient as any, 'checkIfBridgeExistsInAirGap')
-      mockGetBridgeVersionFromLatestURL = jest.spyOn(bridgeClient, 'getBridgeVersionFromLatestURL')
-
-      // Mock the core info function
-      const core = require('@actions/core')
-      mockInfo = jest.spyOn(core, 'info')
-
-      // Mock parseToBoolean utility function
-      const utility = require('../../../../src/blackduck-security-action/utility')
-      jest.spyOn(utility, 'parseToBoolean').mockReturnValue(false)
-    })
-
-    afterEach(() => {
-      jest.restoreAllMocks()
-    })
-
-    test('should return empty bridgeUrl and bridgeVersion when in air gap mode and bridge exists', async () => {
-      // Arrange
-      const isAirGap = true
-      const utility = require('../../../../src/blackduck-security-action/utility')
-      jest.spyOn(utility, 'parseToBoolean').mockReturnValue(isAirGap)
-      mockCheckIfBridgeExistsInAirGap.mockResolvedValue(true)
-
-      // Act
-      const result = await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: ''
-      })
-      expect(mockCheckIfBridgeExistsInAirGap).toHaveBeenCalledTimes(1)
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
-      expect(mockGetBridgeVersionFromLatestURL).not.toHaveBeenCalled()
-    })
-
-    test('should proceed with latest version fetch when in air gap mode but bridge does not exist', async () => {
-      // Arrange
-      const isAirGap = true
-      const expectedVersion = '2.3.4'
-      const expectedUrl = 'https://test.latest.pattern'
-
-      mockCheckIfBridgeExistsInAirGap.mockResolvedValue(false)
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: expectedUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockCheckIfBridgeExistsInAirGap).toHaveBeenCalledTimes(1)
-      expect(mockInfo).toHaveBeenCalledWith('Checking for latest version of Bridge to download and configure')
-      expect(mockInfo).not.toHaveBeenCalledWith('Bridge CLI already exists')
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith('https://test.artifactory.url/latest/versions.txt')
-    })
-
-    test('should proceed with latest version fetch when not in air gap mode', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedVersion = '1.9.8'
-      const expectedUrl = 'https://test.latest.pattern'
-
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: expectedUrl,
-        bridgeVersion: expectedVersion
-      })
-      expect(mockCheckIfBridgeExistsInAirGap).not.toHaveBeenCalled()
-      expect(mockInfo).toHaveBeenCalledWith('Checking for latest version of Bridge to download and configure')
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith('https://test.artifactory.url/latest/versions.txt')
-    })
-
-    test('should handle checkIfBridgeExistsInAirGap throwing an error', async () => {
-      // Arrange
-      const isAirGap = true
-      const expectedError = new Error('Air gap check failed')
-
-      mockCheckIfBridgeExistsInAirGap.mockRejectedValue(expectedError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).processLatestVersion(isAirGap)).rejects.toThrow('Air gap check failed')
-      expect(mockCheckIfBridgeExistsInAirGap).toHaveBeenCalledTimes(1)
-      expect(mockGetBridgeVersionFromLatestURL).not.toHaveBeenCalled()
-    })
-
-    test('should handle getBridgeVersionFromLatestURL throwing an error', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedError = new Error('Failed to fetch latest version')
-
-      mockGetBridgeVersionFromLatestURL.mockRejectedValue(expectedError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).processLatestVersion(isAirGap)).rejects.toThrow('Failed to fetch latest version')
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledTimes(1)
-    })
-
-    test('should handle getBridgeVersionFromLatestURL returning empty string', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedUrl = 'https://test.latest.pattern'
-
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue('')
-
-      // Act
-      const result = await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(result).toEqual({
-        bridgeUrl: expectedUrl,
-        bridgeVersion: ''
-      })
-    })
-
-    test('should use correct artifactory URL pattern for latest versions', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedVersion = '3.2.1'
-
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(mockGetBridgeVersionFromLatestURL).toHaveBeenCalledWith('https://test.artifactory.url/latest/versions.txt')
-    })
-
-    test('should return bridgeUrlLatestPattern as the bridge URL', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedVersion = '4.1.0'
-      const expectedUrl = 'https://test.latest.pattern'
-
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      const result = await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(result.bridgeUrl).toBe(expectedUrl)
-    })
-
-    test('should log info message when checking for latest version', async () => {
-      // Arrange
-      const isAirGap = false
-      const expectedVersion = '5.0.0'
-
-      mockGetBridgeVersionFromLatestURL.mockResolvedValue(expectedVersion)
-
-      // Act
-      await (bridgeClient as any).processLatestVersion(isAirGap)
-
-      // Assert
-      expect(mockInfo).toHaveBeenCalledWith('Checking for latest version of Bridge to download and configure')
-    })
-
-    test('should handle air gap mode with bridge existing - concurrent calls', async () => {
-      // Arrange
-      const isAirGap = true
-      mockCheckIfBridgeExistsInAirGap.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve(true), 10)))
-
-      // Act
-      const promise1 = (bridgeClient as any).processLatestVersion(isAirGap)
-      const promise2 = (bridgeClient as any).processLatestVersion(isAirGap)
-
-      const [result1, result2] = await Promise.all([promise1, promise2])
-
-      // Assert
-      expect(result1).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: ''
-      })
-      expect(result2).toEqual({
-        bridgeUrl: '',
-        bridgeVersion: ''
-      })
-      expect(mockCheckIfBridgeExistsInAirGap).toHaveBeenCalledTimes(2)
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
-    })
-  })
-
-  describe('BridgeClientBase - downloadBridge Error Handling', () => {
-    let bridgeClient: TestBridgeClient
-    let mockGetRemoteFile: jest.Mock
-    let mockCleanupTempDir: jest.Mock
-
-    beforeEach(() => {
-      jest.clearAllMocks()
-
-      bridgeClient = new TestBridgeClient()
-
-      // Mock the download utility functions
-      const downloadUtility = require('../../../../src/blackduck-security-action/download-utility')
-      mockGetRemoteFile = jest.fn()
-      downloadUtility.getRemoteFile = mockGetRemoteFile
-
-      // Mock the utility functions
-      const utility = require('../../../../src/blackduck-security-action/utility')
-      mockCleanupTempDir = jest.fn()
-      utility.cleanupTempDir = mockCleanupTempDir
-      utility.parseToBoolean = jest.fn(() => false)
-      utility.checkIfPathExists = jest.fn(() => true)
-
-      // Mock fs.existsSync to return false by default
-      const fs = require('fs')
-      fs.existsSync.mockReturnValue(false)
-    })
-
-    afterEach(() => {
-      // Clean up environment variables
-      delete process.env['RUNNER_OS']
-    })
-
-    describe('Error handling in downloadBridge method', () => {
-      const tempDir = '/tmp/test-temp'
-
-      it('should handle 404 error with RUNNER_OS set', async () => {
-        // Arrange
-        process.env['RUNNER_OS'] = 'Linux'
-        const error404 = new Error('HTTP 404 Not Found')
-        mockGetRemoteFile.mockRejectedValue(error404)
-
-        // Mock getBridgeUrlAndVersion to return a valid URL
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured Linux runner')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle 404 error without RUNNER_OS set', async () => {
-        // Arrange
-        const error404 = new Error('HTTP 404 Not Found')
-        mockGetRemoteFile.mockRejectedValue(error404)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured  runner')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle invalid url error with RUNNER_OS set to Windows', async () => {
-        // Arrange
-        process.env['RUNNER_OS'] = 'Windows'
-        const invalidUrlError = new Error('Invalid URL provided')
-        mockGetRemoteFile.mockRejectedValue(invalidUrlError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured Windows runner')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle case-insensitive invalid url error', async () => {
-        // Arrange
-        process.env['RUNNER_OS'] = 'macOS'
-        const invalidUrlError = new Error('INVALID URL format')
-        mockGetRemoteFile.mockRejectedValue(invalidUrlError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured macOS runner')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle empty response error', async () => {
-        // Arrange
-        const emptyError = new Error('Response is empty')
-        mockGetRemoteFile.mockRejectedValue(emptyError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI URL cannot be empty ')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle case-insensitive empty response error', async () => {
-        // Arrange
-        const emptyError = new Error('EMPTY response received')
-        mockGetRemoteFile.mockRejectedValue(emptyError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI URL cannot be empty ')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle generic error without special keywords', async () => {
-        // Arrange
-        const genericError = new Error('Network timeout occurred')
-        mockGetRemoteFile.mockRejectedValue(genericError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Network timeout occurred')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should handle error with both 404 and empty keywords (404 takes precedence)', async () => {
-        // Arrange
-        process.env['RUNNER_OS'] = 'Linux'
-        const mixedError = new Error('HTTP 404 error - empty response')
-        mockGetRemoteFile.mockRejectedValue(mixedError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow('Provided Bridge CLI url is not valid for the configured Linux runner')
-
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-      })
-
-      it('should verify cleanup is called for all error scenarios', async () => {
-        // Arrange
-        const testError = new Error('Test error')
-        mockGetRemoteFile.mockRejectedValue(testError)
-
-        jest.spyOn(bridgeClient as any, 'getBridgeUrlAndVersion').mockResolvedValue({
-          bridgeUrl: 'https://test.url/bridge.zip',
-          bridgeVersion: '1.0.0'
-        })
-        jest.spyOn(bridgeClient, 'isBridgeInstalled').mockResolvedValue(false)
-
-        // Act & Assert
-        await expect(bridgeClient.downloadBridge(tempDir)).rejects.toThrow()
-
-        // Verify cleanup was called with correct parameters
-        expect(mockCleanupTempDir).toHaveBeenCalledWith(tempDir)
-        expect(mockCleanupTempDir).toHaveBeenCalledTimes(1)
-      })
-    })
-  })
-})
-
-describe('BridgeClientBase - getBridgeUrlAndVersion BRIDGE_CLI_DOWNLOAD_URL conditional logic', () => {
-  let bridgeClient: TestBridgeClient
-  let mockDebug: jest.SpyInstance
-  let mockProcessDownloadUrl: jest.SpyInstance
-  let mockProcessVersion: jest.SpyInstance
-  let mockProcessLatestVersion: jest.SpyInstance
-
-  beforeEach(() => {
-    jest.clearAllMocks()
-    bridgeClient = new TestBridgeClient()
-
-    // Mock the core debug function
-    const core = require('@actions/core')
-    mockDebug = jest.spyOn(core, 'debug')
-
-    // Mock the private methods
-    mockProcessDownloadUrl = jest.spyOn(bridgeClient as any, 'processDownloadUrl')
-    mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
-    mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-
-    // Reset mock inputs to default values
-    setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-    setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  describe('BRIDGE_CLI_DOWNLOAD_URL condition', () => {
-    test('should call processDownloadUrl and log debug message when BRIDGE_CLI_DOWNLOAD_URL is provided', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge-cli.zip'
-      const expectedResult = {
-        bridgeUrl: testUrl,
-        bridgeVersion: '1.2.3'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockProcessDownloadUrl.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith(`Bridge CLI download URL: ${testUrl}`)
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mockProcessVersion).not.toHaveBeenCalled()
-      expect(mockProcessLatestVersion).not.toHaveBeenCalled()
-      expect(result).toEqual(expectedResult)
-    })
-
-    test('should call processDownloadUrl when BRIDGE_CLI_DOWNLOAD_URL is non-empty string', async () => {
-      // Arrange
-      const testUrl = 'https://custom-artifactory.com/bridge/bridge-cli-2.1.0.zip'
-      const expectedResult = {
-        bridgeUrl: testUrl,
-        bridgeVersion: '2.1.0'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockProcessDownloadUrl.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith(`Bridge CLI download URL: ${testUrl}`)
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(result).toEqual(expectedResult)
-    })
-
-    test('should handle processDownloadUrl throwing an error', async () => {
-      // Arrange
-      const testUrl = 'https://invalid-url.com/bridge-cli.zip'
-      const testError = new Error('Invalid download URL')
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockProcessDownloadUrl.mockRejectedValue(testError)
-
-      // Act & Assert
-      await expect((bridgeClient as any).getBridgeUrlAndVersion(false)).rejects.toThrow('Invalid download URL')
-
-      expect(mockDebug).toHaveBeenCalledWith(`Bridge CLI download URL: ${testUrl}`)
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mockProcessVersion).not.toHaveBeenCalled()
-      expect(mockProcessLatestVersion).not.toHaveBeenCalled()
-    })
-
-    test('should prioritize BRIDGE_CLI_DOWNLOAD_URL over BRIDGE_CLI_DOWNLOAD_VERSION', async () => {
-      // Arrange
-      const testUrl = 'https://example.com/bridge-cli.zip'
-      const testVersion = '1.5.0'
-      const expectedResult = {
-        bridgeUrl: testUrl,
-        bridgeVersion: '1.2.3'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', testVersion)
-      mockProcessDownloadUrl.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith(`Bridge CLI download URL: ${testUrl}`)
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mockProcessVersion).not.toHaveBeenCalled()
-      expect(mockProcessLatestVersion).not.toHaveBeenCalled()
-      expect(result).toEqual(expectedResult)
-    })
-
-    test('should work correctly in air gap mode when BRIDGE_CLI_DOWNLOAD_URL is provided', async () => {
-      // Arrange
-      const testUrl = 'https://internal-repo.com/bridge-cli.zip'
-      const expectedResult = {
-        bridgeUrl: testUrl,
-        bridgeVersion: '2.0.0'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
-      mockProcessDownloadUrl.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith(`Bridge CLI download URL: ${testUrl}`)
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mockProcessLatestVersion).not.toHaveBeenCalled()
-      expect(result).toEqual(expectedResult)
-    })
-  })
-
-  describe('Fallback behavior when BRIDGE_CLI_DOWNLOAD_URL is not provided', () => {
-    test('should call processVersion when BRIDGE_CLI_DOWNLOAD_VERSION is provided and BRIDGE_CLI_DOWNLOAD_URL is empty', async () => {
-      // Arrange
-      const testVersion = '1.5.0'
-      const expectedResult = {
-        bridgeUrl: 'https://example.com/bridge-1.5.0.zip',
-        bridgeVersion: testVersion
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', testVersion)
-      mockProcessVersion.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: ')
-      expect(mockDebug).toHaveBeenCalledWith(`Using specified Bridge CLI version: ${testVersion}`)
-      expect(mockProcessDownloadUrl).not.toHaveBeenCalled()
-      expect(mockProcessVersion).toHaveBeenCalledTimes(1)
-      expect(mockProcessLatestVersion).not.toHaveBeenCalled()
-      expect(result).toEqual(expectedResult)
-    })
-
-    test('should call processLatestVersion when neither URL nor version is provided', async () => {
-      // Arrange
-      const expectedResult = {
-        bridgeUrl: 'https://example.com/bridge-latest.zip',
-        bridgeVersion: '2.0.0'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
-      mockProcessLatestVersion.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      // Assert
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: ')
-      expect(mockDebug).toHaveBeenCalledWith('No specific URL or version provided, using latest version')
-      expect(mockProcessDownloadUrl).not.toHaveBeenCalled()
-      expect(mockProcessVersion).not.toHaveBeenCalled()
-      expect(mockProcessLatestVersion).toHaveBeenCalledWith(false)
-      expect(result).toEqual(expectedResult)
-    })
-
-    test('should handle null BRIDGE_CLI_DOWNLOAD_URL correctly', async () => {
-      // Arrange
-      const testVersion = '1.5.0'
-      const expectedResult = {
-        bridgeUrl: 'https://example.com/bridge-1.5.0.zip',
-        bridgeVersion: testVersion
-      }
-
-      // Simulate null value (which would be converted to empty string)
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', testVersion)
-      mockProcessVersion.mockResolvedValue(expectedResult)
-
-      // Act
-      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      // Assert
-      expect(mockProcessDownloadUrl).not.toHaveBeenCalled()
-      expect(mockProcessVersion).toHaveBeenCalledTimes(1)
-      expect(result).toEqual(expectedResult)
-    })
-  })
-
-  describe('Input validation and edge cases', () => {
-    test('should handle whitespace-only BRIDGE_CLI_DOWNLOAD_URL as non-empty', async () => {
-      // Arrange
-      const testUrl = '   '
-      const expectedResult = {
-        bridgeUrl: testUrl,
-        bridgeVersion: '1.0.0'
-      }
-
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', testUrl)
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.5.0')
-      mockProcessDownloadUrl.mockResolvedValue(expectedResult)
+
+      const mockIsBridgeInstalled = jest.spyOn(bridgeClient, 'isBridgeInstalled')
+      mockIsBridgeInstalled.mockResolvedValue(true)
+
+      // Act
+      const result = await (bridgeClient as any).processVersion()
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: '', bridgeVersion: '1.5.0'})
+      expect(mockIsBridgeInstalled).toHaveBeenCalledWith('1.5.0')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
+    })
+
+    it('should call updateBridgeCLIVersion when bridge is not installed', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.5.0')
+
+      const mockIsBridgeInstalled = jest.spyOn(bridgeClient, 'isBridgeInstalled')
+      mockIsBridgeInstalled.mockResolvedValue(false)
+
+      const mockUpdateBridgeCLIVersion = jest.spyOn(bridgeClient as any, 'updateBridgeCLIVersion')
+      mockUpdateBridgeCLIVersion.mockResolvedValue({bridgeUrl: 'https://test.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+
+      // Act
+      const result = await (bridgeClient as any).processVersion()
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://test.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+      expect(mockIsBridgeInstalled).toHaveBeenCalledWith('1.5.0')
+      expect(mockUpdateBridgeCLIVersion).toHaveBeenCalledWith('1.5.0')
+    })
+  })
+
+  describe('edge cases and error scenarios', () => {
+    it('should handle when processLatestVersion throws an error', async () => {
+      // Arrange
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockRejectedValue(new Error('Failed to fetch latest version'))
+
+      // Act & Assert
+      await expect((bridgeClient as any).getBridgeUrlAndVersion(false)).rejects.toThrow('Failed to fetch latest version')
+    })
+
+    it('should handle when processVersion throws an error', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.0.0')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockRejectedValue(new Error('Version processing failed'))
+
+      // Act & Assert
+      await expect((bridgeClient as any).getBridgeUrlAndVersion(false)).rejects.toThrow('Version processing failed')
+    })
+
+    it('should handle when processDownloadUrl throws an error', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.url/bridge.zip')
+
+      const mockProcessDownloadUrl = jest.spyOn(bridgeClient as any, 'processDownloadUrl')
+      mockProcessDownloadUrl.mockRejectedValue(new Error('Download URL processing failed'))
+
+      // Act & Assert
+      await expect((bridgeClient as any).getBridgeUrlAndVersion(false)).rejects.toThrow('Download URL processing failed')
+    })
+  })
+
+  describe('input priority and precedence', () => {
+    it('should prioritize BRIDGE_CLI_BASE_URL over all other inputs', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://base.url/')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://download.url/bridge.zip')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.0.0')
+
+      const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
+      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://base.url/bridge-1.0.0.zip', bridgeVersion: '1.0.0'})
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
 
       // Assert
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL:    ')
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
-      // Since whitespace is truthy in JavaScript, it should call processDownloadUrl
-      expect(mockProcessDownloadUrl).toHaveBeenCalledTimes(1)
-      expect(mockProcessVersion).not.toHaveBeenCalled()
-      expect(result).toEqual(expectedResult)
+      expect(result.bridgeUrl).toContain('base.url')
+      expect(mockProcessVersion).toHaveBeenCalled()
     })
 
-    test('should log correct debug messages for each path', async () => {
-      // Test URL path
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.com/bridge.zip')
-      mockProcessDownloadUrl.mockResolvedValue({bridgeUrl: 'test', bridgeVersion: '1.0.0'})
+    it('should use BRIDGE_CLI_DOWNLOAD_URL when BRIDGE_CLI_BASE_URL is not provided', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://download.url/bridge.zip')
+      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.0.0')
 
-      await (bridgeClient as any).getBridgeUrlAndVersion(false)
+      const mockProcessDownloadUrl = jest.spyOn(bridgeClient as any, 'processDownloadUrl')
+      mockProcessDownloadUrl.mockResolvedValue({bridgeUrl: 'https://download.url/bridge.zip', bridgeVersion: '1.0.0'})
 
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: https://test.com/bridge.zip')
-      expect(mockDebug).toHaveBeenCalledWith('Using provided Bridge CLI download URL')
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
 
-      // Reset mocks for next test
-      jest.clearAllMocks()
+      // Assert
+      expect(result.bridgeUrl).toContain('download.url')
+      expect(mockProcessDownloadUrl).toHaveBeenCalled()
+    })
 
-      // Test version path
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
-      setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '2.0.0')
-      mockProcessVersion.mockResolvedValue({bridgeUrl: 'test', bridgeVersion: '2.0.0'})
-
-      await (bridgeClient as any).getBridgeUrlAndVersion(false)
-
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: ')
-      expect(mockDebug).toHaveBeenCalledWith('Using specified Bridge CLI version: 2.0.0')
-
-      // Reset mocks for next test
-      jest.clearAllMocks()
-
-      // Test latest version path
+    it('should handle empty string inputs correctly', async () => {
+      // Arrange
+      setMockInputValue('BRIDGE_CLI_BASE_URL', '')
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', '')
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'test', bridgeVersion: '3.0.0'})
 
-      await (bridgeClient as any).getBridgeUrlAndVersion(false)
+      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
+      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.0.0'})
 
-      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI download URL: ')
-      expect(mockDebug).toHaveBeenCalledWith('No specific URL or version provided, using latest version')
+      // Act
+      const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
+
+      // Assert
+      expect(result).toEqual({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.0.0'})
+      expect(mockProcessLatestVersion).toHaveBeenCalled()
     })
   })
-})
 
-describe('BridgeClientBase - getBridgeVersionFromLatestURL HTTP 200 Response Handling', () => {
-  let bridgeClient: TestBridgeClient
-  let mockMakeHttpsGetRequest: jest.SpyInstance
+  describe('checkIfBridgeExistsLocally', () => {
+    let mockValidateAndSetBridgePath: jest.SpyInstance
+    let mockGetBridgeExecutablePath: jest.SpyInstance
+    let mockCheckIfPathExists: jest.SpyInstance
+    let mockDebug: jest.SpyInstance
 
-  beforeEach(() => {
-    jest.clearAllMocks()
-    bridgeClient = new TestBridgeClient()
+    beforeEach(() => {
+      jest.clearAllMocks()
 
-    // Mock the private makeHttpsGetRequest method
-    mockMakeHttpsGetRequest = jest.spyOn(bridgeClient as any, 'makeHttpsGetRequest')
-  })
+      const core = require('@actions/core')
+      const utility = require('../../../../src/blackduck-security-action/utility')
 
-  afterEach(() => {
-    jest.restoreAllMocks()
-  })
-
-  test('should parse bridge version from response body when status code is 200', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `bridge-cli-bundle: 2.3.1`
-
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      mockValidateAndSetBridgePath = jest.spyOn(bridgeClient as any, 'validateAndSetBridgePath')
+      mockGetBridgeExecutablePath = jest.spyOn(bridgeClient as any, 'getBridgeExecutablePath')
+      mockCheckIfPathExists = jest.spyOn(utility, 'checkIfPathExists')
+      mockDebug = jest.spyOn(core, 'debug')
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return true when bridge exists locally', async () => {
+      // Arrange
+      const executablePath = '/test/bridge/bridge-cli'
+      mockValidateAndSetBridgePath.mockResolvedValue(undefined)
+      mockGetBridgeExecutablePath.mockReturnValue(executablePath)
+      mockCheckIfPathExists.mockReturnValue(true)
 
-    // Assert
-    expect(result).toBe('2.3.1')
-    expect(mockMakeHttpsGetRequest).toHaveBeenCalledWith(latestVersionsUrl)
-  })
+      // Act
+      const result = await (bridgeClient as any).checkIfBridgeExistsLocally()
 
-  test('should handle bridge version with whitespace in response body', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `
-      some-tool: 1.0.0
-      bridge-cli-bundle:   3.4.5
-      other-tool: 2.0.0
-    `
-
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Assert
+      expect(result).toBe(true)
+      expect(mockValidateAndSetBridgePath).toHaveBeenCalledTimes(1)
+      expect(mockGetBridgeExecutablePath).toHaveBeenCalledTimes(1)
+      expect(mockCheckIfPathExists).toHaveBeenCalledWith(executablePath)
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return false when bridge does not exist locally', async () => {
+      // Arrange
+      const executablePath = '/test/bridge/bridge-cli'
+      mockValidateAndSetBridgePath.mockResolvedValue(undefined)
+      mockGetBridgeExecutablePath.mockReturnValue(executablePath)
+      mockCheckIfPathExists.mockReturnValue(false)
 
-    // Assert
-    expect(result).toBe('3.4.5')
-  })
+      // Act
+      const result = await (bridgeClient as any).checkIfBridgeExistsLocally()
 
-  test('should return first matching bridge-cli-bundle version when multiple entries exist', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `
-      bridge-cli-bundle: 1.0.0
-      some-tool: 2.0.0
-      bridge-cli-bundle: 3.0.0
-    `
-
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Assert
+      expect(result).toBe(false)
+      expect(mockValidateAndSetBridgePath).toHaveBeenCalledTimes(1)
+      expect(mockGetBridgeExecutablePath).toHaveBeenCalledTimes(1)
+      expect(mockCheckIfPathExists).toHaveBeenCalledWith(executablePath)
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return false and log error when validateAndSetBridgePath throws exception', async () => {
+      // Arrange
+      const errorMessage = 'Failed to validate bridge path'
+      const error = new Error(errorMessage)
+      mockValidateAndSetBridgePath.mockRejectedValue(error)
 
-    // Assert
-    expect(result).toBe('1.0.0')
-  })
+      // Act
+      const result = await (bridgeClient as any).checkIfBridgeExistsLocally()
 
-  test('should return empty string when bridge-cli-bundle not found in response', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `
-      some-tool: 1.0.0
-      other-tool: 2.0.0
-      different-bridge: 3.0.0
-    `
-
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Assert
+      expect(result).toBe(false)
+      expect(mockValidateAndSetBridgePath).toHaveBeenCalledTimes(1)
+      expect(mockGetBridgeExecutablePath).not.toHaveBeenCalled()
+      expect(mockCheckIfPathExists).not.toHaveBeenCalled()
+      expect(mockDebug).toHaveBeenCalledWith(`Error checking if bridge exists locally: ${errorMessage}`)
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return false and log error when getBridgeExecutablePath throws exception', async () => {
+      // Arrange
+      const errorMessage = 'Failed to get executable path'
+      const error = new Error(errorMessage)
 
-    // Assert
-    expect(result).toBe('')
-  })
+      mockValidateAndSetBridgePath.mockResolvedValue(undefined)
+      mockGetBridgeExecutablePath.mockImplementation(() => {
+        throw error
+      })
 
-  test('should handle response body with only bridge-cli-bundle entry', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = 'bridge-cli-bundle: 4.2.1'
+      // Act
+      const result = await (bridgeClient as any).checkIfBridgeExistsLocally()
 
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Assert
+      expect(result).toBe(false)
+      expect(mockValidateAndSetBridgePath).toHaveBeenCalledTimes(1)
+      expect(mockDebug).toHaveBeenCalledWith(expect.stringContaining('Error checking if bridge exists locally:'))
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return false and log error when checkIfPathExists throws exception', async () => {
+      // Arrange
+      const executablePath = '/test/bridge/bridge-cli'
+      const errorMessage = 'Failed to check path existence'
+      const error = new Error(errorMessage)
+      mockValidateAndSetBridgePath.mockResolvedValue(undefined)
+      mockGetBridgeExecutablePath.mockReturnValue(executablePath)
+      mockCheckIfPathExists.mockImplementation(() => {
+        throw error
+      })
 
-    // Assert
-    expect(result).toBe('4.2.1')
+      // Act
+      const result = await (bridgeClient as any).checkIfBridgeExistsLocally()
+
+      // Assert
+      expect(result).toBe(false)
+      expect(mockValidateAndSetBridgePath).toHaveBeenCalledTimes(1)
+      expect(mockGetBridgeExecutablePath).toHaveBeenCalledTimes(1)
+      expect(mockCheckIfPathExists).toHaveBeenCalledWith(executablePath)
+      expect(mockDebug).toHaveBeenCalledWith(`Error checking if bridge exists locally: ${errorMessage}`)
+    })
   })
 
-  test('should handle empty response body', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = ''
-
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+  describe('getBridgeExecutablePath', () => {
+    beforeEach(() => {
+      jest.clearAllMocks()
+      // Set a test bridge path
+      bridgeClient.bridgePath = '/test/bridge/path'
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return bridge-cli.exe path on Windows platform', () => {
+      // Arrange
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'win32'})
 
-    // Assert
-    expect(result).toBe('')
-  })
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
 
-  test('should handle malformed bridge-cli-bundle line without colon', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `
-      bridge-cli-bundle-invalid-format
-    `
+      // Assert
+      expect(result).toBe('/test/bridge/path/bridge-cli.exe')
 
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return bridge-cli path on macOS platform', () => {
+      // Arrange
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'darwin'})
 
-    // Assert
-    expect(result).toBe('')
-  })
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
 
-  test('should trim response body before processing', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = `
-      bridge-cli-bundle: 5.1.0
-    ` // Response with leading/trailing whitespace
+      // Assert
+      expect(result).toBe('/test/bridge/path/bridge-cli')
 
-    mockMakeHttpsGetRequest.mockResolvedValue({
-      statusCode: 200,
-      body: mockResponseBody
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
     })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should return bridge-cli path on Linux platform', () => {
+      // Arrange
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'linux'})
 
-    // Assert
-    expect(result).toBe('5.1.0')
-  })
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
 
-  test('should reset retry count to 0 when status code is 200', async () => {
-    // Arrange
-    const latestVersionsUrl = 'https://example.com/versions.txt'
-    const mockResponseBody = 'bridge-cli-bundle: 1.5.0'
+      // Assert
+      expect(result).toBe('/test/bridge/path/bridge-cli')
 
-    // Mock multiple calls to simulate retry scenario followed by success
-    mockMakeHttpsGetRequest
-      .mockResolvedValueOnce({statusCode: 500, body: ''}) // First call fails
-      .mockResolvedValueOnce({statusCode: 200, body: mockResponseBody}) // Second call succeeds
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
 
-    // Act
-    const result = await bridgeClient.getBridgeVersionFromLatestURL(latestVersionsUrl)
+    it('should handle empty bridge path correctly', () => {
+      // Arrange
+      bridgeClient.bridgePath = '/user/test'
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'win32'})
 
-    // Assert
-    expect(result).toBe('1.5.0')
-    expect(mockMakeHttpsGetRequest).toHaveBeenCalledTimes(2)
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
+
+      // Assert
+      expect(result).toBe('/user/test/bridge-cli.exe')
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
+
+    it('should handle bridge path with trailing slash on Windows', () => {
+      // Arrange
+      bridgeClient.bridgePath = '/test/bridge/path'
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'win32'})
+
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
+
+      // Assert
+      expect(result).toBe('/test/bridge/path/bridge-cli.exe')
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
+
+    it('should handle bridge path with special characters on Windows', () => {
+      // Arrange
+      bridgeClient.bridgePath = '/test/bridge path with spaces & special-chars_123'
+      const originalPlatform = process.platform
+      Object.defineProperty(process, 'platform', {value: 'win32'})
+
+      // Act
+      const result = (bridgeClient as any).getBridgeExecutablePath()
+
+      // Assert
+      expect(result).toBe('/test/bridge path with spaces & special-chars_123/bridge-cli.exe')
+
+      // Restore original platform
+      Object.defineProperty(process, 'platform', {value: originalPlatform})
+    })
   })
 })
