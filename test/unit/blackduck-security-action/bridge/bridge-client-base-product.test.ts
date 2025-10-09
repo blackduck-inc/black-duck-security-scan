@@ -201,7 +201,7 @@ class TestBridgeClient extends BridgeClientBase {
     return false
   }
 
-  async validateAndSetBridgePath(): Promise<void> {
+  async validateAndSetBridgePath(): Promise<boolean> {
     this.bridgePath = '/test/bridge/path'
   }
 
