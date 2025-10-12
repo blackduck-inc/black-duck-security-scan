@@ -1315,19 +1315,19 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       expect(mockProcessLatestVersion).toHaveBeenCalledWith(false)
     })
 
-    it('should fetch latest version in airgap mode', async () => {
+    it('should use existing Bridge version when base URL, download URL and version not provided in airgap mode', async () => {
       // Arrange - all inputs are empty by default
-
-      const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+      const mockCheckIfBridgeExistsInAirGap = jest.spyOn(bridgeClient as any, 'checkIfBridgeExistsInAirGap')
+      mockCheckIfBridgeExistsInAirGap.mockResolvedValue(true)
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
 
       // Assert
-      expect(result).toEqual({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
-      expect(mockInfo).toHaveBeenCalledWith('No specific Bridge CLI version provided, fetching the latest version.')
-      expect(mockProcessLatestVersion).toHaveBeenCalledWith(true)
+      expect(result).toEqual({bridgeUrl: '', bridgeVersion: ''})
+      expect(mockInfo).toHaveBeenCalledWith('Airgap mode enabled with no URLs or version specified. Checking for existing bridge installation.')
+      expect(mockInfo).toHaveBeenCalledWith('Found existing bridge installation in airgap mode. Using existing bridge.')
+      expect(mockCheckIfBridgeExistsInAirGap).toHaveBeenCalled()
     })
   })
 

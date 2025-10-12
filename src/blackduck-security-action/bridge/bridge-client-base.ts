@@ -314,7 +314,6 @@ export abstract class BridgeClientBase {
       }
     }
 
-    // Fall back to BRIDGE_CLI_DOWNLOAD_URL if BRIDGE_CLI_BASE_URL is not provided
     if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
       info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
       return this.processDownloadUrl()
@@ -325,8 +324,33 @@ export abstract class BridgeClientBase {
       return this.processVersion()
     }
 
+    return this.handleAirGapOrLatest(isAirGap)
+  }
+
+  private async handleAirGapOrLatest(isAirGap: boolean): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    if (isAirGap) {
+      return await this.handleAirGapValidation()
+    }
+
     info('No specific Bridge CLI version provided, fetching the latest version.')
     return this.processLatestVersion(isAirGap)
+  }
+
+  /**
+   * Handles air gap validation logic - checks for existing bridge installation
+   * @returns Promise with bridge URL and version info
+   * @throws Error if no bridge found and no base URL provided
+   */
+  private async handleAirGapValidation(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
+    info('Airgap mode enabled with no URLs or version specified. Checking for existing bridge installation.')
+
+    if (await this.checkIfBridgeExistsInAirGap()) {
+      info('Found existing bridge installation in airgap mode. Using existing bridge.')
+      return {bridgeUrl: '', bridgeVersion: ''}
+    }
+
+    info('No existing bridge found in airgap mode and no download URLs provided.')
+    throw new Error('No BRIDGE_CLI_BASE_URL provided and no existing bridge found in airgap mode')
   }
 
   private async processDownloadUrl(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
@@ -559,9 +583,11 @@ export abstract class BridgeClientBase {
     return result
   }
 
-  protected determineBaseUrl(): string {
+  protected async determineBaseUrl(): Promise<string> {
     if (this.isAirGapMode() && !inputs.BRIDGE_CLI_BASE_URL) {
-      throw new Error('No BRIDGE_CLI_BASE_URL provided')
+      // Reuse the air gap validation logic
+      await this.handleAirGapValidation()
+      return ''
     }
     return inputs.BRIDGE_CLI_BASE_URL || constants.BRIDGE_CLI_ARTIFACTORY_URL
   }
