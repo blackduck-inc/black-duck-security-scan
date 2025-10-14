@@ -33,11 +33,11 @@ export class BridgeCliThinClient extends BridgeClientBase {
     WORKFLOW_VERSION_WARNING: 'Detected workflow version for Polaris, Black Duck SCA, Coverity, or SRM is not applicable for Bridge CLI Bundle.'
   } as const
 
-  protected async initializeUrls(): Promise<void> {
+  protected initializeUrls(): void {
     const baseUrl = this.determineBaseUrl()
 
     if (baseUrl) {
-      this.setupBridgeUrls(await baseUrl)
+      this.setupBridgeUrls(baseUrl)
     }
   }
 
