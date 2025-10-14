@@ -350,7 +350,7 @@ export abstract class BridgeClientBase {
     }
 
     info('No existing bridge found in airgap mode and no download URLs provided.')
-    throw new Error('No BRIDGE_CLI_BASE_URL provided and no existing bridge found in airgap mode')
+    return {bridgeUrl: '', bridgeVersion: ''}
   }
 
   private async processDownloadUrl(): Promise<{bridgeUrl: string; bridgeVersion: string}> {
@@ -522,7 +522,7 @@ export abstract class BridgeClientBase {
     if (!executableExists) {
       if (!inputs.BRIDGE_CLI_BASE_URL) {
         debug(`No BRIDGE_CLI_BASE_URL provided`)
-        throw new Error('No BRIDGE_CLI_BASE_URL provided')
+        return
       }
     }
   }
