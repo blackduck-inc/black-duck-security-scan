@@ -9,7 +9,7 @@ export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOA
 export const BRIDGE_CLI_BASE_URL = getInput(constants.BRIDGE_CLI_BASE_URL_KEY)?.trim() || ''
 
 // Thin Client Configuration
-export const ENABLE_BRIDGE_THIN_CLIENT = getInput(constants.ENABLE_BRIDGE_THIN_CLIENT)?.trim() || 'true'
+export const ENABLE_BRIDGE_CLI_THIN_CLIENT = getInput(constants.ENABLE_BRIDGE_CLI_THIN_CLIENT)?.trim() || 'true'
 export const ENABLE_WORKFLOW_UPDATE = getInput(constants.ENABLE_WORKFLOW_UPDATE_KEY)?.trim() || 'true'
 export const BRIDGE_CLI_REGISTRY_URL = getInput(constants.BRIDGE_CLI_REGISTRY_URL_KEY)?.trim() || ''
 

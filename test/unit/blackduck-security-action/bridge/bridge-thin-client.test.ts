@@ -1,4 +1,4 @@
-import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeCliThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-cli-thin-client'
 import * as downloadUtility from '../../../../src/blackduck-security-action/download-utility'
 import * as utility from '../../../../src/blackduck-security-action/utility'
 import * as core from '@actions/core'
@@ -15,7 +15,7 @@ jest.mock('../../../../src/blackduck-security-action/download-utility')
 jest.mock('path')
 
 describe('BridgeThinClient', () => {
-  let bridgeThinClient: BridgeThinClient
+  let bridgeThinClient: BridgeCliThinClient
   const mockDebug = jest.mocked(core.debug)
   const mockInfo = jest.mocked(core.info)
   const mockExecSync = jest.mocked(execSync)
@@ -36,7 +36,7 @@ describe('BridgeThinClient', () => {
     // Mock air gap mode to false by default to avoid initialization issues
     mockParseToBoolean.mockReturnValue(false)
 
-    bridgeThinClient = new BridgeThinClient()
+    bridgeThinClient = new BridgeCliThinClient()
 
     jest.clearAllMocks()
   })

@@ -176,7 +176,7 @@ inputs:
   blackducksca_fixpr_useUpgradeGuidance:
     description: 'Flag to enable long term upgrade guidance'
     required: false
-  enable_bridge_thin_client:
+  enable_bridgecli_thin_client:
     description: 'Flag to enable thin client mode. Default: true. If set to false, it will use bridge-cli-bundle.'
     required: false
     default: true
