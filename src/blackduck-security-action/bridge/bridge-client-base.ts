@@ -559,9 +559,12 @@ export abstract class BridgeClientBase {
     return result
   }
 
-  protected determineBaseUrl(): string {
-    if (this.isAirGapMode() && !inputs.BRIDGE_CLI_BASE_URL) {
+  protected async determineBaseUrl(): Promise<string> {
+    if (this.isAirGapMode() && !inputs.BRIDGE_CLI_BASE_URL && !inputs.BRIDGE_CLI_DOWNLOAD_URL) {
       // Check if bridge exists locally
+      if (!this.bridgePath) {
+        await this.validateAndSetBridgePath()
+      }
       if (!checkIfPathExists(this.getBridgeExecutablePath())) {
         throw new Error('No BRIDGE_CLI_BASE_URL provided')
       }
