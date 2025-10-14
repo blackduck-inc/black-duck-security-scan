@@ -6,7 +6,7 @@ import {checkIfPathExists, cleanupTempDir, getSharedHttpClient, getSharedHttpsAg
 import os from 'os'
 import {validateBlackDuckInputs, validateCoverityInputs, validatePolarisInputs, validateScanTypes, validateSRMInputs} from '../validators'
 import * as inputs from '../inputs'
-import {ENABLE_NETWORK_AIR_GAP} from '../inputs'
+import {BRIDGE_CLI_BASE_URL, ENABLE_NETWORK_AIR_GAP} from '../inputs'
 import {BridgeToolsParameter} from '../tools-parameter'
 import {DownloadFileResponse, getRemoteFile} from '../download-utility'
 import fs from 'fs'
@@ -35,7 +35,6 @@ export abstract class BridgeClientBase {
     this.bridgeArtifactoryURL = ''
     this.bridgeUrlPattern = ''
     this.bridgeUrlLatestPattern = ''
-    this.initializeUrls()
   }
 
   abstract getBridgeFileType(): string
@@ -254,7 +253,16 @@ export abstract class BridgeClientBase {
       const isAirGap = parseToBoolean(ENABLE_NETWORK_AIR_GAP)
       if (isAirGap) {
         info('Network air gap is enabled.')
+        if ((await this.checkIfBridgeExistsInAirGap()) && BRIDGE_CLI_BASE_URL === '') {
+          info('Bridge CLI already exists')
+          return
+        }
       }
+
+      if (inputs.BRIDGE_CLI_BASE_URL || (!isAirGap && !inputs.BRIDGE_CLI_BASE_URL)) {
+        this.initializeUrls()
+      }
+
       const {bridgeUrl, bridgeVersion} = await this.getBridgeUrlAndVersion(isAirGap)
       info('Bridge CLI version is - '.concat(bridgeVersion))
       if (!bridgeUrl) {
@@ -559,10 +567,7 @@ export abstract class BridgeClientBase {
     return result
   }
 
-  protected determineBaseUrl(): string {
-    if (this.isAirGapMode() && !inputs.BRIDGE_CLI_BASE_URL) {
-      throw new Error('No BRIDGE_CLI_BASE_URL provided')
-    }
+  protected async determineBaseUrl(): Promise<string> {
     return inputs.BRIDGE_CLI_BASE_URL || constants.BRIDGE_CLI_ARTIFACTORY_URL
   }
 

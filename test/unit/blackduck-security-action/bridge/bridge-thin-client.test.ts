@@ -1,4 +1,4 @@
-import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeCliThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-cli-thin-client'
 import * as downloadUtility from '../../../../src/blackduck-security-action/download-utility'
 import * as utility from '../../../../src/blackduck-security-action/utility'
 import * as core from '@actions/core'
@@ -15,7 +15,7 @@ jest.mock('../../../../src/blackduck-security-action/download-utility')
 jest.mock('path')
 
 describe('BridgeThinClient', () => {
-  let bridgeThinClient: BridgeThinClient
+  let bridgeThinClient: BridgeCliThinClient
   const mockDebug = jest.mocked(core.debug)
   const mockInfo = jest.mocked(core.info)
   const mockExecSync = jest.mocked(execSync)
@@ -36,7 +36,7 @@ describe('BridgeThinClient', () => {
     // Mock air gap mode to false by default to avoid initialization issues
     mockParseToBoolean.mockReturnValue(false)
 
-    bridgeThinClient = new BridgeThinClient()
+    bridgeThinClient = new BridgeCliThinClient()
 
     jest.clearAllMocks()
   })
@@ -438,14 +438,6 @@ describe('BridgeThinClient', () => {
   })
 
   describe('initializeUrls', () => {
-    test('should initialize URLs when base URL is determined', () => {
-      jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockReturnValue('https://example.com')
-      jest.spyOn(bridgeThinClient as any, 'setupBridgeUrls').mockImplementation(() => {})
-      ;(bridgeThinClient as any).initializeUrls()
-
-      expect(bridgeThinClient['setupBridgeUrls']).toHaveBeenCalledWith('https://example.com')
-    })
-
     test('should not initialize URLs when base URL is not determined', () => {
       jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockReturnValue(null)
       jest.spyOn(bridgeThinClient as any, 'setupBridgeUrls').mockImplementation(() => {})
@@ -839,46 +831,48 @@ describe('BridgeThinClient', () => {
   })
 
   describe('determineBaseUrl', () => {
-    test('should throw error when air gap mode is enabled but BRIDGE_CLI_BASE_URL is not provided', () => {
-      // Enable air gap mode
-      mockParseToBoolean.mockReturnValue(true)
-      // Clear BRIDGE_CLI_BASE_URL
+    test('should return custom base URL when BRIDGE_CLI_BASE_URL is provided', async () => {
+      const customUrl = 'https://custom.example.com/bridge/'
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: customUrl, configurable: true})
+
+      const result = await (bridgeThinClient as any).determineBaseUrl()
+
+      expect(result).toBe(customUrl)
+    })
+
+    test('should return default artifactory URL when BRIDGE_CLI_BASE_URL is empty', async () => {
       Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
 
-      expect(() => {
-        ;(bridgeThinClient as any).determineBaseUrl()
-      }).toThrow('No BRIDGE_CLI_BASE_URL provided')
+      const result = await (bridgeThinClient as any).determineBaseUrl()
+
+      expect(result).toBe(constants.BRIDGE_CLI_ARTIFACTORY_URL)
+    })
+  })
+
+  describe('setupBridgeUrls', () => {
+    beforeEach(() => {
+      // Mock getPlatformName to return a consistent value for testing
+      jest.spyOn(bridgeThinClient as any, 'getPlatformName').mockReturnValue('linux64')
     })
 
-    test('should return BRIDGE_CLI_BASE_URL when provided in air gap mode', () => {
-      // Enable air gap mode
-      mockParseToBoolean.mockReturnValue(true)
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://custom.example.com', configurable: true})
+    test('should normalize URL by adding trailing slash when missing', () => {
+      const baseUrl = 'https://example.com/bridge'
 
-      const result = (bridgeThinClient as any).determineBaseUrl()
+      bridgeThinClient.setupBridgeUrls(baseUrl)
 
-      expect(result).toBe('https://custom.example.com')
+      expect((bridgeThinClient as any).bridgeArtifactoryURL).toBe('https://example.com/bridge/bridge-cli-thin-client')
+      expect((bridgeThinClient as any).bridgeUrlPattern).toBe('https://example.com/bridge/bridge-cli-thin-client/$version/bridge-cli-$platform.zip')
+      expect((bridgeThinClient as any).bridgeUrlLatestPattern).toBe('https://example.com/bridge/bridge-cli-thin-client/latest/bridge-cli-linux64.zip')
     })
 
-    test('should return BRIDGE_CLI_BASE_URL when provided in normal mode', () => {
-      // Disable air gap mode
-      mockParseToBoolean.mockReturnValue(false)
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://custom.example.com', configurable: true})
+    test('should preserve trailing slash when already present', () => {
+      const baseUrl = 'https://example.com/bridge/'
 
-      const result = (bridgeThinClient as any).determineBaseUrl()
+      bridgeThinClient.setupBridgeUrls(baseUrl)
 
-      expect(result).toBe('https://custom.example.com')
-    })
-
-    test('should return default artifactory URL when BRIDGE_CLI_BASE_URL is not provided in normal mode', () => {
-      // Disable air gap mode
-      mockParseToBoolean.mockReturnValue(false)
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
-      Object.defineProperty(constants, 'BRIDGE_CLI_ARTIFACTORY_URL', {value: 'https://default.artifactory.com', configurable: true})
-
-      const result = (bridgeThinClient as any).determineBaseUrl()
-
-      expect(result).toBe('https://default.artifactory.com')
+      expect((bridgeThinClient as any).bridgeArtifactoryURL).toBe('https://example.com/bridge/bridge-cli-thin-client')
+      expect((bridgeThinClient as any).bridgeUrlPattern).toBe('https://example.com/bridge/bridge-cli-thin-client/$version/bridge-cli-$platform.zip')
+      expect((bridgeThinClient as any).bridgeUrlLatestPattern).toBe('https://example.com/bridge/bridge-cli-thin-client/latest/bridge-cli-linux64.zip')
     })
   })
 })

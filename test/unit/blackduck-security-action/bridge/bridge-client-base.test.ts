@@ -2,7 +2,7 @@ import {BridgeClientBase} from '../../../../src/blackduck-security-action/bridge
 import {BridgeToolsParameter} from '../../../../src/blackduck-security-action/tools-parameter'
 import * as validators from '../../../../src/blackduck-security-action/validators'
 import {ExecOptions} from '@actions/exec'
-import {DownloadFileResponse} from '../../../../src/blackduck-security-action/download-utility'
+import {DownloadFileResponse} from '../../../../src/blackduck-security-action/download-utility' // Mock fs module first to provide chmod
 
 // Mock fs module first to provide chmod
 jest.mock('fs', () => ({
@@ -551,6 +551,24 @@ describe('BridgeClientBase - Polaris Command Building', () => {
       mockGetRemoteFile.mockResolvedValue(mockDownloadResponse)
       mockExistsSync.mockReturnValue(false)
 
+      // Act
+      await bridgeClient.downloadBridge(tempDir)
+
+      // Assert
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI version is - 1.2.3')
+      expect(mockGetRemoteFile).toHaveBeenCalledWith(tempDir, 'https://test.url/bridge.zip')
+      expect(mockInfo).toHaveBeenCalledWith('Downloading and configuring Bridge from URL - https://test.url/bridge.zip')
+      expect(mockInfo).toHaveBeenCalledWith('Download and configuration of Bridge CLI completed')
+    })
+
+    it('should download bridge successfully when air gap mode is true', async () => {
+      // Arrange
+      const tempDir = '/tmp/test'
+      const mockDownloadResponse: DownloadFileResponse = {
+        filePath: '/tmp/bridge.zip',
+        fileName: 'https://test.url/bridge.zip'
+      }
+      setMockInputValue('ENABLE_NETWORK_AIR_GAP', 'true')
       // Act
       await bridgeClient.downloadBridge(tempDir)
 
@@ -1184,7 +1202,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.2.3')
 
       const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
-      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-1.2.3.zip', bridgeVersion: '1.2.3'})
+      mockProcessVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.base.url/bridge-1.2.3.zip',
+        bridgeVersion: '1.2.3'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1205,7 +1226,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '2.1.0')
 
       const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
-      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-2.1.0.zip', bridgeVersion: '2.1.0'})
+      mockProcessVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.base.url/bridge-2.1.0.zip',
+        bridgeVersion: '2.1.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1221,7 +1245,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
 
       const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-latest.zip', bridgeVersion: '3.0.0'})
+      mockProcessLatestVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.base.url/bridge-latest.zip',
+        bridgeVersion: '3.0.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1237,7 +1264,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
 
       const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-latest.zip', bridgeVersion: '3.0.0'})
+      mockProcessLatestVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.base.url/bridge-latest.zip',
+        bridgeVersion: '3.0.0'
+      })
 
       // Act
       await (bridgeClient as any).getBridgeUrlAndVersion(true)
@@ -1253,7 +1283,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_URL', 'https://test.download.url/bridge-1.5.0.zip')
 
       const mockProcessDownloadUrl = jest.spyOn(bridgeClient as any, 'processDownloadUrl')
-      mockProcessDownloadUrl.mockResolvedValue({bridgeUrl: 'https://test.download.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+      mockProcessDownloadUrl.mockResolvedValue({
+        bridgeUrl: 'https://test.download.url/bridge-1.5.0.zip',
+        bridgeVersion: '1.5.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1271,7 +1304,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '1.8.0')
 
       const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
-      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+      mockProcessVersion.mockResolvedValue({
+        bridgeUrl: 'https://default.url/bridge-1.8.0.zip',
+        bridgeVersion: '1.8.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1288,7 +1324,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_BASE_URL', 'https://test.base.url/')
 
       const mockProcessVersion = jest.spyOn(bridgeClient as any, 'processVersion')
-      mockProcessVersion.mockResolvedValue({bridgeUrl: 'https://test.base.url/bridge-1.8.0.zip', bridgeVersion: '1.8.0'})
+      mockProcessVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.base.url/bridge-1.8.0.zip',
+        bridgeVersion: '1.8.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
@@ -1304,7 +1343,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       // Arrange - all inputs are empty by default
 
       const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+      mockProcessLatestVersion.mockResolvedValue({
+        bridgeUrl: 'https://default.url/bridge-latest.zip',
+        bridgeVersion: '2.5.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)
@@ -1319,7 +1361,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       // Arrange - all inputs are empty by default
 
       const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.5.0'})
+      mockProcessLatestVersion.mockResolvedValue({
+        bridgeUrl: 'https://default.url/bridge-latest.zip',
+        bridgeVersion: '2.5.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(true)
@@ -1408,7 +1453,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       mockIsBridgeInstalled.mockResolvedValue(false)
 
       const mockUpdateBridgeCLIVersion = jest.spyOn(bridgeClient as any, 'updateBridgeCLIVersion')
-      mockUpdateBridgeCLIVersion.mockResolvedValue({bridgeUrl: 'https://test.url/bridge-1.5.0.zip', bridgeVersion: '1.5.0'})
+      mockUpdateBridgeCLIVersion.mockResolvedValue({
+        bridgeUrl: 'https://test.url/bridge-1.5.0.zip',
+        bridgeVersion: '1.5.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).processVersion()
@@ -1494,7 +1542,10 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       setMockInputValue('BRIDGE_CLI_DOWNLOAD_VERSION', '')
 
       const mockProcessLatestVersion = jest.spyOn(bridgeClient as any, 'processLatestVersion')
-      mockProcessLatestVersion.mockResolvedValue({bridgeUrl: 'https://default.url/bridge-latest.zip', bridgeVersion: '2.0.0'})
+      mockProcessLatestVersion.mockResolvedValue({
+        bridgeUrl: 'https://default.url/bridge-latest.zip',
+        bridgeVersion: '2.0.0'
+      })
 
       // Act
       const result = await (bridgeClient as any).getBridgeUrlAndVersion(false)

@@ -127,13 +127,9 @@ export class BridgeCliBundle extends BridgeClientBase {
     this.bridgeUrlLatestPattern = `${normalizedBaseUrl}${this.getBridgeType()}/latest/${this.getBridgeFileNameType()}-${this.getPlatformName()}.zip`
   }
 
-  protected initializeUrls(): void {
+  protected async initializeUrls(): Promise<void> {
     this.osPlatform = this.getPlatformName()
-    const baseUrl = this.determineBaseUrl()
-
-    if (baseUrl) {
-      this.setupBridgeUrls(baseUrl)
-    }
+    this.setupBridgeUrls(await this.determineBaseUrl())
   }
 
   // ---------------- Public Methods ----------------

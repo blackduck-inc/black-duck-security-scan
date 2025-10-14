@@ -628,23 +628,14 @@ describe('BridgeCliBundle', () => {
     })
 
     describe('initializeUrls', () => {
-      test('should setup bridge URLs if base URL exists', () => {
+      test('should setup bridge URLs if base URL exists', async () => {
         jest.spyOn(bridgeCliBundle as any, 'getPlatformName').mockReturnValue('linux64')
-        jest.spyOn(bridgeCliBundle as any, 'determineBaseUrl').mockReturnValue('https://example.com')
+        jest.spyOn(bridgeCliBundle as any, 'determineBaseUrl').mockResolvedValue('https://example.com')
         const setupSpy = jest.spyOn(bridgeCliBundle as any, 'setupBridgeUrls')
 
-        ;(bridgeCliBundle as any).initializeUrls()
+        await (bridgeCliBundle as any).initializeUrls()
         expect((bridgeCliBundle as any).osPlatform).toBe('linux64')
         expect(setupSpy).toHaveBeenCalledWith('https://example.com')
-      })
-
-      test('should not setup bridge URLs if base URL missing', () => {
-        jest.spyOn(bridgeCliBundle as any, 'getPlatformName').mockReturnValue('linux64')
-        jest.spyOn(bridgeCliBundle as any, 'determineBaseUrl').mockReturnValue(null)
-        const setupSpy = jest.spyOn(bridgeCliBundle as any, 'setupBridgeUrls')
-
-        ;(bridgeCliBundle as any).initializeUrls()
-        expect(setupSpy).not.toHaveBeenCalled()
       })
     })
 
