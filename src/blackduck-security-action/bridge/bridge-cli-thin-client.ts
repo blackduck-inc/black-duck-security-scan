@@ -13,7 +13,7 @@ interface BridgeVersionInfo {
   bridgeVersion: string
 }
 
-export class BridgeThinClient extends BridgeClientBase {
+export class BridgeCliThinClient extends BridgeClientBase {
   private static readonly BRIDGE_TYPE = 'bridge-cli-thin-client'
   private static readonly BRIDGE_FILE_TYPE = 'bridge-cli'
   private static readonly BRIDGE_FILE_NAME = 'bridge-cli'
@@ -42,14 +42,14 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   getBridgeType(): string {
-    return BridgeThinClient.BRIDGE_TYPE
+    return BridgeCliThinClient.BRIDGE_TYPE
   }
 
   getBridgeFileNameType(): string {
-    return BridgeThinClient.BRIDGE_FILE_NAME
+    return BridgeCliThinClient.BRIDGE_FILE_NAME
   }
   getBridgeFileType(): string {
-    return BridgeThinClient.BRIDGE_FILE_TYPE
+    return BridgeCliThinClient.BRIDGE_FILE_TYPE
   }
 
   protected async executeCommand(bridgeCommand: string, execOptions: ExecOptions): Promise<number> {
@@ -89,7 +89,7 @@ export class BridgeThinClient extends BridgeClientBase {
       return ['', ''] as RegExpMatchArray
     }
 
-    const pattern = new RegExp(`${BridgeThinClient.BRIDGE_TYPE}\\/([\\d.]+)\\/.*${bridgeType}\\.zip`)
+    const pattern = new RegExp(`${BridgeCliThinClient.BRIDGE_TYPE}\\/([\\d.]+)\\/.*${bridgeType}\\.zip`)
     debug(`Verifying URL pattern for bridge type: ${bridgeType}`)
 
     const result = bridgeUrl.match(pattern)
@@ -103,7 +103,7 @@ export class BridgeThinClient extends BridgeClientBase {
     debug(`Getting bridge version from executable: ${bridgeExecutable}`)
 
     try {
-      return execSync(`${bridgeExecutable} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.VERSION}`).toString().trim()
+      return execSync(`${bridgeExecutable} ${BridgeCliThinClient.BRIDGE_CLI_COMMANDS.VERSION}`).toString().trim()
     } catch (error) {
       throw new Error(`Failed to get bridge version: ${(error as Error).message}`)
     }
@@ -130,7 +130,7 @@ export class BridgeThinClient extends BridgeClientBase {
 
   private buildRegisterCommand(): string {
     debug('Building register command')
-    const registerCommand = `${this.bridgeExecutablePath} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.REGISTER} ${inputs.BRIDGE_CLI_REGISTRY_URL}`
+    const registerCommand = `${this.bridgeExecutablePath} ${BridgeCliThinClient.BRIDGE_CLI_COMMANDS.REGISTER} ${inputs.BRIDGE_CLI_REGISTRY_URL}`
     debug(`Register command built: ${registerCommand}`)
     return registerCommand
   }
@@ -142,7 +142,7 @@ export class BridgeThinClient extends BridgeClientBase {
   private handleBridgeUpdateCommand(): string {
     const isBridgeUpdateEnabled = parseToBoolean(inputs.ENABLE_WORKFLOW_UPDATE)
     info(isBridgeUpdateEnabled ? 'Bridge update command has been added.' : 'Bridge workflow update is disabled')
-    return isBridgeUpdateEnabled ? BridgeThinClient.BRIDGE_CLI_COMMANDS.UPDATE : ''
+    return isBridgeUpdateEnabled ? BridgeCliThinClient.BRIDGE_CLI_COMMANDS.UPDATE : ''
   }
 
   async isBridgeInstalled(bridgeVersion: string): Promise<boolean> {
@@ -199,12 +199,12 @@ export class BridgeThinClient extends BridgeClientBase {
   }
 
   protected getLatestVersionRegexPattern(): RegExp {
-    return new RegExp(`(${BridgeThinClient.BRIDGE_FILE_TYPE}-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)`)
+    return new RegExp(`(${BridgeCliThinClient.BRIDGE_FILE_TYPE}-(win64|linux64|linux_arm|macosx|macos_arm)\\.zip)`)
   }
 
   private async executeUseBridgeCommand(bridgeExecutable: string, bridgeVersion: string): Promise<void> {
     debug('Different bridge version found, running --use bridge command')
-    const useBridgeCommand = `${bridgeExecutable} ${BridgeThinClient.BRIDGE_CLI_COMMANDS.USE} ${this.getBridgeFileType()}@${bridgeVersion}`
+    const useBridgeCommand = `${bridgeExecutable} ${BridgeCliThinClient.BRIDGE_CLI_COMMANDS.USE} ${this.getBridgeFileType()}@${bridgeVersion}`
     try {
       execSync(useBridgeCommand, {stdio: 'pipe'})
       debug(`Successfully executed --use bridge command: ${useBridgeCommand} with version ${bridgeVersion}`)
@@ -224,7 +224,7 @@ export class BridgeThinClient extends BridgeClientBase {
     const bridgeVersion = await this.getBridgeVersionFromLatestURL(normalizedVersionUrl)
 
     if (!bridgeVersion) {
-      throw new Error(`${BridgeThinClient.ERROR_MESSAGES.LATEST_VERSION_ERROR} ${normalizedVersionUrl}. Stopping execution.`)
+      throw new Error(`${BridgeCliThinClient.ERROR_MESSAGES.LATEST_VERSION_ERROR} ${normalizedVersionUrl}. Stopping execution.`)
     }
 
     debug(`Retrieved bridge version: ${bridgeVersion}`)

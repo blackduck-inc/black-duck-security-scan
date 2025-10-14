@@ -1,4 +1,4 @@
-import {BridgeThinClient} from '../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeCliThinClient} from '../../src/blackduck-security-action/bridge/bridge-cli-thin-client'
 import * as inputs from '../../src/blackduck-security-action/inputs'
 import * as constants from '../../src/application-constants'
 import * as utility from '../../src/blackduck-security-action/utility'
@@ -602,8 +602,8 @@ describe('Main Run Function Tests', () => {
   })
 })
 
-describe('BridgeThinClient Integration Test', () => {
-  let bridgeThinClient: BridgeThinClient
+describe('BridgeCliThinClient Integration Test', () => {
+  let bridgeThinClient: BridgeCliThinClient
   const mockDebug = jest.mocked(core.debug)
   const mockInfo = jest.mocked(core.info)
   const mockSetFailed = jest.mocked(core.setFailed)
@@ -653,37 +653,37 @@ describe('BridgeThinClient Integration Test', () => {
     mockSetOutput.mockImplementation(() => {})
   })
 
-  describe('BridgeThinClient Instance Creation', () => {
-    test('should successfully create BridgeThinClient instance', () => {
+  describe('BridgeCliThinClient Instance Creation', () => {
+    test('should successfully create BridgeCliThinClient instance', () => {
       expect(() => {
-        bridgeThinClient = new BridgeThinClient()
+        bridgeThinClient = new BridgeCliThinClient()
       }).not.toThrow()
 
-      expect(bridgeThinClient).toBeInstanceOf(BridgeThinClient)
+      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
     })
 
     test('should initialize with correct bridge type', () => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
 
       expect(bridgeThinClient.getBridgeType()).toBe('bridge-cli-thin-client')
     })
 
     test('should initialize with correct bridge file type', () => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
 
       expect(bridgeThinClient.getBridgeFileType()).toBe('bridge-cli')
     })
 
     test('should initialize with correct bridge file name type', () => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
 
       expect(bridgeThinClient.getBridgeFileNameType()).toBe('bridge-cli')
     })
   })
 
-  describe('BridgeThinClient Command Generation', () => {
+  describe('BridgeCliThinClient Command Generation', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
     })
 
     test('should generate formatted command for stage execution', () => {
@@ -724,9 +724,9 @@ describe('BridgeThinClient Integration Test', () => {
     })
   })
 
-  describe('BridgeThinClient URL Verification', () => {
+  describe('BridgeCliThinClient URL Verification', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
     })
 
     test('should verify regex check for bridge URL with version', () => {
@@ -756,9 +756,9 @@ describe('BridgeThinClient Integration Test', () => {
     })
   })
 
-  describe('BridgeThinClient Path Management', () => {
+  describe('BridgeCliThinClient Path Management', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
       // Mock the getBridgeCLIDownloadPathCommon method that getBridgeCLIDownloadDefaultPath calls
       jest.spyOn(bridgeThinClient as any, 'getBridgeCLIDownloadPathCommon').mockReturnValue('/mocked/bridge/path')
     })
@@ -798,9 +798,9 @@ describe('BridgeThinClient Integration Test', () => {
     })
   })
 
-  describe('BridgeThinClient Air Gap Mode', () => {
+  describe('BridgeCliThinClient Air Gap Mode', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
     })
 
     test('should handle air gap mode when enabled', async () => {
@@ -816,14 +816,14 @@ describe('BridgeThinClient Integration Test', () => {
     })
   })
 
-  describe('BridgeThinClient Integration Workflow', () => {
+  describe('BridgeCliThinClient Integration Workflow', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeThinClient()
+      bridgeThinClient = new BridgeCliThinClient()
     })
 
     test('should complete full workflow: create instance, set path, generate command', async () => {
       // Step 1: Create instance (already done in beforeEach)
-      expect(bridgeThinClient).toBeInstanceOf(BridgeThinClient)
+      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
       expect(bridgeThinClient.getBridgeType()).toBe('bridge-cli-thin-client')
 
       // Step 2: Set up bridge path
@@ -847,7 +847,7 @@ describe('BridgeThinClient Integration Test', () => {
       })
 
       // Create instance and validate it can handle registry configuration
-      expect(bridgeThinClient).toBeInstanceOf(BridgeThinClient)
+      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
 
       // The registry URL should be accessible for command building
       expect(inputs.BRIDGE_CLI_REGISTRY_URL).toBe('https://test-registry.com')

@@ -1,5 +1,5 @@
 import {createBridgeClient} from '../../../../src/blackduck-security-action/bridge/bridge-client-factory'
-import {BridgeThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-thin-client'
+import {BridgeCliThinClient} from '../../../../src/blackduck-security-action/bridge/bridge-cli-thin-client'
 import {BridgeCliBundle} from '../../../../src/blackduck-security-action/bridge/bridge-cli-bundle'
 
 // Mock @actions/core
@@ -55,7 +55,7 @@ jest.mock(
 )
 // Mock inputs module to provide required values
 jest.mock('../../../../src/blackduck-security-action/inputs', () => ({
-  ENABLE_BRIDGE_THIN_CLIENT: 'false',
+  ENABLE_BRIDGE_CLI_THIN_CLIENT: 'false',
   ENABLE_NETWORK_AIR_GAP: 'false',
   BRIDGE_CLI_BASE_URL: 'https://test-bridge-url.com'
 }))
@@ -65,15 +65,15 @@ describe('createBridgeClient', () => {
     jest.clearAllMocks()
   })
 
-  it('returns BridgeThinClient when ENABLE_BRIDGE_THIN_CLIENT is true', () => {
+  it('returns BridgeCliThinClient when ENABLE_BRIDGE_CLI_THIN_CLIENT is true', () => {
     const {parseToBoolean} = require('../../../../src/blackduck-security-action/utility')
     parseToBoolean.mockReturnValue(true)
 
     const client = createBridgeClient()
-    expect(client).toBeInstanceOf(BridgeThinClient)
+    expect(client).toBeInstanceOf(BridgeCliThinClient)
   })
 
-  it('returns BridgeCliBundle when ENABLE_BRIDGE_THIN_CLIENT is false', () => {
+  it('returns BridgeCliBundle when ENABLE_BRIDGE_CLI_THIN_CLIENT is false', () => {
     const {parseToBoolean} = require('../../../../src/blackduck-security-action/utility')
     parseToBoolean.mockReturnValue(false)
 
