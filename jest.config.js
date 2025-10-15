@@ -7,9 +7,5 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest'
   },
   verbose: true,
-  moduleDirectories: ['node_modules', 'src'],
-  moduleNameMapper: {
-    '^blackduck-security-action/(.*)$': '<rootDir>/src/blackduck-security-action/$1',
-    '^application-constants$': '<rootDir>/src/application-constants'
-  }
+  moduleDirectories: ['node_modules', 'src']
 }
