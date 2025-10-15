@@ -146,7 +146,7 @@ export abstract class BridgeClientBase {
         info('Network air gap is enabled.')
         const shouldSkipDownload = await this.shouldSkipAirGapDownload()
         if (shouldSkipDownload) {
-          info('Bridge CLI already exists, download has been skipped')
+          info('Bridge CLI already exists')
           return
         }
       }
@@ -449,6 +449,20 @@ export abstract class BridgeClientBase {
     return (await this.checkIfBridgeExistsInAirGap()) && inputs.BRIDGE_CLI_BASE_URL === ''
   }
 
+  protected validateAndGetBasePath(): string {
+    debug('Starting validateAndGetBasePath()')
+
+    if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
+      debug(`Custom install directory provided: ${inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY}`)
+      if (!checkIfPathExists(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)) {
+        debug(`Custom install directory does not exist: ${inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY}`)
+        throw new Error(constants.BRIDGE_INSTALL_DIRECTORY_NOT_FOUND_ERROR)
+      }
+      return path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
+    }
+    return this.getBridgeDefaultPath()
+  }
+
   // ============================================================================
   // PRIVATE METHODS
   // ============================================================================
@@ -572,7 +586,7 @@ export abstract class BridgeClientBase {
     }
 
     if (downloadUrl) {
-      info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
+      info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in an upcoming release. Please migrate to using BRIDGE_CLI_DOWNLOAD_VERSION in combination with BRIDGE_CLI_BASE_URL.')
       return this.processDownloadUrl()
     }
 
@@ -601,7 +615,7 @@ export abstract class BridgeClientBase {
     const requestedVersion = inputs.BRIDGE_CLI_DOWNLOAD_VERSION
 
     if (await this.isBridgeInstalled(requestedVersion)) {
-      info('Bridge CLI already exists, download has been skipped')
+      info('Bridge CLI already exists')
       return {bridgeUrl: '', bridgeVersion: requestedVersion}
     }
 

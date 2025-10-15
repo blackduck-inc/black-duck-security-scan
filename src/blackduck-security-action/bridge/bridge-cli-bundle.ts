@@ -74,10 +74,9 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   generateFormattedCommand(stage: string, stateFilePath: string): string {
-    debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
     this.logWorkflowVersionInfo()
     const command = this.buildCommand(stage, stateFilePath)
-    info(`Generated command: ${command}`)
+    debug(`Generated command for stage: ${stage}, state file: ${stateFilePath} -> ${command}`)
     return command
   }
 
@@ -86,10 +85,11 @@ export class BridgeCliBundle extends BridgeClientBase {
   }
 
   async validateAndSetBridgePath(): Promise<void> {
-    const basePath = inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY ? path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType()) : this.getBridgeDefaultPath()
-    info(`Bridge CLI directory ${basePath}`)
+    const basePath = this.validateAndGetBasePath()
+    const platformFolderName = `${this.getBridgeType()}-${this.osPlatform || this.getPlatformName()}`
+    this.bridgePath = path.join(basePath, platformFolderName)
 
-    this.bridgePath = this.constructBridgePath(basePath)
+    debug(`Bridge CLI directory ${this.bridgePath}`)
 
     if (this.isNetworkAirGapEnabled()) {
       await this.validateAirGapExecutable(this.bridgePath)
@@ -242,8 +242,7 @@ export class BridgeCliBundle extends BridgeClientBase {
         bridgeVersion: latestVersion
       }
     }
-
-    info('Bridge CLI already exists with the latest version')
+    debug('Bridge CLI already exists with the latest version')
     return {
       bridgeUrl: '',
       bridgeVersion: currentVersion
@@ -271,11 +270,6 @@ export class BridgeCliBundle extends BridgeClientBase {
       info(`Clear the existing bridge folder, if available from ${this.bridgePath}`)
       await rmRF(this.bridgePath)
     }
-  }
-
-  private constructBridgePath(basePath: string): string {
-    const platformFolderName = `${this.getBridgeType()}-${this.osPlatform || this.getPlatformName()}`
-    return path.join(basePath, platformFolderName)
   }
 
   private extractVersionFromContent(versionContent: string): string {

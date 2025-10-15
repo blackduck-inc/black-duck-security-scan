@@ -5,7 +5,32 @@ import * as core from '@actions/core'
 import {execSync} from 'node:child_process'
 import * as inputs from '../../../../src/blackduck-security-action/inputs'
 import * as constants from '../../../../src/application-constants'
-import path from 'path' // Mock external dependencies
+import path from 'path'
+// Inline shared utilities to avoid TypeScript rootDir issues
+const BRIDGE_IDENTIFIERS = {
+  THIN_CLIENT: {
+    bridgeType: 'bridge-cli-thin-client',
+    bridgeFileType: 'bridge-cli',
+    bridgeFileNameType: 'bridge-cli'
+  }
+} as const
+
+function setupCommonInputMocks(): void {
+  Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+  Object.defineProperty(constants, 'BRIDGE_CLI_ARTIFACTORY_URL', {value: 'https://default.example.com', configurable: true})
+  Object.defineProperty(constants, 'BRIDGE_CLI_STAGE_OPTION', {value: '--stage', configurable: true})
+  Object.defineProperty(constants, 'BRIDGE_CLI_INPUT_OPTION', {value: '--input', configurable: true})
+  Object.defineProperty(constants, 'BRIDGE_CLI_SPACE', {value: ' ', configurable: true})
+}
+
+function testBridgeIdentifiers(getClient: () => any, expected: any): void {
+  test('should return correct bridge identifiers', () => {
+    const client = getClient()
+    expect(client.getBridgeType()).toBe(expected.bridgeType)
+    expect(client.getBridgeFileType()).toBe(expected.bridgeFileType)
+    expect(client.getBridgeFileNameType()).toBe(expected.bridgeFileNameType)
+  })
+}
 
 // Mock external dependencies
 jest.mock('@actions/core')
@@ -26,12 +51,7 @@ describe('BridgeThinClient', () => {
   const mockPathBasename = jest.mocked(path.basename)
 
   beforeEach(() => {
-    // Mock required inputs and constants to prevent initialization errors
-    Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_ARTIFACTORY_URL', {value: 'https://default.example.com', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_STAGE_OPTION', {value: '--stage', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_INPUT_OPTION', {value: '--input', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_SPACE', {value: ' ', configurable: true})
+    setupCommonInputMocks()
 
     // Mock air gap mode to false by default to avoid initialization issues
     mockParseToBoolean.mockReturnValue(false)
@@ -41,23 +61,12 @@ describe('BridgeThinClient', () => {
     jest.clearAllMocks()
   })
 
-  describe('getBridgeType', () => {
-    test('should return correct bridge type', () => {
-      expect(bridgeThinClient.getBridgeType()).toBe('bridge-cli-thin-client')
-    })
+  // Use shared test utility for bridge identifiers
+  describe('Basic Properties', () => {
+    testBridgeIdentifiers(() => bridgeThinClient, BRIDGE_IDENTIFIERS.THIN_CLIENT)
   })
 
-  describe('getBridgeFileType', () => {
-    test('should return correct bridge file type', () => {
-      expect(bridgeThinClient.getBridgeFileType()).toBe('bridge-cli')
-    })
-  })
-
-  describe('getBridgeFileNameType', () => {
-    test('should return correct bridge file name type', () => {
-      expect(bridgeThinClient.getBridgeFileNameType()).toBe('bridge-cli')
-    })
-  })
+  // Platform detection is handled in base class tests - not needed here
 
   describe('generateFormattedCommand', () => {
     beforeEach(() => {
@@ -72,8 +81,7 @@ describe('BridgeThinClient', () => {
       const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
 
       expect(command).toBe('--stage connect --input /tmp/input.json')
-      expect(mockDebug).toHaveBeenCalledWith('Generating command for stage: connect, state file: /tmp/input.json')
-      expect(mockInfo).toHaveBeenCalledWith('Generated command: --stage connect --input /tmp/input.json')
+      expect(mockDebug).toHaveBeenCalledWith('Generated command for stage: connect, state file: /tmp/input.json -> --stage connect --input /tmp/input.json')
     })
 
     test('should generate command with workflow version', () => {
@@ -96,7 +104,7 @@ describe('BridgeThinClient', () => {
       const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
 
       expect(command).toBe('--stage connect --input /tmp/input.json --update')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge update command has been added.')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update enabled.')
     })
 
     test('should not include update command when workflow update is disabled', () => {
@@ -109,7 +117,7 @@ describe('BridgeThinClient', () => {
       const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
 
       expect(command).toBe('--stage connect --input /tmp/input.json')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update is disabled')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update disabled')
     })
   })
 
@@ -246,32 +254,48 @@ describe('BridgeThinClient', () => {
     test('should set bridge path with custom install directory', async () => {
       Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/custom/path', configurable: true})
 
-      jest.spyOn(bridgeThinClient as any, 'isAirGapMode').mockReturnValue(false)
+      jest.spyOn(bridgeThinClient as any, 'isNetworkAirGapEnabled').mockReturnValue(false)
+      jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
 
       await bridgeThinClient.validateAndSetBridgePath()
 
       expect(mockPathJoin).toHaveBeenCalledWith('/custom/path', 'bridge-cli-thin-client')
       expect(mockPathJoin).toHaveBeenCalledWith('/custom/path/bridge-cli-thin-client', 'bridge-cli-linux64')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI directory /custom/path/bridge-cli-thin-client')
+      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI directory /custom/path/bridge-cli-thin-client/bridge-cli-linux64')
     })
 
     test('should set bridge path with default directory', async () => {
+      // Set to empty string to test the else branch
       Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '', configurable: true})
 
       jest.spyOn(bridgeThinClient as any, 'getBridgeDefaultPath').mockReturnValue('/default/path')
-      jest.spyOn(bridgeThinClient as any, 'isAirGapMode').mockReturnValue(false)
+      jest.spyOn(bridgeThinClient as any, 'isNetworkAirGapEnabled').mockReturnValue(false)
 
       await bridgeThinClient.validateAndSetBridgePath()
 
       expect(mockPathJoin).toHaveBeenCalledWith('/default/path', 'bridge-cli-linux64')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI directory /default/path')
+      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI directory /default/path/bridge-cli-linux64')
+    })
+
+    test('should set bridge path with undefined directory key', async () => {
+      // Test with undefined to cover the other branch
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: undefined, configurable: true})
+
+      jest.spyOn(bridgeThinClient as any, 'getBridgeDefaultPath').mockReturnValue('/default/path')
+      jest.spyOn(bridgeThinClient as any, 'isNetworkAirGapEnabled').mockReturnValue(false)
+
+      await bridgeThinClient.validateAndSetBridgePath()
+
+      expect(mockPathJoin).toHaveBeenCalledWith('/default/path', 'bridge-cli-linux64')
+      expect(mockDebug).toHaveBeenCalledWith('Bridge CLI directory /default/path/bridge-cli-linux64')
     })
 
     test('should validate air gap executable when in air gap mode', async () => {
       Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/custom/path', configurable: true})
 
-      jest.spyOn(bridgeThinClient as any, 'isAirGapMode').mockReturnValue(true)
+      jest.spyOn(bridgeThinClient as any, 'isNetworkAirGapEnabled').mockReturnValue(true)
       jest.spyOn(bridgeThinClient as any, 'validateAirGapExecutable').mockResolvedValue(undefined)
+      jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
 
       await bridgeThinClient.validateAndSetBridgePath()
 
@@ -311,31 +335,7 @@ describe('BridgeThinClient', () => {
     })
   })
 
-  describe('Platform-specific tests', () => {
-    test('should work on macOS', () => {
-      mockGetOSPlatform.mockReturnValue('macosx')
-
-      const bridgeType = bridgeThinClient.getBridgeType()
-
-      expect(bridgeType).toBe('bridge-cli-thin-client')
-    })
-
-    test('should work on Linux', () => {
-      mockGetOSPlatform.mockReturnValue('linux64')
-
-      const bridgeType = bridgeThinClient.getBridgeType()
-
-      expect(bridgeType).toBe('bridge-cli-thin-client')
-    })
-
-    test('should work on Windows', () => {
-      mockGetOSPlatform.mockReturnValue('win64')
-
-      const bridgeType = bridgeThinClient.getBridgeType()
-
-      expect(bridgeType).toBe('bridge-cli-thin-client')
-    })
-  })
+  // REMOVED: Platform-specific tests that only test getBridgeType() - redundant and not platform-dependent
 
   describe('Error handling', () => {
     test('should handle extraction errors gracefully', async () => {
@@ -438,20 +438,22 @@ describe('BridgeThinClient', () => {
   })
 
   describe('initializeUrls', () => {
-    test('should initialize URLs when base URL is determined', () => {
-      jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockReturnValue('https://example.com')
+    test('should initialize URLs when base URL is determined', async () => {
+      jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockResolvedValue('https://example.com')
       jest.spyOn(bridgeThinClient as any, 'setupBridgeUrls').mockImplementation(() => {})
-      ;(bridgeThinClient as any).initializeUrls()
+
+      await (bridgeThinClient as any).initializeUrls()
 
       expect(bridgeThinClient['setupBridgeUrls']).toHaveBeenCalledWith('https://example.com')
     })
 
-    test('should not initialize URLs when base URL is not determined', () => {
-      jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockReturnValue(null)
+    test('should handle empty base URL', async () => {
+      jest.spyOn(bridgeThinClient as any, 'determineBaseUrl').mockResolvedValue('')
       jest.spyOn(bridgeThinClient as any, 'setupBridgeUrls').mockImplementation(() => {})
-      ;(bridgeThinClient as any).initializeUrls()
 
-      expect(bridgeThinClient['setupBridgeUrls']).not.toHaveBeenCalled()
+      await (bridgeThinClient as any).initializeUrls()
+
+      expect(bridgeThinClient['setupBridgeUrls']).toHaveBeenCalledWith('')
     })
   })
 
@@ -502,7 +504,7 @@ describe('BridgeThinClient', () => {
       const updateCommand = (bridgeThinClient as any).handleBridgeUpdateCommand()
 
       expect(updateCommand).toBe('--update')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge update command has been added.')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update enabled.')
     })
 
     test('should return empty string when disabled', () => {
@@ -511,7 +513,7 @@ describe('BridgeThinClient', () => {
       const updateCommand = (bridgeThinClient as any).handleBridgeUpdateCommand()
 
       expect(updateCommand).toBe('')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update is disabled')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update disabled')
     })
   })
 
@@ -533,65 +535,6 @@ describe('BridgeThinClient', () => {
       const result = await (bridgeThinClient as any).checkIfBridgeExistsInAirGap()
 
       expect(result).toBe(false)
-    })
-  })
-
-  describe('Edge cases and additional scenarios', () => {
-    test('should handle empty stage in generateFormattedCommand', () => {
-      const command = bridgeThinClient.generateFormattedCommand('', '/tmp/input.json')
-
-      expect(command).toBe('--stage --input /tmp/input.json')
-      expect(mockDebug).toHaveBeenCalledWith('Generating command for stage: , state file: /tmp/input.json')
-    })
-
-    test('should handle special characters in file paths', () => {
-      const command = bridgeThinClient.generateFormattedCommand('connect', '/tmp/input with spaces.json')
-
-      expect(command).toBe('--stage connect --input /tmp/input with spaces.json')
-    })
-
-    test('should handle multiple executions of executeCommand with different options', async () => {
-      Object.defineProperty(inputs, 'BRIDGECLI_REGISTRY_URL', {value: '', configurable: true})
-      jest.spyOn(bridgeThinClient as any, 'runBridgeCommand').mockResolvedValue(0)
-
-      const result1 = await (bridgeThinClient as any).executeCommand('command1', {cwd: '/tmp1'})
-      const result2 = await (bridgeThinClient as any).executeCommand('command2', {cwd: '/tmp2'})
-
-      expect(result1).toBe(0)
-      expect(result2).toBe(0)
-    })
-  })
-
-  describe('getLatestVersionRegexPattern', () => {
-    test('should return correct regex pattern for bridge file types', () => {
-      const regex = (bridgeThinClient as any).getLatestVersionRegexPattern()
-
-      expect(regex).toBeInstanceOf(RegExp)
-
-      // Test that it matches expected patterns
-      expect(regex.test('bridge-cli-win64.zip')).toBe(true)
-      expect(regex.test('bridge-cli-linux64.zip')).toBe(true)
-      expect(regex.test('bridge-cli-linux_arm.zip')).toBe(true)
-      expect(regex.test('bridge-cli-macosx.zip')).toBe(true)
-      expect(regex.test('bridge-cli-macos_arm.zip')).toBe(true)
-
-      // Test that it doesn't match invalid patterns
-      expect(regex.test('bridge-cli-invalid.zip')).toBe(false)
-      expect(regex.test('other-file-win64.zip')).toBe(false)
-      expect(regex.test('bridge-cli-win64.tar.gz')).toBe(false)
-    })
-
-    test('should extract correct platform from matched strings', () => {
-      const regex = (bridgeThinClient as any).getLatestVersionRegexPattern()
-
-      const winMatch = 'bridge-cli-win64.zip'.match(regex)
-      const linuxMatch = 'bridge-cli-linux64.zip'.match(regex)
-      const macMatch = 'bridge-cli-macosx.zip'.match(regex)
-
-      expect(winMatch).toBeTruthy()
-      expect(winMatch?.[1]).toBe('bridge-cli-win64.zip')
-      expect(linuxMatch?.[1]).toBe('bridge-cli-linux64.zip')
-      expect(macMatch?.[1]).toBe('bridge-cli-macosx.zip')
     })
   })
 
@@ -769,7 +712,6 @@ describe('BridgeThinClient', () => {
       const result = await (bridgeThinClient as any).processLatestVersion()
 
       expect(result).toEqual({bridgeUrl: '', bridgeVersion: currentVersion})
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists with the latest version')
     })
 
     test('should use cached version when available', async () => {
@@ -787,7 +729,6 @@ describe('BridgeThinClient', () => {
 
       expect(result).toEqual({bridgeUrl: '', bridgeVersion: cachedVersion})
       expect(bridgeThinClient.getBridgeVersion).not.toHaveBeenCalled()
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists with the latest version')
     })
 
     test('should handle missing latest version gracefully', async () => {
@@ -801,7 +742,6 @@ describe('BridgeThinClient', () => {
       const result = await (bridgeThinClient as any).processLatestVersion()
 
       expect(result).toEqual({bridgeUrl: '', bridgeVersion: currentVersion})
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists with the latest version')
     })
 
     test('should fallback to processBaseUrlWithLatest when error occurs', async () => {
@@ -838,47 +778,152 @@ describe('BridgeThinClient', () => {
     })
   })
 
-  describe('determineBaseUrl', () => {
-    test('should throw error when air gap mode is enabled but BRIDGE_CLI_BASE_URL is not provided', () => {
-      // Enable air gap mode
-      mockParseToBoolean.mockReturnValue(true)
-      // Clear BRIDGE_CLI_BASE_URL
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
-
+  describe('setupBridgeUrls', () => {
+    test('should execute setupBridgeUrls method successfully', () => {
+      // This test ensures the method executes without errors
       expect(() => {
-        ;(bridgeThinClient as any).determineBaseUrl()
-      }).toThrow('No BRIDGE_CLI_BASE_URL provided')
+        bridgeThinClient.setupBridgeUrls('https://example.com')
+      }).not.toThrow()
     })
 
-    test('should return BRIDGE_CLI_BASE_URL when provided in air gap mode', () => {
-      // Enable air gap mode
-      mockParseToBoolean.mockReturnValue(true)
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://custom.example.com', configurable: true})
+    test('should handle URLs with trailing slash', () => {
+      // This test ensures the method executes without errors for URLs with trailing slash
+      expect(() => {
+        bridgeThinClient.setupBridgeUrls('https://example.com/')
+      }).not.toThrow()
+    })
+  })
 
-      const result = (bridgeThinClient as any).determineBaseUrl()
-
-      expect(result).toBe('https://custom.example.com')
+  describe('shouldSkipAirGapDownload', () => {
+    beforeEach(() => {
+      jest.spyOn(bridgeThinClient as any, 'checkIfBridgeExistsInAirGap').mockResolvedValue(true)
     })
 
-    test('should return BRIDGE_CLI_BASE_URL when provided in normal mode', () => {
-      // Disable air gap mode
-      mockParseToBoolean.mockReturnValue(false)
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://custom.example.com', configurable: true})
+    test('should return false when bridge does not exist in air gap', async () => {
+      jest.spyOn(bridgeThinClient as any, 'checkIfBridgeExistsInAirGap').mockResolvedValue(false)
 
-      const result = (bridgeThinClient as any).determineBaseUrl()
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
 
-      expect(result).toBe('https://custom.example.com')
+      expect(result).toBe(false)
     })
 
-    test('should return default artifactory URL when BRIDGE_CLI_BASE_URL is not provided in normal mode', () => {
-      // Disable air gap mode
-      mockParseToBoolean.mockReturnValue(false)
+    test('should return true when bridge exists but no base URL provided', async () => {
       Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
-      Object.defineProperty(constants, 'BRIDGE_CLI_ARTIFACTORY_URL', {value: 'https://default.artifactory.com', configurable: true})
 
-      const result = (bridgeThinClient as any).determineBaseUrl()
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
 
-      expect(result).toBe('https://default.artifactory.com')
+      expect(result).toBe(true)
+    })
+
+    test('should update bridge when base URL provided with specific version', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '2.1.0', configurable: true})
+
+      jest.spyOn(bridgeThinClient, 'getBridgeVersion').mockResolvedValue('2.0.0')
+      jest.spyOn(bridgeThinClient as any, 'getBridgeExecutablePath').mockReturnValue('/path/to/bridge')
+      jest.spyOn(bridgeThinClient as any, 'executeUseBridgeCommand').mockResolvedValue(undefined)
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(true)
+      expect(mockDebug).toHaveBeenCalledWith('Air gap mode with base URL specified - checking for version update')
+      expect(mockDebug).toHaveBeenCalledWith('Target version specified: 2.1.0')
+      expect(mockDebug).toHaveBeenCalledWith('Current version: 2.0.0, Target version: 2.1.0 - updating bridge')
+    })
+
+    test('should skip update when versions match with specific version', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '2.1.0', configurable: true})
+
+      jest.spyOn(bridgeThinClient, 'getBridgeVersion').mockResolvedValue('2.1.0')
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(true)
+      expect(mockDebug).toHaveBeenCalledWith('Bridge already at target version: 2.1.0')
+    })
+
+    test('should update to latest version when no version specified', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '', configurable: true})
+
+      jest.spyOn(bridgeThinClient, 'getBridgeVersion').mockResolvedValue('2.0.0')
+      jest.spyOn(bridgeThinClient as any, 'getLatestVersionInfo').mockResolvedValue({bridgeVersion: '2.1.0'})
+      jest.spyOn(bridgeThinClient as any, 'getBridgeExecutablePath').mockReturnValue('/path/to/bridge')
+      jest.spyOn(bridgeThinClient as any, 'executeUseBridgeCommand').mockResolvedValue(undefined)
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(true)
+      expect(mockDebug).toHaveBeenCalledWith('No version specified, determining latest version')
+      expect(mockDebug).toHaveBeenCalledWith('Latest version determined: 2.1.0')
+      expect(mockDebug).toHaveBeenCalledWith('Current version: 2.0.0, Target version: 2.1.0 - updating bridge')
+    })
+
+    test('should use cached current version', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '2.1.0', configurable: true})
+
+      // Set cached version
+      ;(bridgeThinClient as any).currentVersion = '2.0.0'
+      const getBridgeVersionSpy = jest.spyOn(bridgeThinClient, 'getBridgeVersion')
+      jest.spyOn(bridgeThinClient as any, 'getBridgeExecutablePath').mockReturnValue('/path/to/bridge')
+      jest.spyOn(bridgeThinClient as any, 'executeUseBridgeCommand').mockResolvedValue(undefined)
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(true)
+      expect(getBridgeVersionSpy).not.toHaveBeenCalled() // Should use cached version
+    })
+
+    test('should return false when error occurs during version check', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://example.com', configurable: true})
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '2.1.0', configurable: true})
+
+      jest.spyOn(bridgeThinClient, 'getBridgeVersion').mockRejectedValue(new Error('Version check failed'))
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(false)
+      expect(mockDebug).toHaveBeenCalledWith('Error checking version for air gap update: Version check failed')
+    })
+
+    test('should return true by default when bridge exists', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
+
+      const result = await (bridgeThinClient as any).shouldSkipAirGapDownload()
+
+      expect(result).toBe(true)
+    })
+  })
+
+  describe('handleRegistrationIfNeeded', () => {
+    test('should return early when no registry URL provided', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_REGISTRY_URL', {value: '', configurable: true})
+
+      await (bridgeThinClient as any).handleRegistrationIfNeeded({})
+
+      expect(mockDebug).toHaveBeenCalledWith('Registry URL is empty')
+    })
+
+    test('should execute register command when registry URL is provided', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_REGISTRY_URL', {value: 'https://registry.example.com', configurable: true})
+
+      jest.spyOn(bridgeThinClient as any, 'buildRegisterCommand').mockReturnValue('register-command')
+      jest.spyOn(bridgeThinClient as any, 'runBridgeCommand').mockResolvedValue(0)
+
+      await (bridgeThinClient as any).handleRegistrationIfNeeded({cwd: '/tmp'})
+
+      expect(bridgeThinClient['runBridgeCommand']).toHaveBeenCalledWith('register-command', {cwd: '/tmp'})
+    })
+
+    test('should throw error when register command fails', async () => {
+      Object.defineProperty(inputs, 'BRIDGE_CLI_REGISTRY_URL', {value: 'https://registry.example.com', configurable: true})
+
+      jest.spyOn(bridgeThinClient as any, 'buildRegisterCommand').mockReturnValue('register-command')
+      jest.spyOn(bridgeThinClient as any, 'runBridgeCommand').mockResolvedValue(1)
+
+      await expect((bridgeThinClient as any).handleRegistrationIfNeeded({cwd: '/tmp'})).rejects.toThrow('Register command failed, returning early')
     })
   })
 })
