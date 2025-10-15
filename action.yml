@@ -138,7 +138,7 @@ inputs:
     description: 'Bridge CLI Install Directory'
     required: false
   bridgecli_download_url:
-    description: '[DEPRECATED] Use bridgecli_download_version with bridgeBaseUrl instead of this URL to download Bridge.'
+    description: '[DEPRECATED] Use bridgecli_base_url together with bridgecli_download_version instead of the direct URL to download Bridge'
     required: false
   bridgecli_base_url:
     description: 'Base URL for Bridge CLI URL'

@@ -50,9 +50,8 @@ export class BridgeCliThinClient extends BridgeClientBase {
   }
 
   generateFormattedCommand(stage: string, stateFilePath: string, workflowVersion?: string): string {
-    debug(`Generating command for stage: ${stage}, state file: ${stateFilePath}`)
     const command = this.buildCommand(stage, stateFilePath, workflowVersion)
-    info(`Generated command: ${command}`)
+    debug(`Generated command for stage: ${stage}, state file: ${stateFilePath} -> ${command}`)
     return command
   }
 
@@ -68,17 +67,15 @@ export class BridgeCliThinClient extends BridgeClientBase {
   }
 
   async validateAndSetBridgePath(): Promise<void> {
-    let basePath: string
-    if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
-      basePath = path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
-    } else {
-      basePath = this.getBridgeDefaultPath()
-    }
-    info(`Bridge CLI directory ${basePath}`)
-
+    const basePath = this.validateAndGetBasePath()
     const platformFolderName = this.getBridgeFileType().concat('-').concat(getOSPlatform())
     this.bridgePath = path.join(basePath, platformFolderName)
-    if (this.isNetworkAirGapEnabled()) await this.validateAirGapExecutable(this.bridgePath)
+
+    debug(`Bridge CLI directory ${this.bridgePath}`)
+
+    if (this.isNetworkAirGapEnabled()) {
+      await this.validateAirGapExecutable(this.bridgePath)
+    }
   }
 
   getBridgeCLIDownloadDefaultPath(): string {
@@ -172,7 +169,7 @@ export class BridgeCliThinClient extends BridgeClientBase {
 
     // Use existing executable or provide download URL
     if (executableExists) {
-      info('Bridge CLI already exists, download has been skipped')
+      info('Bridge CLI already exists')
       await this.executeUseBridgeCommand(bridgeExecutablePath, requestedVersion)
       return {bridgeUrl: '', bridgeVersion: requestedVersion}
     }
@@ -216,14 +213,13 @@ export class BridgeCliThinClient extends BridgeClientBase {
       const latestVersionInfo = await this.getLatestVersionInfo()
 
       if (latestVersionInfo.bridgeVersion && this.currentVersion !== latestVersionInfo.bridgeVersion) {
-        info('Bridge CLI already exists, download has been skipped')
+        info('Bridge CLI already exists')
         debug(`Bridge CLI already exists with version ${this.currentVersion}, but latest version ${latestVersionInfo.bridgeVersion} is available. Updating to latest.`)
         await this.executeUseBridgeCommand(this.getBridgeExecutablePath(), latestVersionInfo.bridgeVersion)
         this.currentVersion = latestVersionInfo.bridgeVersion
         return {bridgeUrl: '', bridgeVersion: latestVersionInfo.bridgeVersion}
       }
 
-      info('Bridge CLI already exists, download has been skipped')
       return {bridgeUrl: '', bridgeVersion: this.currentVersion}
     } catch (error) {
       debug(`Error checking bridge version: ${(error as Error).message}. Proceeding with latest version download.`)
@@ -246,7 +242,7 @@ export class BridgeCliThinClient extends BridgeClientBase {
 
     // If base URL is provided (with or without version), handle upgrade logic
     if (inputs.BRIDGE_CLI_BASE_URL) {
-      info('Air gap mode with base URL specified - checking for version update')
+      debug('Air gap mode with base URL specified - checking for version update')
 
       try {
         // Get current installed version
@@ -257,22 +253,22 @@ export class BridgeCliThinClient extends BridgeClientBase {
         if (inputs.BRIDGE_CLI_DOWNLOAD_VERSION) {
           // Version explicitly provided
           targetVersion = inputs.BRIDGE_CLI_DOWNLOAD_VERSION
-          info(`Target version specified: ${targetVersion}`)
+          debug(`Target version specified: ${targetVersion}`)
         } else {
           // No version provided - use latest
-          info('No version specified, determining latest version')
+          debug('No version specified, determining latest version')
           const latestVersionInfo = await this.getLatestVersionInfo()
           targetVersion = latestVersionInfo.bridgeVersion
-          info(`Latest version determined: ${targetVersion}`)
+          debug(`Latest version determined: ${targetVersion}`)
         }
 
         if (this.currentVersion !== targetVersion) {
-          info(`Current version: ${this.currentVersion}, Target version: ${targetVersion} - updating bridge`)
+          debug(`Current version: ${this.currentVersion}, Target version: ${targetVersion} - updating bridge`)
           // Execute the --use command to switch to the target version
           await this.executeUseBridgeCommand(this.getBridgeExecutablePath(), targetVersion)
           return true // Skip download as we've handled the update via --use command
         } else {
-          info(`Bridge already at target version: ${targetVersion}`)
+          debug(`Bridge already at target version: ${targetVersion}`)
           return true // Skip download as versions match
         }
       } catch (error) {

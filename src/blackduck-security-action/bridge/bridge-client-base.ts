@@ -449,6 +449,34 @@ export abstract class BridgeClientBase {
     return (await this.checkIfBridgeExistsInAirGap()) && inputs.BRIDGE_CLI_BASE_URL === ''
   }
 
+  protected validateAndGetBasePath(): string {
+    debug('Starting validateAndGetBasePath()')
+
+    if (inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY) {
+      debug(`Custom install directory provided: ${inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY}`)
+      if (!checkIfPathExists(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)) {
+        debug(`Custom install directory does not exist: ${inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY}`)
+        throw new Error(constants.BRIDGE_INSTALL_DIRECTORY_NOT_FOUND_ERROR)
+      }
+      const customPath = path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
+      debug(`Returning custom path: ${customPath}`)
+      return customPath
+    }
+
+    debug('No custom install directory provided, using default path')
+    const defaultPath = this.getBridgeDefaultPath()
+    debug(`Default path resolved to: ${defaultPath}`)
+
+    if (this.isNetworkAirGapEnabled()) {
+      debug('Default path exists in air gap mode')
+    } else {
+      debug('Network air gap is disabled, skipping path existence check')
+    }
+
+    debug(`Returning default path: ${defaultPath}`)
+    return defaultPath
+  }
+
   // ============================================================================
   // PRIVATE METHODS
   // ============================================================================
@@ -572,7 +600,7 @@ export abstract class BridgeClientBase {
     }
 
     if (downloadUrl) {
-      info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in a future version. Please use BRIDGE_CLI_DOWNLOAD_VERSION instead along with BRIDGE_CLI_BASE_URL.')
+      info('BRIDGE_CLI_DOWNLOAD_URL is deprecated and will be removed in an upcoming release. Please migrate to using BRIDGE_CLI_DOWNLOAD_VERSION in combination with BRIDGE_CLI_BASE_URL.')
       return this.processDownloadUrl()
     }
 

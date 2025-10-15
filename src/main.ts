@@ -28,6 +28,7 @@ export async function run() {
     await sb.downloadBridge(tempDir)
     // Get Bridge version from bridge Path
     bridgeVersion = await sb.getBridgeVersion()
+    info('Using Bridge CLI version: '.concat(bridgeVersion))
     //Extract input.yml file and update sarif default file path based on bridge version
     productInputFilPath = util.extractInputJsonFilename(formattedCommand)
     // Extract product input file name from the path (cross-platform compatible)

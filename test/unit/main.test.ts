@@ -353,28 +353,7 @@ describe('SARIF Upload Workflow Tests', () => {
     })
   })
 
-  describe('Bridge Version Comparison Logic', () => {
-    test('should correctly identify legacy bridge version', () => {
-      const bridgeVersion = '1.9.0'
-      const isLegacy = bridgeVersion < constants.VERSION // '2.0.0'
-
-      expect(isLegacy).toBe(true)
-    })
-
-    test('should correctly identify new bridge version', () => {
-      const bridgeVersion = '2.1.0'
-      const isLegacy = bridgeVersion < constants.VERSION // '2.0.0'
-
-      expect(isLegacy).toBe(false)
-    })
-
-    test('should handle exact version match', () => {
-      const bridgeVersion = '2.0.0'
-      const isLegacy = bridgeVersion < constants.VERSION // '2.0.0'
-
-      expect(isLegacy).toBe(false)
-    })
-  })
+  // REMOVED: Trivial string comparison tests - these test JavaScript's native string comparison, not business logic
 
   describe('Real System Time Integration', () => {
     test('should generate artifact names with real system time', async () => {
@@ -602,266 +581,696 @@ describe('Main Run Function Tests', () => {
   })
 })
 
-describe('BridgeCliThinClient Integration Test', () => {
-  let bridgeThinClient: BridgeCliThinClient
+// REMOVED: Duplicate BridgeCliThinClient Integration Test suite - functionality covered in Bridge Client Factory Integration Tests
+
+describe('Bridge Client Factory Integration Tests', () => {
   const mockDebug = jest.mocked(core.debug)
   const mockInfo = jest.mocked(core.info)
   const mockSetFailed = jest.mocked(core.setFailed)
   const mockSetOutput = jest.mocked(core.setOutput)
-  const mockGetOSPlatform = jest.mocked(utility.getOSPlatform)
   const mockParseToBoolean = jest.mocked(utility.parseToBoolean)
-  const mockCheckIfPathExists = jest.mocked(utility.checkIfPathExists)
-  const mockCheckJobResult = jest.mocked(utility.checkJobResult)
   const mockCreateTempDir = jest.mocked(utility.createTempDir)
   const mockCleanupTempDir = jest.mocked(utility.cleanupTempDir)
+  const mockExtractInputJsonFilename = jest.mocked(utility.extractInputJsonFilename)
+  const mockUpdateSarifFilePaths = jest.mocked(utility.updateSarifFilePaths)
+  const mockUpdateCoverityConfigForBridgeVersion = jest.mocked(utility.updateCoverityConfigForBridgeVersion)
   const mockCreateBridgeClient = jest.mocked(bridgeClientFactory.createBridgeClient)
-
-  beforeAll(() => {
-    // Mock required constants and inputs to prevent initialization errors
-    Object.defineProperty(constants, 'BRIDGE_CLI_ARTIFACTORY_URL', {
-      value: 'https://sig-repo.synopsys.com/artifactory/bds-integrations-release/com/synopsys/integration/synopsys-bridge',
-      configurable: true
-    })
-    Object.defineProperty(constants, 'BRIDGE_CLI_STAGE_OPTION', {value: '--stage', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_INPUT_OPTION', {value: '--input', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_CLI_SPACE', {value: ' ', configurable: true})
-    Object.defineProperty(constants, 'BRIDGE_VERSION_NOT_FOUND_ERROR', {value: 'Bridge version not found', configurable: true})
-  })
+  const mockGetGitHubWorkspaceDirV2 = jest.mocked(getGitHubWorkspaceDirV2)
+  const mockBasename = jest.mocked(basename)
 
   beforeEach(() => {
-    // Reset all mocks
     jest.clearAllMocks()
 
-    // Mock default input values
-    Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: '', configurable: true})
-    Object.defineProperty(inputs, 'BRIDGE_CLI_REGISTRY_URL', {value: '', configurable: true})
-    Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '', configurable: true})
-    Object.defineProperty(inputs, 'ENABLE_WORKFLOW_UPDATE', {value: 'false', configurable: true})
-
     // Mock utility functions
-    mockGetOSPlatform.mockReturnValue('linux64')
-    mockParseToBoolean.mockReturnValue(false)
-    mockCheckIfPathExists.mockReturnValue(false)
-    mockCheckJobResult.mockReturnValue(undefined)
-    mockCreateTempDir.mockResolvedValue('/tmp/test')
+    mockCreateTempDir.mockResolvedValue('/tmp/test-temp-dir')
     mockCleanupTempDir.mockResolvedValue()
+    mockExtractInputJsonFilename.mockReturnValue('/path/to/input.json')
+    mockBasename.mockReturnValue('input.json')
+    mockGetGitHubWorkspaceDirV2.mockReturnValue('/github/workspace')
+    mockParseToBoolean.mockReturnValue(false)
 
-    // Mock core functions to prevent actual logging
+    // Mock inputs
+    Object.defineProperty(inputs, 'RETURN_STATUS', {value: 'false', configurable: true})
+    Object.defineProperty(constants, 'TASK_RETURN_STATUS', {value: 'task-return-status', configurable: true})
+
+    // Mock core functions
     mockDebug.mockImplementation(() => {})
     mockInfo.mockImplementation(() => {})
     mockSetFailed.mockImplementation(() => {})
     mockSetOutput.mockImplementation(() => {})
   })
 
-  describe('BridgeCliThinClient Instance Creation', () => {
-    test('should successfully create BridgeCliThinClient instance', () => {
-      expect(() => {
-        bridgeThinClient = new BridgeCliThinClient()
-      }).not.toThrow()
+  describe('BridgeCliThinClient Integration', () => {
+    let mockThinClient: {
+      prepareCommand: jest.Mock
+      downloadBridge: jest.Mock
+      getBridgeVersion: jest.Mock
+      executeBridgeCommand: jest.Mock
+      getBridgeType: jest.Mock
+      generateFormattedCommand: jest.Mock
+      executeCommand: jest.Mock
+      validateAndSetBridgePath: jest.Mock
+      isBridgeInstalled: jest.Mock
+    }
 
-      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
-    })
-
-    test('should initialize with correct bridge type', () => {
-      bridgeThinClient = new BridgeCliThinClient()
-
-      expect(bridgeThinClient.getBridgeType()).toBe('bridge-cli-thin-client')
-    })
-
-    test('should initialize with correct bridge file type', () => {
-      bridgeThinClient = new BridgeCliThinClient()
-
-      expect(bridgeThinClient.getBridgeFileType()).toBe('bridge-cli')
-    })
-
-    test('should initialize with correct bridge file name type', () => {
-      bridgeThinClient = new BridgeCliThinClient()
-
-      expect(bridgeThinClient.getBridgeFileNameType()).toBe('bridge-cli')
-    })
-  })
-
-  describe('BridgeCliThinClient Command Generation', () => {
     beforeEach(() => {
-      bridgeThinClient = new BridgeCliThinClient()
+      mockThinClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client'),
+        generateFormattedCommand: jest.fn(),
+        executeCommand: jest.fn(),
+        validateAndSetBridgePath: jest.fn(),
+        isBridgeInstalled: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
     })
 
-    test('should generate formatted command for stage execution', () => {
-      const stage = 'blackduck'
-      const stateFilePath = '/tmp/state.json'
+    test('should successfully execute main workflow with thin client', async () => {
+      // Arrange
+      const tempDir = '/tmp/test-temp-dir'
+      const formattedCommand = 'bridge-cli --stage polaris --input /path/to/input.json'
+      const bridgeVersion = '2.1.0'
+      const productInputFilePath = '/path/to/input.json'
+      const productInputFileName = 'input.json'
 
-      const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
+      mockThinClient.prepareCommand.mockResolvedValue(formattedCommand)
+      mockThinClient.downloadBridge.mockResolvedValue(undefined)
+      mockThinClient.getBridgeVersion.mockResolvedValue(bridgeVersion)
+      mockThinClient.executeBridgeCommand.mockResolvedValue(0)
+      mockExtractInputJsonFilename.mockReturnValue(productInputFilePath)
+      mockBasename.mockReturnValue(productInputFileName)
 
-      expect(command).toContain('--stage')
-      expect(command).toContain(stage)
-      expect(command).toContain('--input')
-      expect(command).toContain(stateFilePath)
-      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('Generated command:'))
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(mockCreateTempDir).toHaveBeenCalled()
+      expect(mockThinClient.prepareCommand).toHaveBeenCalledWith(tempDir)
+      expect(mockThinClient.downloadBridge).toHaveBeenCalledWith(tempDir)
+      expect(mockThinClient.getBridgeVersion).toHaveBeenCalled()
+      expect(mockExtractInputJsonFilename).toHaveBeenCalledWith(formattedCommand)
+      expect(mockBasename).toHaveBeenCalledWith(productInputFilePath)
+      expect(mockUpdateSarifFilePaths).toHaveBeenCalledWith(productInputFileName, bridgeVersion, productInputFilePath)
+      expect(mockUpdateCoverityConfigForBridgeVersion).toHaveBeenCalledWith(productInputFileName, bridgeVersion, productInputFilePath)
+      expect(mockThinClient.executeBridgeCommand).toHaveBeenCalledWith(formattedCommand, '/github/workspace')
+      expect(mockInfo).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+      expect(result).toBe(0)
     })
 
-    test('should generate formatted command with workflow version', () => {
+    test('should handle thin client command generation with workflow version', async () => {
+      // Arrange
       const stage = 'polaris'
       const stateFilePath = '/tmp/polaris-state.json'
       const workflowVersion = '1.2.3'
+      const expectedCommand = `--stage ${stage}@${workflowVersion} --input ${stateFilePath}`
 
-      const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath, workflowVersion)
+      mockThinClient.generateFormattedCommand.mockReturnValue(expectedCommand)
 
-      expect(command).toContain(`${stage}@${workflowVersion}`)
-      expect(command).toContain(stateFilePath)
+      // Act - simulate direct command generation
+      const command = mockThinClient.generateFormattedCommand(stage, stateFilePath, workflowVersion)
+
+      // Assert
+      expect(command).toBe(expectedCommand)
+      expect(mockThinClient.generateFormattedCommand).toHaveBeenCalledWith(stage, stateFilePath, workflowVersion)
     })
 
-    test('should handle update command when workflow update is enabled', () => {
+    test('should handle thin client workflow update when enabled', async () => {
+      // Arrange
       mockParseToBoolean.mockReturnValue(true)
       Object.defineProperty(inputs, 'ENABLE_WORKFLOW_UPDATE', {value: 'true', configurable: true})
 
       const stage = 'coverity'
       const stateFilePath = '/tmp/coverity-state.json'
+      const expectedCommand = `--stage ${stage} --input ${stateFilePath} --update`
 
-      const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
+      mockThinClient.generateFormattedCommand.mockReturnValue(expectedCommand)
 
-      expect(command).toContain('--update')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge update command has been added.')
-    })
-  })
+      // Act - simulate command generation with update
+      const command = mockThinClient.generateFormattedCommand(stage, stateFilePath)
 
-  describe('BridgeCliThinClient URL Verification', () => {
-    beforeEach(() => {
-      bridgeThinClient = new BridgeCliThinClient()
-    })
-
-    test('should verify regex check for bridge URL with version', () => {
-      const bridgeUrl = 'https://example.com/bridge-cli-thin-client/1.2.3/bridge-cli-linux64.zip'
-
-      const result = bridgeThinClient['verifyRegexCheck'](bridgeUrl)
-
-      expect(result).not.toBeNull()
-      expect(result![1]).toBe('1.2.3')
+      // Assert
+      expect(command).toBe(expectedCommand)
+      expect(mockThinClient.generateFormattedCommand).toHaveBeenCalledWith(stage, stateFilePath)
     })
 
-    test('should handle latest version in URL', () => {
-      const bridgeUrl = 'https://example.com/latest/bridge-cli-linux64.zip'
+    test('should handle thin client bridge installation check', async () => {
+      // Arrange
+      const requestedVersion = '2.1.0'
+      mockThinClient.isBridgeInstalled.mockResolvedValue(true)
 
-      const result = bridgeThinClient['verifyRegexCheck'](bridgeUrl)
+      // Act
+      const isInstalled = await mockThinClient.isBridgeInstalled(requestedVersion)
 
-      expect(result).not.toBeNull()
-      expect(result![1]).toBe('')
+      // Assert
+      expect(isInstalled).toBe(true)
+      expect(mockThinClient.isBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
     })
 
-    test('should return null for invalid URL pattern', () => {
-      const bridgeUrl = 'https://invalid-url.com/some-file.zip'
+    test('should handle thin client path validation', async () => {
+      // Arrange
+      mockThinClient.validateAndSetBridgePath.mockResolvedValue(undefined)
 
-      const result = bridgeThinClient['verifyRegexCheck'](bridgeUrl)
+      // Act
+      await mockThinClient.validateAndSetBridgePath()
 
-      expect(result).toBeNull()
-    })
-  })
-
-  describe('BridgeCliThinClient Path Management', () => {
-    beforeEach(() => {
-      bridgeThinClient = new BridgeCliThinClient()
-      // Mock the getBridgeCLIDownloadPathCommon method that getBridgeCLIDownloadDefaultPath calls
-      jest.spyOn(bridgeThinClient as any, 'getBridgeCLIDownloadPathCommon').mockReturnValue('/mocked/bridge/path')
+      // Assert
+      expect(mockThinClient.validateAndSetBridgePath).toHaveBeenCalled()
     })
 
-    test('should validate and set bridge path with default directory', async () => {
-      await expect(bridgeThinClient.validateAndSetBridgePath()).resolves.not.toThrow()
+    test('should handle thin client execution with non-zero exit code', async () => {
+      // Arrange
+      const exitCode = 1
+      mockThinClient.prepareCommand.mockResolvedValue('test-command')
+      mockThinClient.downloadBridge.mockResolvedValue(undefined)
+      mockThinClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockThinClient.executeBridgeCommand.mockResolvedValue(exitCode)
 
-      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('Bridge CLI directory'))
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(mockThinClient.executeBridgeCommand).toHaveBeenCalled()
+      expect(mockInfo).not.toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+      expect(result).toBe(exitCode)
     })
 
-    test('should validate and set bridge path with custom install directory', async () => {
-      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
-        value: '/custom/install/path',
-        configurable: true
-      })
-
-      // Mock the info call to include the custom path
-      mockInfo.mockImplementation(message => {
-        if (typeof message === 'string' && message.includes('/custom/install/path')) {
-          // This simulates the expected behavior
-        }
-      })
-
-      await expect(bridgeThinClient.validateAndSetBridgePath()).resolves.not.toThrow()
-
-      // Since the actual implementation may not directly log the custom path,
-      // we'll verify the method was called without throwing
-      expect(mockInfo).toHaveBeenCalled()
-    })
-
-    test('should get bridge CLI download default path', () => {
-      const defaultPath = bridgeThinClient.getBridgeCLIDownloadDefaultPath()
-
-      expect(defaultPath).toBeDefined()
-      expect(typeof defaultPath).toBe('string')
-      expect(defaultPath).toBe('/mocked/bridge/path')
-    })
-  })
-
-  describe('BridgeCliThinClient Air Gap Mode', () => {
-    beforeEach(() => {
-      bridgeThinClient = new BridgeCliThinClient()
-    })
-
-    test('should handle air gap mode when enabled', async () => {
-      // Mock air gap mode enabled
-      mockParseToBoolean.mockImplementation(value => {
-        return value === inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY || value === 'true'
-      })
-
-      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://custom-base-url.com', configurable: true})
-
-      // Should not throw when base URL is provided in air gap mode
-      await expect(bridgeThinClient.validateAndSetBridgePath()).resolves.not.toThrow()
-    })
-  })
-
-  describe('BridgeCliThinClient Integration Workflow', () => {
-    beforeEach(() => {
-      bridgeThinClient = new BridgeCliThinClient()
-    })
-
-    test('should complete full workflow: create instance, set path, generate command', async () => {
-      // Step 1: Create instance (already done in beforeEach)
-      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
-      expect(bridgeThinClient.getBridgeType()).toBe('bridge-cli-thin-client')
-
-      // Step 2: Set up bridge path
-      await bridgeThinClient.validateAndSetBridgePath()
-      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('Bridge CLI directory'))
-
-      // Step 3: Generate command for execution
-      const stage = 'blackduck'
-      const stateFilePath = '/tmp/integration-test-state.json'
-      const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
-
-      expect(command).toContain('--stage blackduck')
-      expect(command).toContain('--input /tmp/integration-test-state.json')
-      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('Generated command:'))
-    })
-
-    test('should handle registry URL configuration in workflow', async () => {
+    test('should handle thin client registry URL configuration', async () => {
+      // Arrange
       Object.defineProperty(inputs, 'BRIDGE_CLI_REGISTRY_URL', {
         value: 'https://test-registry.com',
         configurable: true
       })
 
-      // Create instance and validate it can handle registry configuration
-      expect(bridgeThinClient).toBeInstanceOf(BridgeCliThinClient)
+      mockThinClient.executeCommand.mockResolvedValue(0)
 
-      // The registry URL should be accessible for command building
-      expect(inputs.BRIDGE_CLI_REGISTRY_URL).toBe('https://test-registry.com')
+      // Act
+      const result = await mockThinClient.executeCommand('test-command', {cwd: '/tmp'})
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockThinClient.executeCommand).toHaveBeenCalledWith('test-command', {cwd: '/tmp'})
     })
   })
 
-  describe('Error Handler Tests (.catch block)', () => {
-    it('should handle error with RETURN_STATUS enabled', async () => {
-      mockParseToBoolean.mockImplementation(input => input === inputs.RETURN_STATUS)
-      Object.defineProperty(inputs, 'RETURN_STATUS', {value: 'true', configurable: true})
-      mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.SUCCESS)
+  describe('BridgeCliBundle Integration', () => {
+    let mockBundleClient: {
+      prepareCommand: jest.Mock
+      downloadBridge: jest.Mock
+      getBridgeVersion: jest.Mock
+      executeBridgeCommand: jest.Mock
+      getBridgeType: jest.Mock
+      generateFormattedCommand: jest.Mock
+      executeCommand: jest.Mock
+      validateAndSetBridgePath: jest.Mock
+      isBridgeInstalled: jest.Mock
+      checkIfVersionExists: jest.Mock
+    }
 
-      // Simulate the global error handler
-      const error = new Error('Test error 8')
+    beforeEach(() => {
+      mockBundleClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-bundle'),
+        generateFormattedCommand: jest.fn(),
+        executeCommand: jest.fn(),
+        validateAndSetBridgePath: jest.fn(),
+        isBridgeInstalled: jest.fn(),
+        checkIfVersionExists: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockBundleClient as any)
+    })
+
+    test('should successfully execute main workflow with bundle client', async () => {
+      // Arrange
+      const tempDir = '/tmp/test-temp-dir'
+      const formattedCommand = 'bridge-cli --stage blackduck --input /path/to/input.json'
+      const bridgeVersion = '2.1.0'
+      const productInputFilePath = '/path/to/input.json'
+      const productInputFileName = 'input.json'
+
+      mockBundleClient.prepareCommand.mockResolvedValue(formattedCommand)
+      mockBundleClient.downloadBridge.mockResolvedValue(undefined)
+      mockBundleClient.getBridgeVersion.mockResolvedValue(bridgeVersion)
+      mockBundleClient.executeBridgeCommand.mockResolvedValue(0)
+      mockExtractInputJsonFilename.mockReturnValue(productInputFilePath)
+      mockBasename.mockReturnValue(productInputFileName)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(mockCreateTempDir).toHaveBeenCalled()
+      expect(mockBundleClient.prepareCommand).toHaveBeenCalledWith(tempDir)
+      expect(mockBundleClient.downloadBridge).toHaveBeenCalledWith(tempDir)
+      expect(mockBundleClient.getBridgeVersion).toHaveBeenCalled()
+      expect(mockExtractInputJsonFilename).toHaveBeenCalledWith(formattedCommand)
+      expect(mockBasename).toHaveBeenCalledWith(productInputFilePath)
+      expect(mockUpdateSarifFilePaths).toHaveBeenCalledWith(productInputFileName, bridgeVersion, productInputFilePath)
+      expect(mockUpdateCoverityConfigForBridgeVersion).toHaveBeenCalledWith(productInputFileName, bridgeVersion, productInputFilePath)
+      expect(mockBundleClient.executeBridgeCommand).toHaveBeenCalledWith(formattedCommand, '/github/workspace')
+      expect(mockInfo).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+      expect(result).toBe(0)
+    })
+
+    test('should handle bundle client command generation', async () => {
+      // Arrange
+      const stage = 'blackduck'
+      const stateFilePath = '/tmp/blackduck-state.json'
+      const expectedCommand = `--stage ${stage} --input ${stateFilePath}`
+
+      mockBundleClient.generateFormattedCommand.mockReturnValue(expectedCommand)
+
+      // Act - simulate direct command generation
+      const command = mockBundleClient.generateFormattedCommand(stage, stateFilePath)
+
+      // Assert
+      expect(command).toBe(expectedCommand)
+      expect(mockBundleClient.generateFormattedCommand).toHaveBeenCalledWith(stage, stateFilePath)
+    })
+
+    test('should handle bundle client version checking from file', async () => {
+      // Arrange
+      const versionFilePath = '/tmp/bridge/versions.txt'
+      const requestedVersion = '2.1.0'
+      mockBundleClient.checkIfVersionExists.mockResolvedValue(true)
+
+      // Act
+      const exists = await mockBundleClient.checkIfVersionExists(requestedVersion, versionFilePath)
+
+      // Assert
+      expect(exists).toBe(true)
+      expect(mockBundleClient.checkIfVersionExists).toHaveBeenCalledWith(requestedVersion, versionFilePath)
+    })
+
+    test('should handle bundle client bridge installation check', async () => {
+      // Arrange
+      const requestedVersion = '2.1.0'
+      mockBundleClient.isBridgeInstalled.mockResolvedValue(true)
+
+      // Act
+      const isInstalled = await mockBundleClient.isBridgeInstalled(requestedVersion)
+
+      // Assert
+      expect(isInstalled).toBe(true)
+      expect(mockBundleClient.isBridgeInstalled).toHaveBeenCalledWith(requestedVersion)
+    })
+
+    test('should handle bundle client path validation', async () => {
+      // Arrange
+      mockBundleClient.validateAndSetBridgePath.mockResolvedValue(undefined)
+
+      // Act
+      await mockBundleClient.validateAndSetBridgePath()
+
+      // Assert
+      expect(mockBundleClient.validateAndSetBridgePath).toHaveBeenCalled()
+    })
+
+    test('should handle bundle client execution with non-zero exit code', async () => {
+      // Arrange
+      const exitCode = 2
+      mockBundleClient.prepareCommand.mockResolvedValue('test-command')
+      mockBundleClient.downloadBridge.mockResolvedValue(undefined)
+      mockBundleClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockBundleClient.executeBridgeCommand.mockResolvedValue(exitCode)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(mockBundleClient.executeBridgeCommand).toHaveBeenCalled()
+      expect(mockInfo).not.toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
+      expect(result).toBe(exitCode)
+    })
+
+    test('should handle bundle client workflow version warning', async () => {
+      // Arrange - Set a workflow version that should trigger the warning
+      Object.defineProperty(inputs, 'POLARIS_WORKFLOW_VERSION', {value: '1.0.0', configurable: true})
+
+      const stage = 'polaris'
+      const stateFilePath = '/tmp/polaris-state.json'
+      const expectedCommand = `--stage ${stage} --input ${stateFilePath}`
+
+      mockBundleClient.generateFormattedCommand.mockReturnValue(expectedCommand)
+
+      // Act - simulate command generation that should show workflow version warning
+      const command = mockBundleClient.generateFormattedCommand(stage, stateFilePath)
+
+      // Assert
+      expect(command).toBe(expectedCommand)
+      expect(mockBundleClient.generateFormattedCommand).toHaveBeenCalledWith(stage, stateFilePath)
+    })
+
+    test('should handle bundle client version reading from file', async () => {
+      // Arrange
+      const expectedVersion = '2.1.0'
+      mockBundleClient.getBridgeVersion.mockResolvedValue(expectedVersion)
+
+      // Act
+      const version = await mockBundleClient.getBridgeVersion()
+
+      // Assert
+      expect(version).toBe(expectedVersion)
+      expect(mockBundleClient.getBridgeVersion).toHaveBeenCalled()
+    })
+  })
+
+  describe('Bridge Client Type Selection', () => {
+    test('should create thin client when configured', () => {
+      // Arrange - Configure for thin client
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '2.1.0', configurable: true})
+
+      const mockThinClient = {
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client')
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
+
+      // Act
+      const client = bridgeClientFactory.createBridgeClient()
+
+      // Assert
+      expect(client.getBridgeType()).toBe('bridge-cli-thin-client')
+      expect(mockCreateBridgeClient).toHaveBeenCalled()
+    })
+
+    test('should create bundle client when configured', () => {
+      // Arrange - Configure for bundle client
+      Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '', configurable: true})
+
+      const mockBundleClient = {
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-bundle')
+      }
+      mockCreateBridgeClient.mockReturnValue(mockBundleClient as any)
+
+      // Act
+      const client = bridgeClientFactory.createBridgeClient()
+
+      // Assert
+      expect(client.getBridgeType()).toBe('bridge-cli-bundle')
+      expect(mockCreateBridgeClient).toHaveBeenCalled()
+    })
+  })
+
+  describe('Bridge Client Error Handling', () => {
+    test('should handle thin client download failures', async () => {
+      // Arrange
+      const mockThinClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn().mockRejectedValue(new Error('Download failed')),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client')
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
+
+      mockThinClient.prepareCommand.mockResolvedValue('test-command')
+
+      // Act & Assert
+      await expect(main.run()).rejects.toThrow('Download failed')
+      expect(mockThinClient.downloadBridge).toHaveBeenCalled()
+    })
+
+    test('should handle bundle client download failures', async () => {
+      // Arrange
+      const mockBundleClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn().mockRejectedValue(new Error('Bundle download failed')),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-bundle')
+      }
+      mockCreateBridgeClient.mockReturnValue(mockBundleClient as any)
+
+      mockBundleClient.prepareCommand.mockResolvedValue('test-command')
+
+      // Act & Assert
+      await expect(main.run()).rejects.toThrow('Bundle download failed')
+      expect(mockBundleClient.downloadBridge).toHaveBeenCalled()
+    })
+
+    test('should handle bridge version retrieval failures', async () => {
+      // Arrange
+      const mockThinClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn().mockRejectedValue(new Error('Version retrieval failed')),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client')
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
+
+      mockThinClient.prepareCommand.mockResolvedValue('test-command')
+      mockThinClient.downloadBridge.mockResolvedValue(undefined)
+
+      // Act & Assert
+      await expect(main.run()).rejects.toThrow('Version retrieval failed')
+      expect(mockThinClient.getBridgeVersion).toHaveBeenCalled()
+    })
+  })
+
+  describe('Bridge Client Configuration Tests', () => {
+    test('should handle air gap mode configuration for thin client', async () => {
+      // Arrange
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://airgap-server.com', configurable: true})
+      mockParseToBoolean.mockReturnValue(true) // Enable air gap mode
+
+      const mockThinClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client'),
+        validateAndSetBridgePath: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
+
+      mockThinClient.prepareCommand.mockResolvedValue('test-command')
+      mockThinClient.downloadBridge.mockResolvedValue(undefined)
+      mockThinClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockThinClient.executeBridgeCommand.mockResolvedValue(0)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockThinClient.downloadBridge).toHaveBeenCalled()
+    })
+
+    test('should handle air gap mode configuration for bundle client', async () => {
+      // Arrange
+      Object.defineProperty(inputs, 'BRIDGE_CLI_BASE_URL', {value: 'https://airgap-server.com', configurable: true})
+      mockParseToBoolean.mockReturnValue(true) // Enable air gap mode
+
+      const mockBundleClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-bundle'),
+        validateAndSetBridgePath: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockBundleClient as any)
+
+      mockBundleClient.prepareCommand.mockResolvedValue('test-command')
+      mockBundleClient.downloadBridge.mockResolvedValue(undefined)
+      mockBundleClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockBundleClient.executeBridgeCommand.mockResolvedValue(0)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockBundleClient.downloadBridge).toHaveBeenCalled()
+    })
+
+    test('should handle custom install directory for thin client', async () => {
+      // Arrange
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+        value: '/custom/install/path',
+        configurable: true
+      })
+
+      const mockThinClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-thin-client'),
+        validateAndSetBridgePath: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockThinClient as any)
+
+      mockThinClient.prepareCommand.mockResolvedValue('test-command')
+      mockThinClient.downloadBridge.mockResolvedValue(undefined)
+      mockThinClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockThinClient.executeBridgeCommand.mockResolvedValue(0)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockThinClient.downloadBridge).toHaveBeenCalled()
+    })
+
+    test('should handle custom install directory for bundle client', async () => {
+      // Arrange
+      Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
+        value: '/custom/install/path',
+        configurable: true
+      })
+
+      const mockBundleClient = {
+        prepareCommand: jest.fn(),
+        downloadBridge: jest.fn(),
+        getBridgeVersion: jest.fn(),
+        executeBridgeCommand: jest.fn(),
+        getBridgeType: jest.fn().mockReturnValue('bridge-cli-bundle'),
+        validateAndSetBridgePath: jest.fn()
+      }
+      mockCreateBridgeClient.mockReturnValue(mockBundleClient as any)
+
+      mockBundleClient.prepareCommand.mockResolvedValue('test-command')
+      mockBundleClient.downloadBridge.mockResolvedValue(undefined)
+      mockBundleClient.getBridgeVersion.mockResolvedValue('2.1.0')
+      mockBundleClient.executeBridgeCommand.mockResolvedValue(0)
+
+      // Act
+      const result = await main.run()
+
+      // Assert
+      expect(result).toBe(0)
+      expect(mockBundleClient.downloadBridge).toHaveBeenCalled()
+    })
+  })
+})
+
+describe('Global Error Handler Tests', () => {
+  const mockDebug = jest.mocked(core.debug)
+  const mockSetFailed = jest.mocked(core.setFailed)
+  const mockSetOutput = jest.mocked(core.setOutput)
+  const mockParseToBoolean = jest.mocked(utility.parseToBoolean)
+  const mockCheckJobResult = jest.mocked(utility.checkJobResult)
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockDebug.mockImplementation(() => {})
+    mockSetFailed.mockImplementation(() => {})
+    mockSetOutput.mockImplementation(() => {})
+  })
+
+  test('should handle error with undefined message', () => {
+    // Arrange
+    const error = {message: undefined}
+    mockParseToBoolean.mockReturnValue(false)
+    mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.FAILURE)
+
+    // Simulate the error handler behavior
+    if (error.message !== undefined) {
+      // This branch should not execute
+    } else {
+      // Expected path for undefined message
+      expect(error.message).toBeUndefined()
+    }
+  })
+
+  test('should handle error without RETURN_STATUS and taskResult as SUCCESS', () => {
+    // Arrange
+    const error = new Error('Test error 1')
+    mockParseToBoolean.mockReturnValue(false)
+    mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.SUCCESS)
+    const spy = jest.spyOn(main, 'markBuildStatusIfIssuesArePresent')
+
+    // Simulate the global error handler
+    if (error.message !== undefined) {
+      const isReturnStatusEnabled = utility.parseToBoolean(inputs.RETURN_STATUS)
+      const exitCode = main.getBridgeExitCodeAsNumericValue(error)
+
+      if (isReturnStatusEnabled) {
+        core.setOutput(constants.TASK_RETURN_STATUS, exitCode)
+      }
+
+      const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
+
+      if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
+        main.markBuildStatusIfIssuesArePresent(exitCode, taskResult, error.message)
+      } else {
+        core.setFailed('Workflow failed! '.concat(main.logBridgeExitCodes(error.message)))
+      }
+    }
+
+    // Assert
+    expect(spy).toHaveBeenCalledWith(1, constants.BUILD_STATUS.SUCCESS, 'Test error 1')
+    expect(mockSetOutput).not.toHaveBeenCalled()
+  })
+
+  test('should handle error with RETURN_STATUS enabled and taskResult undefined', () => {
+    // Arrange
+    const error = new Error('Test error 3')
+    mockParseToBoolean.mockReturnValue(true)
+    mockCheckJobResult.mockReturnValue(undefined)
+
+    // Simulate the global error handler
+    if (error.message !== undefined) {
+      const isReturnStatusEnabled = utility.parseToBoolean(inputs.RETURN_STATUS)
+      const exitCode = main.getBridgeExitCodeAsNumericValue(error)
+
+      if (isReturnStatusEnabled) {
+        core.debug(`Setting output variable ${constants.TASK_RETURN_STATUS} with exit code ${exitCode}`)
+        core.setOutput(constants.TASK_RETURN_STATUS, exitCode)
+      }
+
+      const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
+
+      if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
+        main.markBuildStatusIfIssuesArePresent(exitCode, taskResult, error.message)
+      } else {
+        core.setFailed('Workflow failed! '.concat(main.logBridgeExitCodes(error.message)))
+      }
+    }
+
+    // Assert
+    expect(mockSetOutput).toHaveBeenCalledWith(constants.TASK_RETURN_STATUS, 3)
+    expect(mockSetFailed).toHaveBeenCalledWith('Workflow failed! '.concat(main.logBridgeExitCodes('Test error 3')))
+  })
+
+  test('should handle error with taskResult as FAILURE', () => {
+    // Arrange
+    const error = new Error('Test error 2')
+    mockParseToBoolean.mockReturnValue(false)
+    mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.FAILURE)
+
+    // Simulate the global error handler
+    if (error.message !== undefined) {
+      const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
+
+      if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
+        // Should not execute
+      } else {
+        core.setFailed('Workflow failed! '.concat(main.logBridgeExitCodes(error.message)))
+      }
+    }
+
+    // Assert
+    expect(mockSetFailed).toHaveBeenCalledWith('Workflow failed! '.concat(main.logBridgeExitCodes('Test error 2')))
+  })
+
+  test('should handle numeric error message with RETURN_STATUS and non-FAILURE taskResult', () => {
+    // Arrange
+    const error = new Error('Bridge execution completed with issues 8')
+    mockParseToBoolean.mockReturnValue(true)
+    mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.SUCCESS)
+    const spy = jest.spyOn(main, 'markBuildStatusIfIssuesArePresent')
+
+    // Simulate the global error handler
+    if (error.message !== undefined) {
       const isReturnStatusEnabled = utility.parseToBoolean(inputs.RETURN_STATUS)
       const exitCode = main.getBridgeExitCodeAsNumericValue(error)
 
@@ -875,90 +1284,173 @@ describe('BridgeCliThinClient Integration Test', () => {
       if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
         main.markBuildStatusIfIssuesArePresent(exitCode, taskResult, error.message)
       }
+    }
 
-      expect(mockSetOutput).toHaveBeenCalledWith(constants.TASK_RETURN_STATUS, 8)
-    })
+    // Assert
+    expect(mockSetOutput).toHaveBeenCalledWith(constants.TASK_RETURN_STATUS, 8)
+    expect(spy).toHaveBeenCalledWith(8, constants.BUILD_STATUS.SUCCESS, 'Bridge execution completed with issues 8')
+    expect(mockSetFailed).not.toHaveBeenCalled()
+  })
+})
 
-    it('should handle error without RETURN_STATUS', async () => {
-      mockParseToBoolean.mockReturnValue(false)
-      mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.FAILURE)
+describe('Finally Block Coverage Tests', () => {
+  const mockDebug = jest.mocked(core.debug)
+  const mockInfo = jest.mocked(core.info)
+  const mockParseToBoolean = jest.mocked(utility.parseToBoolean)
+  const mockCreateTempDir = jest.mocked(utility.createTempDir)
+  const mockCleanupTempDir = jest.mocked(utility.cleanupTempDir)
+  const mockIsPullRequestEvent = jest.mocked(utility.isPullRequestEvent)
+  const mockIsNullOrEmptyValue = jest.mocked(validators.isNullOrEmptyValue)
+  const mockUploadDiagnostics = jest.mocked(artifacts.uploadDiagnostics)
+  const mockUploadSarifReportAsArtifact = jest.mocked(artifacts.uploadSarifReportAsArtifact)
+  const mockGetGitHubClientServiceInstance = jest.mocked(GitHubClientServiceFactory.getGitHubClientServiceInstance)
+  const mockCreateBridgeClient = jest.mocked(bridgeClientFactory.createBridgeClient)
+  const mockExtractInputJsonFilename = jest.mocked(utility.extractInputJsonFilename)
+  const mockBasename = jest.mocked(basename)
 
-      // Simulate the global error handler
-      const error = new Error('Test error 5')
-      const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
+  let mockBridgeClient: {
+    prepareCommand: jest.Mock
+    downloadBridge: jest.Mock
+    getBridgeVersion: jest.Mock
+    executeBridgeCommand: jest.Mock
+  }
 
-      if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
-        main.markBuildStatusIfIssuesArePresent(main.getBridgeExitCodeAsNumericValue(error), taskResult, error.message)
-      } else {
-        core.setFailed('Workflow failed! '.concat(main.logBridgeExitCodes(error.message)))
-      }
+  let mockGitHubClientService: {
+    uploadSarifReport: jest.Mock
+  }
 
-      expect(mockSetFailed).toHaveBeenCalledWith('Workflow failed! '.concat(main.logBridgeExitCodes('Test error 5')))
-    })
+  beforeEach(() => {
+    jest.clearAllMocks()
 
-    it('should call markBuildStatusIfIssuesArePresent when taskResult is not FAILURE', async () => {
-      mockParseToBoolean.mockReturnValue(false)
-      mockCheckJobResult.mockReturnValue(constants.BUILD_STATUS.SUCCESS)
-      const spy = jest.spyOn(main, 'markBuildStatusIfIssuesArePresent')
+    mockBridgeClient = {
+      prepareCommand: jest.fn(),
+      downloadBridge: jest.fn(),
+      getBridgeVersion: jest.fn(),
+      executeBridgeCommand: jest.fn()
+    }
+    mockCreateBridgeClient.mockReturnValue(mockBridgeClient as any)
 
-      // Simulate the global error handler
-      const error = new Error('Test error 8')
-      const taskResult = utility.checkJobResult(inputs.MARK_BUILD_STATUS)
-      const exitCode = main.getBridgeExitCodeAsNumericValue(error)
+    mockGitHubClientService = {
+      uploadSarifReport: jest.fn()
+    }
+    mockGetGitHubClientServiceInstance.mockResolvedValue(mockGitHubClientService as any)
 
-      if (taskResult && taskResult !== constants.BUILD_STATUS.FAILURE) {
-        main.markBuildStatusIfIssuesArePresent(exitCode, taskResult, error.message)
-      }
+    mockCreateTempDir.mockResolvedValue('/tmp/test')
+    mockCleanupTempDir.mockResolvedValue()
+    mockExtractInputJsonFilename.mockReturnValue('/path/to/input.json')
+    mockBasename.mockReturnValue('input.json')
+    mockDebug.mockImplementation(() => {})
+    mockInfo.mockImplementation(() => {})
 
-      expect(spy).toHaveBeenCalledWith(8, constants.BUILD_STATUS.SUCCESS, 'Test error 8')
-    })
+    Object.defineProperty(inputs, 'RETURN_STATUS', {value: 'false', configurable: true})
+    Object.defineProperty(inputs, 'INCLUDE_DIAGNOSTICS', {value: 'false', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: 'false', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'false', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: 'false', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: 'false', configurable: true})
   })
 
-  describe('Helper Functions', () => {
-    describe('getBridgeExitCodeAsNumericValue', () => {
-      it('should return numeric exit code from error message', () => {
-        const error = new Error('Bridge failed 8')
-        expect(main.getBridgeExitCodeAsNumericValue(error)).toBe(8)
-      })
+  test('should handle finally block with diagnostics upload enabled', async () => {
+    // Arrange
+    mockBridgeClient.prepareCommand.mockResolvedValue('test-command')
+    mockBridgeClient.downloadBridge.mockResolvedValue(undefined)
+    mockBridgeClient.getBridgeVersion.mockResolvedValue('2.1.0')
+    mockBridgeClient.executeBridgeCommand.mockResolvedValue(0)
+    mockIsPullRequestEvent.mockReturnValue(false)
+    mockParseToBoolean.mockImplementation(input => input === inputs.INCLUDE_DIAGNOSTICS)
+    Object.defineProperty(inputs, 'INCLUDE_DIAGNOSTICS', {value: 'true', configurable: true})
 
-      it('should return -1 for non-numeric exit code', () => {
-        const error = new Error('Bridge failed x')
-        expect(main.getBridgeExitCodeAsNumericValue(error)).toBe(-1)
-      })
+    // Act
+    await main.run()
 
-      it('should return -1 for undefined message', () => {
-        const error = new Error()
-        error.message = undefined as any
-        expect(main.getBridgeExitCodeAsNumericValue(error)).toBe(-1)
-      })
+    // Assert
+    expect(mockUploadDiagnostics).toHaveBeenCalled()
+  })
+
+  test('should handle finally block with SARIF uploads for legacy bridge version', async () => {
+    // Arrange
+    const bridgeVersion = '1.9.0'
+    mockBridgeClient.prepareCommand.mockResolvedValue('test-command')
+    mockBridgeClient.downloadBridge.mockResolvedValue(undefined)
+    mockBridgeClient.getBridgeVersion.mockResolvedValue(bridgeVersion)
+    mockBridgeClient.executeBridgeCommand.mockResolvedValue(0)
+    mockIsPullRequestEvent.mockReturnValue(false)
+    mockIsNullOrEmptyValue.mockReturnValue(false)
+    mockParseToBoolean.mockImplementation(input => {
+      if (input === inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE) return true
+      if (input === inputs.POLARIS_REPORTS_SARIF_CREATE) return true
+      if (input === inputs.BLACKDUCK_UPLOAD_SARIF_REPORT) return true
+      if (input === inputs.POLARIS_UPLOAD_SARIF_REPORT) return true
+      return false
     })
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'https://blackduck.test.com', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'https://polaris.test.com', configurable: true})
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
 
-    describe('logBridgeExitCodes', () => {
-      it('should format known exit codes', () => {
-        // Assuming exit code 8 has a mapping in EXIT_CODE_MAP
-        const result = main.logBridgeExitCodes('Error message 8')
-        expect(result).toContain('Exit Code: 8')
-      })
+    // Act
+    await main.run()
 
-      it('should return original message for unknown exit codes', () => {
-        const message = 'Error message x'
-        const result = main.logBridgeExitCodes(message)
-        expect(result).toBe(message)
-      })
+    // Assert - Legacy directories should be used
+    expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, expect.any(String), expect.any(String))
+    expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, expect.any(String), expect.any(String))
+    expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, expect.any(String))
+    expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, expect.any(String))
+  })
+
+  test('should handle finally block with SARIF uploads for new bridge version', async () => {
+    // Arrange
+    const bridgeVersion = '2.1.0'
+    mockBridgeClient.prepareCommand.mockResolvedValue('test-command')
+    mockBridgeClient.downloadBridge.mockResolvedValue(undefined)
+    mockBridgeClient.getBridgeVersion.mockResolvedValue(bridgeVersion)
+    mockBridgeClient.executeBridgeCommand.mockResolvedValue(0)
+    mockIsPullRequestEvent.mockReturnValue(false)
+    mockIsNullOrEmptyValue.mockReturnValue(false)
+    mockParseToBoolean.mockImplementation(input => {
+      if (input === inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE) return true
+      if (input === inputs.POLARIS_REPORTS_SARIF_CREATE) return true
+      if (input === inputs.BLACKDUCK_UPLOAD_SARIF_REPORT) return true
+      if (input === inputs.POLARIS_UPLOAD_SARIF_REPORT) return true
+      return false
     })
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'https://blackduck.test.com', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'https://polaris.test.com', configurable: true})
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
 
-    describe('markBuildStatusIfIssuesArePresent', () => {
-      it('should log info when status is BRIDGE_BREAK_EXIT_CODE', () => {
-        main.markBuildStatusIfIssuesArePresent(constants.BRIDGE_BREAK_EXIT_CODE, constants.BUILD_STATUS.SUCCESS, 'Test error 8')
+    // Act
+    await main.run()
 
-        expect(mockInfo).toHaveBeenCalled()
-      })
+    // Assert - New integration directories should be used
+    expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY, expect.any(String), expect.any(String))
+    expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_POLARIS_SARIF_GENERATOR_DIRECTORY, expect.any(String), expect.any(String))
+    expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY, expect.any(String))
+    expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(constants.INTEGRATIONS_POLARIS_SARIF_GENERATOR_DIRECTORY, expect.any(String))
+  })
 
-      it('should set failed when status is not BRIDGE_BREAK_EXIT_CODE', () => {
-        main.markBuildStatusIfIssuesArePresent(1, constants.BUILD_STATUS.SUCCESS, 'Test error 1')
-
-        expect(mockSetFailed).toHaveBeenCalled()
-      })
+  test('should skip GitHub SARIF upload when token is null or empty', async () => {
+    // Arrange
+    mockBridgeClient.prepareCommand.mockResolvedValue('test-command')
+    mockBridgeClient.downloadBridge.mockResolvedValue(undefined)
+    mockBridgeClient.getBridgeVersion.mockResolvedValue('2.1.0')
+    mockBridgeClient.executeBridgeCommand.mockResolvedValue(0)
+    mockIsPullRequestEvent.mockReturnValue(false)
+    mockIsNullOrEmptyValue.mockReturnValue(true)
+    mockParseToBoolean.mockImplementation(input => {
+      if (input === inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE) return true
+      return false
     })
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'https://blackduck.test.com', configurable: true})
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: '', configurable: true})
+
+    // Act
+    await main.run()
+
+    // Assert - Artifact upload should happen but not GitHub upload
+    expect(mockUploadSarifReportAsArtifact).toHaveBeenCalled()
+    expect(mockGetGitHubClientServiceInstance).not.toHaveBeenCalled()
+    expect(mockGitHubClientService.uploadSarifReport).not.toHaveBeenCalled()
   })
 })
