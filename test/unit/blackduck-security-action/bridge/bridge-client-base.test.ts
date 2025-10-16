@@ -663,7 +663,7 @@ describe('BridgeClientBase - Polaris Command Building', () => {
 
       // Assert
       expect(mockInfo).toHaveBeenCalledWith('Network air gap is enabled.')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists, download has been skipped')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
       expect(mockShouldSkipAirGapDownload).toHaveBeenCalled()
     })
 
@@ -1511,7 +1511,7 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       // Assert
       expect(result).toEqual({bridgeUrl: '', bridgeVersion: '1.5.0'})
       expect(mockIsBridgeInstalled).toHaveBeenCalledWith('1.5.0')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists, download has been skipped')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge CLI already exists')
     })
 
     it('should call updateBridgeCLIVersion when bridge is not installed', async () => {

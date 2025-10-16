@@ -146,7 +146,7 @@ export abstract class BridgeClientBase {
         info('Network air gap is enabled.')
         const shouldSkipDownload = await this.shouldSkipAirGapDownload()
         if (shouldSkipDownload) {
-          info('Bridge CLI already exists, download has been skipped')
+          info('Bridge CLI already exists')
           return
         }
       }
@@ -458,23 +458,9 @@ export abstract class BridgeClientBase {
         debug(`Custom install directory does not exist: ${inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY}`)
         throw new Error(constants.BRIDGE_INSTALL_DIRECTORY_NOT_FOUND_ERROR)
       }
-      const customPath = path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
-      debug(`Returning custom path: ${customPath}`)
-      return customPath
+      return path.join(inputs.BRIDGE_CLI_INSTALL_DIRECTORY_KEY, this.getBridgeType())
     }
-
-    debug('No custom install directory provided, using default path')
-    const defaultPath = this.getBridgeDefaultPath()
-    debug(`Default path resolved to: ${defaultPath}`)
-
-    if (this.isNetworkAirGapEnabled()) {
-      debug('Default path exists in air gap mode')
-    } else {
-      debug('Network air gap is disabled, skipping path existence check')
-    }
-
-    debug(`Returning default path: ${defaultPath}`)
-    return defaultPath
+    return this.getBridgeDefaultPath()
   }
 
   // ============================================================================
@@ -629,7 +615,7 @@ export abstract class BridgeClientBase {
     const requestedVersion = inputs.BRIDGE_CLI_DOWNLOAD_VERSION
 
     if (await this.isBridgeInstalled(requestedVersion)) {
-      info('Bridge CLI already exists, download has been skipped')
+      info('Bridge CLI already exists')
       return {bridgeUrl: '', bridgeVersion: requestedVersion}
     }
 

@@ -1,4 +1,3 @@
-import {BridgeCliThinClient} from '../../src/blackduck-security-action/bridge/bridge-cli-thin-client'
 import * as inputs from '../../src/blackduck-security-action/inputs'
 import * as constants from '../../src/application-constants'
 import * as utility from '../../src/blackduck-security-action/utility'
@@ -580,8 +579,6 @@ describe('Main Run Function Tests', () => {
     })
   })
 })
-
-// REMOVED: Duplicate BridgeCliThinClient Integration Test suite - functionality covered in Bridge Client Factory Integration Tests
 
 describe('Bridge Client Factory Integration Tests', () => {
   const mockDebug = jest.mocked(core.debug)

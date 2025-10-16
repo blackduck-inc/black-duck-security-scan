@@ -86,7 +86,7 @@ describe('BridgeThinClient', () => {
       const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
 
       expect(command).toBe('--stage connect --input /tmp/input.json --update')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge update command has been added.')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update enabled.')
     })
 
     test('should not include update command when workflow update is disabled', () => {
@@ -99,7 +99,7 @@ describe('BridgeThinClient', () => {
       const command = bridgeThinClient.generateFormattedCommand(stage, stateFilePath)
 
       expect(command).toBe('--stage connect --input /tmp/input.json')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update is disabled')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update disabled')
     })
   })
 
@@ -486,7 +486,7 @@ describe('BridgeThinClient', () => {
       const updateCommand = (bridgeThinClient as any).handleBridgeUpdateCommand()
 
       expect(updateCommand).toBe('--update')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge update command has been added.')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update enabled.')
     })
 
     test('should return empty string when disabled', () => {
@@ -495,7 +495,7 @@ describe('BridgeThinClient', () => {
       const updateCommand = (bridgeThinClient as any).handleBridgeUpdateCommand()
 
       expect(updateCommand).toBe('')
-      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update is disabled')
+      expect(mockInfo).toHaveBeenCalledWith('Bridge workflow update disabled')
     })
   })
 

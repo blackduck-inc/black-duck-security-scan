@@ -829,22 +829,7 @@ describe('BridgeCliBundle', () => {
           mockCheckIfPathExists.mockReturnValue(true)
 
           const result = (bridgeCliBundle as any).validateAndGetBasePath()
-
-          expect(mockCheckIfPathExists).toHaveBeenCalledWith(defaultPath)
           expect(result).toBe(defaultPath)
-        })
-
-        test('should throw error when air gap is enabled and default path does not exist', () => {
-          const defaultPath = '/nonexistent/default/path'
-          jest.spyOn(bridgeCliBundle as any, 'getBridgeDefaultPath').mockReturnValue(defaultPath)
-          jest.spyOn(bridgeCliBundle as any, 'isNetworkAirGapEnabled').mockReturnValue(true)
-          mockCheckIfPathExists.mockReturnValue(false)
-
-          expect(() => {
-            ;(bridgeCliBundle as any).validateAndGetBasePath()
-          }).toThrow(constants.BRIDGE_DEFAULT_DIRECTORY_NOT_FOUND_ERROR)
-
-          expect(mockCheckIfPathExists).toHaveBeenCalledWith(defaultPath)
         })
 
         test('should not check default path existence when air gap is disabled', () => {

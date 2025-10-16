@@ -300,7 +300,7 @@ export class BridgeCliThinClient extends BridgeClientBase {
 
   private handleBridgeUpdateCommand(): string {
     const isBridgeUpdateEnabled = parseToBoolean(inputs.ENABLE_WORKFLOW_UPDATE)
-    info(isBridgeUpdateEnabled ? 'Bridge update command has been added.' : 'Bridge workflow update is disabled')
+    info(isBridgeUpdateEnabled ? 'Bridge workflow update enabled.' : 'Bridge workflow update disabled')
     return isBridgeUpdateEnabled ? BridgeCliThinClient.BRIDGE_CLI_COMMANDS.UPDATE : ''
   }
 

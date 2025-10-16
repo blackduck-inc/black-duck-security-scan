@@ -1,6 +1,6 @@
 import {debug, info, setFailed, setOutput} from '@actions/core'
 import {basename} from 'path'
-import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
+//import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 
 import * as constants from './application-constants'
 import * as inputs from './blackduck-security-action/inputs'
@@ -38,7 +38,7 @@ export async function run() {
     // Based on bridge version update Coverity configuration for backward compatibility
     util.updateCoverityConfigForBridgeVersion(productInputFileName, bridgeVersion, productInputFilPath)
     // Execute bridge command
-    exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
+    exitCode = 1
     if (exitCode === 0) {
       info('Black Duck Security Action workflow execution completed successfully.')
       isBridgeExecuted = true
