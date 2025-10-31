@@ -3,7 +3,8 @@ import * as tls from 'tls'
 import * as https from 'https'
 import {debug, warning} from '@actions/core'
 import * as inputs from './inputs'
-import * as httpsProxyAgent from 'https-proxy-agent'
+// import * as httpsProxyAgent from 'https-proxy-agent'
+import * as httpProxyAgent from 'http-proxy-agent'
 import {getProxyConfig} from './proxy-utils'
 
 export interface SSLConfig {
@@ -77,7 +78,8 @@ export function createHTTPSAgent(sslConfig: SSLConfig, targetUrl: string): https
 
   if (proxyConfig.useProxy && proxyConfig.proxyUrl) {
     debug(`Creating HTTPS proxy agent with proxy: ${proxyConfig.proxyUrl.origin}`)
-    return new httpsProxyAgent.HttpsProxyAgent(proxyConfig.proxyUrl, sslOptions)
+    // return new httpsProxyAgent.HttpsProxyAgent(proxyConfig.proxyUrl, sslOptions)
+    return new httpProxyAgent.HttpProxyAgent(proxyConfig.proxyUrl, sslOptions)
   }
 
   debug('Creating HTTPS agent without proxy')
