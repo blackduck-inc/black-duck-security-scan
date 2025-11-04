@@ -257,6 +257,14 @@ export class BridgeToolsParameter {
       polData.data.coverity = {...polData.data.coverity, ...coverityArgs}
     }
 
+    // Set Coverity version if provided
+    if (inputs.COVERITY_VERSION) {
+      if (!polData.data.coverity) {
+        polData.data.coverity = {}
+      }
+      polData.data.coverity.version = inputs.COVERITY_VERSION
+    }
+
     if (Object.keys(detectArgs).length > 0) {
       polData.data.detect = {...polData.data.detect, ...detectArgs}
     }
