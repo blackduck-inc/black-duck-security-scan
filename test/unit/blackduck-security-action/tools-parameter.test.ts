@@ -1514,8 +1514,7 @@ test('Test getFormattedCommandForPolaris with both POLARIS_TEST_SCA_LOCATION and
   expect(jsonData.data.polaris.test.sast.location).toBe('local')
 })
 
-// SIGINT-3342: Polaris Multi-Version Support Tests
-describe('Polaris with Coverity Version Support (SIGINT-3342)', () => {
+describe('Polaris with Coverity Version Support', () => {
   test('should include coverity version in polaris_input.json when COVERITY_VERSION is set', () => {
     // Set required Polaris inputs
     Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})

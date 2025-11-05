@@ -258,15 +258,15 @@ export class BridgeToolsParameter {
     }
 
     // Set Coverity version if provided
-    info(`DEBUG: COVERITY_VERSION input value: '${inputs.COVERITY_VERSION}'`)
+    debug(`COVERITY_VERSION input value: '${inputs.COVERITY_VERSION}'`)
     if (inputs.COVERITY_VERSION) {
       if (!polData.data.coverity) {
         polData.data.coverity = {}
       }
       polData.data.coverity.version = inputs.COVERITY_VERSION
-      info(`DEBUG: Set coverity version to: ${inputs.COVERITY_VERSION}`)
+      debug(`Set coverity version to: ${inputs.COVERITY_VERSION}`)
     } else {
-      info('DEBUG: COVERITY_VERSION is empty, not setting version')
+      debug('COVERITY_VERSION is empty, not setting version')
     }
 
     if (Object.keys(detectArgs).length > 0) {
@@ -280,7 +280,6 @@ export class BridgeToolsParameter {
     fs.writeFileSync(stateFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
-    info(`DEBUG: Polaris input JSON:\n${inputJson}`)
 
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
     return command
