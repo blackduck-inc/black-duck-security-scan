@@ -2,7 +2,7 @@ import * as inputs from '../../inputs'
 import * as fs from 'fs'
 import * as zlib from 'zlib'
 import {checkIfPathExists, getDefaultSarifReportPath, sleep, getSharedHttpClient, getIntegrationDefaultSarifReportPath} from '../../utility'
-import {debug, info} from '@actions/core'
+import {debug, info, warning} from '@actions/core'
 import * as constants from '../../../application-constants'
 import {GithubClientServiceInterface} from '../github-client-service-interface'
 import {SarifData} from '../../input-data/sarif-data'
@@ -31,7 +31,6 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
   }
 
   async uploadSarifReport(defaultSarifReportDirectory: string, userSarifFilePath: string): Promise<void> {
-    info('Uploading SARIF results to GitHub')
     let retryCountLocal = constants.RETRY_COUNT
     let retryDelay = constants.RETRY_DELAY_IN_MILLISECONDS
     let sarifFilePath = ''
@@ -44,6 +43,12 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
     } else {
       sarifFilePath = userSarifFilePath ? userSarifFilePath : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, true)
     }
+
+    if (!checkIfPathExists(sarifFilePath)) {
+      warning(`SARIF report not found at: ${sarifFilePath}`)
+      return undefined
+    }
+    info('Uploading SARIF results to GitHub')
     info(`Sarif file path:::: ${sarifFilePath}`)
     if (checkIfPathExists(sarifFilePath)) {
       try {
