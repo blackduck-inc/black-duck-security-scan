@@ -7,7 +7,6 @@ import {Socket} from 'net'
 import * as utility from '../../../../../src/blackduck-security-action/utility'
 import fs from 'fs'
 import * as constants from '../../../../../src/application-constants'
-import any = jasmine.any
 
 const originalEnv = process.env
 beforeEach(() => {
