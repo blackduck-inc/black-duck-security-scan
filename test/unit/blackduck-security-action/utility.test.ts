@@ -1,5 +1,19 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, clearHttpClientCache, createSSLConfiguredHttpClient, isBoolean, isPullRequestEvent, parseToBoolean, extractInputJsonFilename, getSharedHttpClient, sleep, createTempDir, cleanupTempDir, checkIfPathExists} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
+import * as fs from 'fs'
+import * as path from 'path'
+
+// Mock filesystem operations and @actions/io
+jest.mock('fs', () => ({
+  ...jest.requireActual('fs'),
+  mkdtempSync: jest.fn(),
+  existsSync: jest.fn()
+}))
+
+jest.mock('@actions/io', () => ({
+  rmRF: jest.fn()
+}))
+
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
   const testUrl = `${validUrl}/`
@@ -168,69 +182,203 @@ describe('SSL HTTP Client Functions', () => {
       expect(client1).not.toBe(client2)
     })
   })
+})
 
-  describe('updateCoverityConfigForBridgeVersion', () => {
-    test('should convert new format to legacy for Bridge CLI < 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input.json'
-      const testData = {
-        data: {
-          coverity: {
-            prcomment: {
-              enabled: true,
-              impacts: ['HIGH', 'MEDIUM']
-            }
-          }
-        }
-      }
+describe('parseToBoolean', () => {
+  test.each([
+    ['true', true],
+    ['TRUE', true],
+    ['True', true],
+    ['false', false],
+    ['FALSE', false],
+    ['False', false],
+    ['', false],
+    ['invalid', false],
+    ['0', false],
+    ['1', false]
+  ])('parseToBoolean(%s) should return %s', (input, expected) => {
+    expect(parseToBoolean(input)).toBe(expected)
+  })
+})
 
-      // Write test data to temporary file
-      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
+describe('extractInputJsonFilename', () => {
+  test('should extract input filename from bridge command', () => {
+    const command = 'bridge-cli --stage blackduck --input /path/to/input.json --other-args'
+    const result = extractInputJsonFilename(command)
+    expect(result).toBe('/path/to/input.json')
+  })
 
-      // Call the function with version < 3.9.0
-      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.8.0', tempFile)
+  test('should return empty string when no input parameter found', () => {
+    const command = 'bridge-cli --stage blackduck --other-args'
+    const result = extractInputJsonFilename(command)
+    expect(result).toBe('')
+  })
 
-      // Read the updated file
-      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
+  test('should handle input parameter at the end', () => {
+    const command = 'bridge-cli --stage blackduck --input /final/input.json'
+    const result = extractInputJsonFilename(command)
+    expect(result).toBe('/final/input.json')
+  })
 
-      // Verify conversion to legacy format
-      expect(updatedData.data.coverity.automation).toEqual({prcomment: true})
-      expect(updatedData.data.coverity.prcomment).toBeUndefined()
+  test('should handle Windows-style paths', () => {
+    const command = 'bridge-cli --stage blackduck --input C:\\temp\\input.json'
+    const result = extractInputJsonFilename(command)
+    expect(result).toBe('C:\\temp\\input.json')
+  })
+})
 
-      // Cleanup
-      require('fs').unlinkSync(tempFile)
+describe('getSharedHttpClient', () => {
+  test('should return a shared HTTP client instance', () => {
+    const client1 = getSharedHttpClient()
+    const client2 = getSharedHttpClient()
+    expect(client1).toBe(client2)
+    expect(client1).toBeDefined()
+  })
+
+  test('should return different instances after cache clear', () => {
+    const client1 = getSharedHttpClient()
+    clearHttpClientCache()
+    const client2 = getSharedHttpClient()
+    expect(client1).not.toBe(client2)
+  })
+})
+
+describe('sleep', () => {
+  test('should resolve after specified milliseconds', async () => {
+    const startTime = Date.now()
+    await sleep(50)
+    const endTime = Date.now()
+    const elapsed = endTime - startTime
+    // Allow some tolerance for timer precision
+    expect(elapsed).toBeGreaterThanOrEqual(40)
+    expect(elapsed).toBeLessThan(100)
+  })
+})
+
+import {rmRF} from '@actions/io'
+
+describe('File System Operations', () => {
+  const mockExistsSync = jest.mocked(fs.existsSync)
+  const mockMkdtempSync = jest.mocked(fs.mkdtempSync)
+  const mockRmRF = jest.mocked(rmRF)
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  describe('checkIfPathExists', () => {
+    test('should return true when path exists', () => {
+      mockExistsSync.mockReturnValue(true)
+      const result = checkIfPathExists('/existing/path')
+      expect(result).toBe(true)
+      expect(mockExistsSync).toHaveBeenCalledWith('/existing/path')
     })
 
-    test('should preserve new format for Bridge CLI >= 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input2.json'
-      const testData = {
-        data: {
-          coverity: {
-            prcomment: {
-              enabled: true,
-              impacts: ['HIGH', 'MEDIUM']
-            }
-          }
-        }
-      }
+    test('should return false when path does not exist', () => {
+      mockExistsSync.mockReturnValue(false)
+      const result = checkIfPathExists('/non-existing/path')
+      expect(result).toBe(false)
+      expect(mockExistsSync).toHaveBeenCalledWith('/non-existing/path')
+    })
 
-      // Write test data to temporary file
-      require('fs').writeFileSync(tempFile, JSON.stringify(testData, null, 2))
-
-      // Call the function with version >= 3.9.0
-      updateCoverityConfigForBridgeVersion('coverity_input.json', '3.9.0', tempFile)
-
-      // Read the file (should be unchanged)
-      const updatedData = JSON.parse(require('fs').readFileSync(tempFile, 'utf-8'))
-
-      // Verify new format is preserved
-      expect(updatedData.data.coverity.prcomment).toEqual({
-        enabled: true,
-        impacts: ['HIGH', 'MEDIUM']
+    test('should throw exception when fs.existsSync throws', () => {
+      mockExistsSync.mockImplementation(() => {
+        throw new Error('Permission denied')
       })
-      expect(updatedData.data.coverity.automation).toBeUndefined()
 
-      // Cleanup
-      require('fs').unlinkSync(tempFile)
+      expect(() => checkIfPathExists('/protected/path')).toThrow('Permission denied')
+    })
+  })
+
+  describe('createTempDir', () => {
+    test('should create temporary directory successfully', async () => {
+      const expectedPath = '/var/folders/test/blackduck-security-actionABC123'
+      mockMkdtempSync.mockReturnValue(expectedPath)
+
+      const result = await createTempDir()
+
+      // Match pattern that works on both Linux/macOS (/tmp) and macOS (/var/folders)
+      expect(result).toMatch(/blackduck-security-action/)
+      expect(mockMkdtempSync).toHaveBeenCalledWith(expect.stringContaining('blackduck-security-action'))
+    })
+
+    test('should handle directory creation errors', async () => {
+      mockMkdtempSync.mockImplementation(() => {
+        throw new Error('Permission denied')
+      })
+
+      await expect(createTempDir()).rejects.toThrow('Permission denied')
+    })
+  })
+
+  describe('cleanupTempDir', () => {
+    test('should clean up temporary directory successfully', async () => {
+      mockExistsSync.mockReturnValue(true)
+      mockRmRF.mockResolvedValue()
+
+      const tempDir = '/tmp/test-dir'
+      await cleanupTempDir(tempDir)
+
+      expect(mockRmRF).toHaveBeenCalledWith(tempDir)
+    })
+
+    test('should not attempt cleanup if directory does not exist', async () => {
+      mockExistsSync.mockReturnValue(false)
+      mockRmRF.mockResolvedValue()
+
+      const tempDir = '/tmp/non-existing-dir'
+      await cleanupTempDir(tempDir)
+
+      expect(mockRmRF).not.toHaveBeenCalled()
+    })
+
+    test('should propagate cleanup errors', async () => {
+      mockExistsSync.mockReturnValue(true)
+      mockRmRF.mockRejectedValue(new Error('Permission denied'))
+
+      const tempDir = '/tmp/test-dir'
+      // The function does not handle errors, so they should be propagated
+      await expect(cleanupTempDir(tempDir)).rejects.toThrow('Permission denied')
+    })
+  })
+})
+
+describe('URL and String Utilities', () => {
+  describe('cleanUrl edge cases', () => {
+    test('should handle multiple trailing slashes', () => {
+      // The cleanUrl function only removes a single trailing slash, not multiple
+      expect(cleanUrl('https://example.com///')).toBe('https://example.com//')
+    })
+
+    test('should handle empty string', () => {
+      expect(cleanUrl('')).toBe('')
+    })
+
+    test('should handle URL with query parameters', () => {
+      expect(cleanUrl('https://example.com/path?param=value/')).toBe('https://example.com/path?param=value')
+    })
+
+    test('should handle URL with fragment', () => {
+      expect(cleanUrl('https://example.com/path#fragment/')).toBe('https://example.com/path#fragment')
+    })
+  })
+
+  describe('isBoolean edge cases', () => {
+    test('should handle null and undefined', () => {
+      // The function checks `value !== null` first, so null should short-circuit to false
+      expect(isBoolean(null as any)).toBe(false)
+      // undefined !== null is true, so it continues to toString() which would throw
+      expect(() => isBoolean(undefined as any)).toThrow()
+    })
+
+    test('should handle numbers', () => {
+      expect(isBoolean(0 as any)).toBe(false)
+      expect(isBoolean(1 as any)).toBe(false)
+    })
+
+    test('should handle objects', () => {
+      expect(isBoolean({} as any)).toBe(false)
+      expect(isBoolean([] as any)).toBe(false)
     })
   })
 })

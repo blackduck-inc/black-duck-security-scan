@@ -1,4 +1,11 @@
-import {describe, test, expect, jest, beforeEach} from '@jest/globals'
+import {beforeEach, describe, expect, jest, test} from '@jest/globals'
+
+jest.mock('@actions/core', () => ({
+  info: jest.fn(),
+  debug: jest.fn(),
+  setFailed: jest.fn(),
+  setOutput: jest.fn()
+}))
 
 describe('SSL Utils Unit Tests', () => {
   let sslUtils: any

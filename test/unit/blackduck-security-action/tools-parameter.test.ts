@@ -1,8 +1,9 @@
+import * as utility from '../../../src/blackduck-security-action/utility'
 import {cleanupTempDir, createTempDir, isPullRequestEvent} from '../../../src/blackduck-security-action/utility'
 import {BridgeToolsParameter} from '../../../src/blackduck-security-action/tools-parameter'
-import mock = jest.mock
 import * as inputs from '../../../src/blackduck-security-action/inputs'
-import * as utility from '../../../src/blackduck-security-action/utility'
+import mock = jest.mock
+
 let tempPath = '/temp'
 let polaris_input_file = '/polaris_input.json'
 let coverity_input_file = '/coverity_input.json'
@@ -58,10 +59,12 @@ test('Test getFormattedCommandForPolaris', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: null})
   Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: null})
@@ -71,10 +74,12 @@ test('Test getFormattedCommandForPolaris with default values', () => {
   Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
   Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
   Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'sca,sast'})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: null})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: null})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -82,7 +87,9 @@ test('Test getFormattedCommandForPolaris with default values', () => {
   expect(jsonData.data.polaris.project.name).toBe('blackduck-security-action')
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForPolaris with self-signed certificates', () => {
@@ -94,7 +101,7 @@ test('Test getFormattedCommandForPolaris with self-signed certificates', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -106,7 +113,9 @@ test('Test getFormattedCommandForPolaris with self-signed certificates', () => {
   expect(jsonData.data.network?.ssl?.trustAll).toBe(true)
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test missing data error in getFormattedCommandForPolaris', () => {
@@ -116,7 +125,7 @@ test('Test missing data error in getFormattedCommandForPolaris', () => {
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
   try {
-    stp.getFormattedCommandForPolaris('blackduck-security-action')
+    stp.getFormattedCommandForPolaris()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('parameters for Altair is missing')
@@ -130,7 +139,7 @@ test('Test invalid data error in getFormattedCommandForPolaris', () => {
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
   try {
-    stp.getFormattedCommandForPolaris('blackduck-security-action')
+    stp.getFormattedCommandForPolaris()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('Invalid value for polaris_assessment_types')
@@ -147,9 +156,11 @@ test('Test getFormattedCommandForPolaris - prComment', () => {
   Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_SEVERITIES', {value: 'CRITICAL,HIGH'})
   Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForPolaris - pr comment for enterprise github', () => {
@@ -162,9 +173,11 @@ test('Test getFormattedCommandForPolaris - pr comment for enterprise github', ()
   Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_SEVERITIES', {value: 'CRITICAL,HIGH'})
   Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -182,9 +195,11 @@ test('Test getFormattedCommandForPolaris - pr comment for cloud github', () => {
   Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
   process.env['GITHUB_SERVER_URL'] = 'https://github.com'
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -206,10 +221,12 @@ test('Test getFormattedCommandForPolaris with sarif params', () => {
   Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_ISSUE_TYPES', {value: 'SAST,SCA'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 process.env['GITHUB_SERVER_URL'] = 'https://custom.com'
@@ -224,10 +241,12 @@ test('Test getFormattedCommandForCoverity', () => {
   Object.defineProperty(inputs, 'COVERITY_POLICY_VIEW', {value: 'COVERITY_POLICY_VIEW'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
@@ -238,14 +257,16 @@ test('Test getFormattedCommandForCoverity with default values - pull request eve
   Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
   Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(jsonData.data.coverity.connect.project.name).toBe('blackduck-security-action')
   expect(jsonData.data.coverity.connect.stream.name).toBe('blackduck-security-action-main')
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForCoverity with default values - non pull request event', () => {
@@ -254,14 +275,16 @@ test('Test getFormattedCommandForCoverity with default values - non pull request
   Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
   process.env['GITHUB_EVENT_NAME'] = 'Manual'
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(jsonData.data.coverity.connect.project.name).toBe('blackduck-security-action')
   expect(jsonData.data.coverity.connect.stream.name).toBe('blackduck-security-action-ref-name')
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Enable Test getFormattedCommandForCoverity Airgap: SUCCESS', () => {
@@ -278,10 +301,12 @@ test('Enable Test getFormattedCommandForCoverity Airgap: SUCCESS', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
 })
@@ -300,7 +325,7 @@ test('Enable Test getFormattedCommandForCoverity Airgap: EXCEPTION', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
   try {
-    stp.getFormattedCommandForCoverity('blackduck-security-action')
+    stp.getFormattedCommandForCoverity()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('Github API URL is missing')
@@ -323,9 +348,11 @@ test('Disable Test getFormattedCommandForCoverity Airgap', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
 })
@@ -339,10 +366,12 @@ test('Test getFormattedCommandForCoverity - when COVERITY_LOCAL is true', () => 
   Object.defineProperty(inputs, 'COVERITY_LOCAL', {value: true})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
 })
@@ -356,10 +385,12 @@ test('Test getFormattedCommandForCoverity - when COVERITY_LOCAL is false', () =>
   Object.defineProperty(inputs, 'COVERITY_LOCAL', {value: false})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
 })
@@ -374,9 +405,11 @@ test('Test getFormattedCommandForCoverity - when COVERITY_VERSION is provided', 
   Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '2023.6'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
 })
@@ -394,61 +427,79 @@ test('Test getFormattedCommandForCoverity - pr comment', () => {
   process.env['GITHUB_SERVER_URL'] = 'https://github.com'
   let stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  let resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  let resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: false})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'false'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'true'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'FALSE'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'TRUE'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'FALSEEEE'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'TRUEEEE'})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: ' '})
   stp = new BridgeToolsParameter(tempPath)
-  resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  resp = stp.getFormattedCommandForCoverity()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: null})
   Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: null})
@@ -467,10 +518,12 @@ test('Test getFormattedCommandForCoverity - pr comment for enterprise github', (
   process.env['GITHUB_SERVER_URL'] = 'https://custom.com'
   let stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  let resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  let resp = stp.getFormattedCommandForCoverity()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -481,7 +534,7 @@ test('Test missing data error in getFormattedCommandForCoverity', () => {
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
   try {
-    stp.getFormattedCommandForCoverity('blackduck-security-action')
+    stp.getFormattedCommandForCoverity()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('required parameters for Coverity is missing')
@@ -497,7 +550,7 @@ test('Test in getFormattedCommandForCoverityInstallDirectory', () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32'
     })
-    stp.getFormattedCommandForCoverity('blackduck-security-action')
+    stp.getFormattedCommandForCoverity()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('Invalid Install Directory')
@@ -517,7 +570,9 @@ test('Test getFormattedCommandForBlackduck', () => {
   const resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForBlackduck - fix pr test cases', () => {
@@ -534,61 +589,81 @@ test('Test getFormattedCommandForBlackduck - fix pr test cases', () => {
   let resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: false})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'false'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: ' '})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'TRUE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'FALSE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'TRUEEE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: 'FALSEEEE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_ENABLED', {value: ' '})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR', {value: 'true'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForBlackduck - fix pr enabled with createSinglePR true', () => {
@@ -602,7 +677,9 @@ test('Test getFormattedCommandForBlackduck - fix pr enabled with createSinglePR 
   let stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
   let resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForBlackduck - fix pr enabled with createSinglePR true failure', () => {
@@ -649,49 +726,65 @@ test('Test getFormattedCommandForBlackduck - pr comment test cases', () => {
   let resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: false})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: 'false'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: ' '})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: 'TRUE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: 'FALSE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: 'TRUEEE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   Object.defineProperty(inputs, 'BLACKDUCKSCA_PRCOMMENT_ENABLED', {value: 'FALSEEEE'})
   stp = new BridgeToolsParameter(tempPath)
   resp = stp.getFormattedCommandForBlackduck()
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test getFormattedCommandForBlackduck - pr comment - for enterprise github', () => {
@@ -709,7 +802,9 @@ test('Test getFormattedCommandForBlackduck - pr comment - for enterprise github'
   let resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -730,7 +825,9 @@ test('Test getFormattedCommandForBlackduck - badges', () => {
   let resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -751,7 +848,9 @@ test('Test getFormattedCommandForBlackduck - badges if false', () => {
   let resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
@@ -808,7 +907,9 @@ test('Test getFormattedCommandForBlackduck with sarif params', () => {
   const resp = stp.getFormattedCommandForBlackduck()
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 it('should pass polaris fields and wait for scan field to bridge', () => {
@@ -820,12 +921,14 @@ it('should pass polaris fields and wait for scan field to bridge', () => {
   Object.defineProperty(inputs, 'POLARIS_WAITFORSCAN', {value: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.polaris.serverUrl).toContain('server_url')
   expect(jsonData.data.polaris.accesstoken).toContain('access_token')
   expect(jsonData.data.polaris.application.name).toContain('POLARIS_APPLICATION_NAME')
@@ -847,12 +950,14 @@ it('should pass polaris source upload fields to bridge', () => {
   Object.defineProperty(inputs, 'PROJECT_SOURCE_PRESERVESYMLINKS', {value: true})
   Object.defineProperty(inputs, 'PROJECT_SOURCE_EXCLUDES', {value: 'source_exclude1,  source_exclude2'})
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.polaris.serverUrl).toContain('server_url')
   expect(jsonData.data.polaris.accesstoken).toContain('access_token')
   expect(jsonData.data.polaris.application.name).toContain('POLARIS_APPLICATION_NAME')
@@ -881,12 +986,14 @@ it('should pass polaris SCA and SAST arbitrary fields to bridge', () => {
   Object.defineProperty(inputs, 'DETECT_ARGS', {value: 'DETECT_ARGS'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
+  expect(resp.stateFilePath).toContain('polaris_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.polaris.serverUrl).toContain('server_url')
   expect(jsonData.data.polaris.accesstoken).toContain('access_token')
   expect(jsonData.data.polaris.application.name).toContain('POLARIS_APPLICATION_NAME')
@@ -914,7 +1021,9 @@ it('should pass black duck fields and wait for scan field to bridge', () => {
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.blackducksca.url).toBe('BLACKDUCKSCA_URL')
   expect(jsonData.data.blackducksca.token).toBe('BLACKDUCKSCA_TOKEN')
   expect(jsonData.data.blackducksca.waitForScan).toBe(true)
@@ -931,7 +1040,9 @@ it('should pass black duck fields and project directory field to bridge', () => 
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.blackducksca.url).toBe('BLACKDUCKSCA_URL')
   expect(jsonData.data.blackducksca.token).toBe('BLACKDUCKSCA_TOKEN')
   expect(jsonData.data.project.directory).toBe('BLACKDUCK_PROJECT_DIRECTORY')
@@ -950,7 +1061,9 @@ it('should pass blackduck arbitrary fields to bridge', () => {
   const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage blackduck')
+  expect(resp.stage).toBe('blackducksca')
+  expect(resp.stateFilePath).toContain('bd_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.blackducksca.url).toBe('BLACKDUCKSCA_URL')
   expect(jsonData.data.blackducksca.token).toBe('BLACKDUCKSCA_TOKEN')
   expect(jsonData.data.detect.search.depth).toBe(2)
@@ -965,12 +1078,14 @@ it('should pass coverity fields and wait for scan field to bridge', () => {
   Object.defineProperty(inputs, 'COVERITY_WAITFORSCAN', {value: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.coverity.connect.url).toBe('COVERITY_URL')
   expect(jsonData.data.coverity.connect.user.name).toBe('COVERITY_USER')
   expect(jsonData.data.coverity.connect.user.password).toBe('COVERITY_PASSPHRASE')
@@ -984,12 +1099,14 @@ it('should pass coverity fields and project directory field to bridge', () => {
   Object.defineProperty(inputs, 'PROJECT_DIRECTORY', {value: 'COVERITY_PROJECT_DIRECTORY'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.coverity.connect.url).toBe('COVERITY_URL')
   expect(jsonData.data.coverity.connect.user.name).toBe('COVERITY_USER')
   expect(jsonData.data.coverity.connect.user.password).toBe('COVERITY_PASSPHRASE')
@@ -1006,12 +1123,14 @@ it('should pass coverity arbitrary fields to bridge', () => {
   Object.defineProperty(inputs, 'COVERITY_ARGS', {value: 'COVERITY_ARGS'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+  const resp = stp.getFormattedCommandForCoverity()
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage connect')
+  expect(resp.stage).toBe('connect')
+  expect(resp.stateFilePath).toContain('coverity_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.coverity.build.command).toBe('COVERITY_BUILD_COMMAND')
   expect(jsonData.data.coverity.clean.command).toBe('COVERITY_CLEAN_COMMAND')
   expect(jsonData.data.coverity.config.path).toBe('COVERITY_CONFIG_PATH')
@@ -1038,7 +1157,9 @@ describe('test black duck values passed correctly to bridge for workflow simplif
     const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage blackduck')
+    expect(resp.stage).toBe('blackducksca')
+    expect(resp.stateFilePath).toContain('bd_input.json')
+    expect(resp.workflowVersion).toBeDefined()
     expect(jsonData.data.blackducksca.automation.prcomment).toBe(true)
     expect(jsonData.data.github.host.url).toBe('https://custom.com')
     expect(jsonData.data.blackducksca.reports).toBe(undefined)
@@ -1065,7 +1186,9 @@ describe('test black duck values passed correctly to bridge for workflow simplif
     const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage blackduck')
+    expect(resp.stage).toBe('blackducksca')
+    expect(resp.stateFilePath).toContain('bd_input.json')
+    expect(resp.workflowVersion).toBeDefined()
     expect(jsonData.data.blackducksca.automation).toBe(undefined)
     expect(jsonData.data.blackducksca.fixpr.enabled).toBe(true)
     expect(jsonData.data.blackducksca.reports.sarif.create).toBe(true)
@@ -1088,12 +1211,14 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+    const resp = stp.getFormattedCommandForPolaris()
 
     const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage polaris')
+    expect(resp.stage).toBe('polaris')
+    expect(resp.stateFilePath).toContain('polaris_input.json')
+    expect(resp.workflowVersion).toBeDefined()
     expect(jsonData.data.polaris.prComment.enabled).toBe(true)
     expect(jsonData.data.polaris.prComment.severities).toContain('CRITICAL')
     expect(jsonData.data.polaris.prComment.severities).toContain('HIGH')
@@ -1115,12 +1240,14 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+    const resp = stp.getFormattedCommandForPolaris()
 
     const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage polaris')
+    expect(resp.stage).toBe('polaris')
+    expect(resp.stateFilePath).toContain('polaris_input.json')
+    expect(resp.workflowVersion).toBeDefined()
     expect(jsonData.data.polaris.prComment).toBe(undefined)
     expect(jsonData.data.github).toBe(undefined)
     expect(jsonData.data.polaris.reports.sarif.create).toBe(true)
@@ -1141,10 +1268,12 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     Object.defineProperty(inputs, 'POLARIS_POLICY_BADGES_MAX_COUNT', {value: 5})
     process.env['GITHUB_SERVER_URL'] = 'https://custom.com'
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+    const resp = stp.getFormattedCommandForPolaris()
 
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage polaris')
+    expect(resp.stage).toBe('polaris')
+    expect(resp.stateFilePath).toContain('polaris_input.json')
+    expect(resp.workflowVersion).toBeDefined()
 
     const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
@@ -1162,10 +1291,12 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     Object.defineProperty(inputs, 'POLARIS_POLICY_BADGES_MAX_COUNT', {value: 5})
     process.env['GITHUB_SERVER_URL'] = 'https://custom.com'
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+    const resp = stp.getFormattedCommandForPolaris()
 
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage polaris')
+    expect(resp.stage).toBe('polaris')
+    expect(resp.stateFilePath).toContain('polaris_input.json')
+    expect(resp.workflowVersion).toBeDefined()
 
     const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
@@ -1182,10 +1313,12 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
     Object.defineProperty(inputs, 'POLARIS_TEST_SCA_TYPE', {value: 'SCA-SIGNATURE'})
     Object.defineProperty(inputs, 'POLARIS_TEST_SAST_TYPE', {value: 'SAST_RAPID'})
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+    const resp = stp.getFormattedCommandForPolaris()
 
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage polaris')
+    expect(resp.stage).toBe('polaris')
+    expect(resp.stateFilePath).toContain('polaris_input.json')
+    expect(resp.workflowVersion).toBeDefined()
 
     const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
@@ -1222,48 +1355,6 @@ describe('test polaris values passed correctly to bridge for workflow simplifica
 })
 
 describe('test coverity values passed correctly to bridge for workflow simplification', () => {
-  it('should pass coverity pr comment fields to bridge in pr context', () => {
-    Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-    Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-    Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-    Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'true'})
-    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
-    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
-
-    const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
-    const jsonData = JSON.parse(jsonString)
-    expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage connect')
-    expect(jsonData.data.coverity.prcomment.enabled).toBe(true)
-    expect(jsonData.data.github.host.url).toBe('https://custom.com')
-  })
-
-  it('should pass coverity pr comment with impacts to bridge in pr context', () => {
-    Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
-    Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
-    Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'COVERITY_PASSPHRASE'})
-    Object.defineProperty(inputs, 'COVERITY_PROJECT_NAME', {value: 'COVERITY_PROJECT_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_STREAM_NAME', {value: 'COVERITY_STREAM_NAME'})
-    Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: 'true'})
-    Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_IMPACTS', {value: 'HIGH,MEDIUM,LOW'})
-    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
-    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
-    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
-
-    const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
-    const jsonData = JSON.parse(jsonString)
-    expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage connect')
-    expect(jsonData.data.coverity.prcomment.enabled).toBe(true)
-    expect(jsonData.data.coverity.prcomment.impacts).toEqual(['HIGH', 'MEDIUM', 'LOW'])
-    expect(jsonData.data.github.host.url).toBe('https://custom.com')
-  })
-
   it('should not pass coverity pr comment fields to bridge in non pr context', () => {
     Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
     Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
@@ -1274,12 +1365,14 @@ describe('test coverity values passed correctly to bridge for workflow simplific
     Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
     jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
     const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-    const resp = stp.getFormattedCommandForCoverity('blackduck-security-action')
+    const resp = stp.getFormattedCommandForCoverity()
 
     const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
     const jsonData = JSON.parse(jsonString)
     expect(resp).not.toBeNull()
-    expect(resp).toContain('--stage connect')
+    expect(resp.stage).toBe('connect')
+    expect(resp.stateFilePath).toContain('coverity_input.json')
+    expect(resp.workflowVersion).toBeDefined()
     expect(jsonData.data.coverity.automation).toBe(undefined)
     expect(jsonData.data.github).toBe(undefined)
   })
@@ -1297,12 +1390,14 @@ test('Test getFormattedCommandForSRM', () => {
   Object.defineProperty(inputs, 'DETECT_EXECUTION_PATH', {value: '/home/blackduck_exec_path'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.srm.url).toContain('srm_url')
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['sca', 'sast'])
@@ -1321,14 +1416,16 @@ test('Test getFormattedCommandForSRM with default values', () => {
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(jsonData.data.srm.project.name).toBe('blackduck-security-action')
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
 })
 
 test('Test missing data error in getFormattedCommandForSRM', () => {
@@ -1336,7 +1433,7 @@ test('Test missing data error in getFormattedCommandForSRM', () => {
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
 
   try {
-    stp.getFormattedCommandForSRM('blackduck-security-action')
+    stp.getFormattedCommandForSRM()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
     expect(error.message).toContain('required parameters for SRM is missing')
@@ -1355,12 +1452,14 @@ it('should pass SRM fields to bridge', () => {
   Object.defineProperty(inputs, 'DETECT_EXECUTION_PATH', {value: '/home/blackduck_exec_path'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.srm.url).toContain('srm_url')
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
@@ -1387,12 +1486,14 @@ it('should pass SRM SCA and SAST arbitrary fields to bridge', () => {
   Object.defineProperty(inputs, 'DETECT_ARGS', {value: 'DETECT_ARGS'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.srm.url).toContain('srm_url')
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
@@ -1414,12 +1515,14 @@ it('should pass SRM fields and wait for scan field to bridge', () => {
   Object.defineProperty(inputs, 'SRM_WAITFORSCAN', {value: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.srm.url).toContain('srm_url')
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
@@ -1433,12 +1536,14 @@ it('should pass SRM fields and project directory field to bridge', () => {
   Object.defineProperty(inputs, 'PROJECT_DIRECTORY', {value: 'SRM_PROJECT_DIRECTORY'})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForSRM('blackduck-security-action')
+  const resp = stp.getFormattedCommandForSRM()
 
   const jsonString = fs.readFileSync(tempPath.concat(srm_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage srm')
+  expect(resp.stage).toBe('srm')
+  expect(resp.stateFilePath).toContain('srm_input.json')
+  expect(resp.workflowVersion).toBeDefined()
   expect(jsonData.data.srm.url).toContain('srm_url')
   expect(jsonData.data.srm.apikey).toContain('api_key')
   expect(jsonData.data.srm.assessment.types).toEqual(['SCA', 'SAST'])
@@ -1456,13 +1561,13 @@ test('Test getFormattedCommandForPolaris with POLARIS_TEST_SCA_LOCATION only', (
   Object.defineProperty(inputs, 'POLARIS_TEST_SCA_LOCATION', {value: 'local', configurable: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
   expect(jsonData.data.polaris.test.sca.location).toBe('local')
   expect(jsonData.data.polaris.test.sast).toBeUndefined()
 })
@@ -1479,13 +1584,13 @@ test('Test getFormattedCommandForPolaris with POLARIS_TEST_SAST_LOCATION only', 
   Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: 'local', configurable: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
   expect(jsonData.data.polaris.test.sast.location).toBe('local')
   expect(jsonData.data.polaris.test.sca).toBeUndefined()
 })
@@ -1503,13 +1608,13 @@ test('Test getFormattedCommandForPolaris with both POLARIS_TEST_SCA_LOCATION and
   Object.defineProperty(inputs, 'POLARIS_TEST_SAST_LOCATION', {value: 'local', configurable: true})
 
   const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
-  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  const resp = stp.getFormattedCommandForPolaris()
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
   const jsonData = JSON.parse(jsonString)
 
   expect(resp).not.toBeNull()
-  expect(resp).toContain('--stage polaris')
+  expect(resp.stage).toBe('polaris')
   expect(jsonData.data.polaris.test.sca.location).toBe('local')
   expect(jsonData.data.polaris.test.sast.location).toBe('local')
 })

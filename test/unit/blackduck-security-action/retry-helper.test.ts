@@ -1,131 +1,95 @@
 import * as core from '@actions/core'
 import {RetryHelper} from '../../../src/blackduck-security-action/retry-helper'
 import * as constants from '../../../src/application-constants'
+import * as util from '../../../src/blackduck-security-action/utility'
 
-let info: string[]
-let retryHelper: RetryHelper
+jest.mock('@actions/core')
+jest.mock('../../../src/blackduck-security-action/utility', () => ({
+  sleep: jest.fn(() => Promise.resolve()) // 🧠 instant sleep
+}))
 
-describe('retry-helper tests', () => {
-  jest.setTimeout(12000)
+describe('RetryHelper (fast, no real waiting)', () => {
+  let retryHelper: RetryHelper
+  let infoMock: jest.Mock
+
   beforeAll(() => {
-    // Mock @actions/core info()
-    jest.spyOn(core, 'info').mockImplementation((message: string) => {
-      info.push(message)
-    })
+    infoMock = jest.fn()
+    ;(core.info as jest.Mock) = infoMock
 
-    retryHelper = new RetryHelper(3, 100)
-
+    Object.defineProperty(constants, 'BRIDGE_DOWNLOAD_RETRY_ERROR', {value: 'Retry error'})
     Object.defineProperty(constants, 'RETRY_COUNT', {value: 3})
-    Object.defineProperty(constants, 'RETRY_DELAY_IN_MILLISECONDS', {value: 100})
-    Object.defineProperty(constants, 'NON_RETRY_HTTP_CODES', {value: new Set([200, 201, 401, 403, 416]), configurable: true})
+    Object.defineProperty(constants, 'RETRY_DELAY_IN_MILLISECONDS', {value: 10})
   })
 
   beforeEach(() => {
-    // Reset info
-    info = []
+    jest.clearAllMocks()
+    retryHelper = new RetryHelper(3, 10)
   })
 
-  afterAll(() => {
-    // Restore
-    jest.restoreAllMocks()
+  it('should return result on first success', async () => {
+    const result = await retryHelper.execute(async () => 'ok')
+    expect(result).toBe('ok')
+    expect(infoMock).not.toHaveBeenCalled()
   })
 
-  it('first attempt succeeds', async () => {
-    const actual = await retryHelper.execute(async () => {
-      return 'some result'
+  it('should retry once then succeed', async () => {
+    let calls = 0
+    const result = await retryHelper.execute(async () => {
+      if (++calls === 1) throw new Error('first fail')
+      return 'ok'
     })
-    expect(actual).toBe('some result')
-    expect(info).toHaveLength(0)
+    expect(result).toBe('ok')
+    expect(calls).toBe(2)
+    expect(infoMock).toHaveBeenCalledWith('first fail')
   })
 
-  it('second attempt succeeds', async () => {
-    let attempts = 0
-    const actual = await retryHelper.execute(async () => {
-      if (++attempts === 1) {
-        throw new Error('some error')
-      }
-
-      return Promise.resolve('some result')
+  it('should retry twice then succeed', async () => {
+    let calls = 0
+    const result = await retryHelper.execute(async () => {
+      if (++calls < 3) throw new Error(`fail ${calls}`)
+      return 'ok'
     })
-    expect(attempts).toBe(2)
-    expect(actual).toBe('some result')
-    expect(info).toHaveLength(2)
-    expect(info[0]).toBe('some error')
-    expect(info[1]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
+    expect(result).toBe('ok')
+    expect(calls).toBe(3)
+    expect(infoMock).toHaveBeenCalledTimes(4) // 2 errors + 2 retry logs
   })
 
-  it('third attempt succeeds', async () => {
-    let attempts = 0
-    const actual = await retryHelper.execute(async () => {
-      if (++attempts < 3) {
-        throw new Error(`some error ${attempts}`)
-      }
-
-      return Promise.resolve('some result')
-    })
-    expect(attempts).toBe(3)
-    expect(actual).toBe('some result')
-    expect(info).toHaveLength(4)
-    expect(info[0]).toBe('some error 1')
-    expect(info[1]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
-    expect(info[2]).toBe('some error 2')
-    expect(info[3]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
-  })
-
-  it('all attempts fail', async () => {
-    let attempts = 0
-    let error: Error = null as unknown as Error
-    try {
-      await retryHelper.execute(() => {
-        throw new Error(`some error ${++attempts}`)
+  it('should fail after all retries', async () => {
+    let calls = 0
+    await expect(
+      retryHelper.execute(async () => {
+        throw new Error(`fail ${++calls}`)
       })
-    } catch (err) {
-      error = err as Error
-    }
-    expect((error as Error).message).toBe('some error 4')
-    expect(attempts).toBe(4)
-    expect(info).toHaveLength(6)
-    expect(info[0]).toBe('some error 1')
-    expect(info[1]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
-    expect(info[2]).toBe('some error 2')
-    expect(info[3]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
+    ).rejects.toThrow('fail 4')
+    expect(calls).toBe(4)
+    expect(util.sleep).toHaveBeenCalledTimes(3)
   })
 
-  it('checks retryable after first attempt', async () => {
-    let attempts = 0
-    let error: Error = null as unknown as Error
-    try {
-      await retryHelper.execute(
+  it('should stop retrying when isRetryable() returns false', async () => {
+    let calls = 0
+    await expect(
+      retryHelper.execute(
         async () => {
-          throw new Error(`some error ${++attempts}`)
+          throw new Error(`fail ${++calls}`)
         },
         () => false
       )
-    } catch (err) {
-      error = err as Error
-    }
-    expect((error as Error).message).toBe('some error 1')
-    expect(attempts).toBe(1)
-    expect(info).toHaveLength(0)
+    ).rejects.toThrow('fail 1')
+    expect(calls).toBe(1)
+    expect(util.sleep).not.toHaveBeenCalled()
   })
 
-  it('checks retryable after second attempt', async () => {
-    let attempts = 0
-    let error: Error = null as unknown as Error
-    try {
-      await retryHelper.execute(
+  it('should retry once then stop when retryable() becomes false', async () => {
+    let calls = 0
+    await expect(
+      retryHelper.execute(
         async () => {
-          throw new Error(`some error ${++attempts}`)
+          throw new Error(`fail ${++calls}`)
         },
-        (e: Error) => e.message === 'some error 1'
+        e => e.message === 'fail 1'
       )
-    } catch (err) {
-      error = err as Error
-    }
-    expect((error as Error).message).toBe('some error 2')
-    expect(attempts).toBe(2)
-    expect(info).toHaveLength(2)
-    expect(info[0]).toBe('some error 1')
-    expect(info[1]).toMatch(/Bridge CLI download has been failed, Retries left: .+/)
+    ).rejects.toThrow('fail 2')
+    expect(calls).toBe(2)
+    expect(util.sleep).toHaveBeenCalledTimes(1)
   })
 })

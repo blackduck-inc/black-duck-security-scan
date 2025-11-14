@@ -1,10 +1,9 @@
 import path from 'path'
 
-export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/bridge-cli-bundle' //Path will be in home
-export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\bridge-cli-bundle'
-export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/bridge-cli-bundle'
-export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/'
-
+export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/.blackduck/integrations' //Path will be in home
+export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\.blackduck\\integrations'
+export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/.blackduck/integrations'
+export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/'
 export const APPLICATION_NAME = 'blackduck-security-action'
 /**
  * @deprecated Use bridgecli_install_directory instead. This can be removed in future release.
@@ -16,14 +15,24 @@ export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = 'bridgecli_install_directory'
  */
 export const BRIDGE_DOWNLOAD_URL_KEY = 'synopsys_bridge_download_url'
 export const BRIDGE_CLI_DOWNLOAD_URL_KEY = 'bridgecli_download_url'
+export const BRIDGE_CLI_BASE_URL_KEY = 'bridgecli_base_url'
 /**
  * @deprecated Use bridgecli_download_version instead. This can be removed in future release.
  */
-export const BRIDGE_DOWNLOAD_VERSION_KEY = 'synopsys_bridge_download_version'
 export const BRIDGE_CLI_DOWNLOAD_VERSION_KEY = 'bridgecli_download_version'
 export const MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION = '2.1.0'
 export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
 
+// Thin Client Configuration
+export const ENABLE_BRIDGE_CLI_THIN_CLIENT = 'enable_bridgecli_thin_client'
+export const ENABLE_WORKFLOW_UPDATE_KEY = 'enable_workflow_update'
+export const BRIDGE_CLI_REGISTRY_URL_KEY = 'bridgecli_registry_url'
+
+// Workflow Version Keys
+export const POLARIS_WORKFLOW_VERSION_KEY = 'polaris_workflow_version'
+export const COVERITY_WORKFLOW_VERSION_KEY = 'coverity_workflow_version'
+export const SRM_WORKFLOW_VERSION_KEY = 'srm_workflow_version'
+export const BLACKDUCKSCA_WORKFLOW_VERSION_KEY = 'blackducksca_workflow_version'
 // Scan Types
 export const COVERITY_KEY = 'coverity'
 export const POLARIS_KEY = 'polaris'
@@ -232,6 +241,11 @@ export const NETWORK_AIRGAP_KEY = 'network_airgap'
 export const DIAGNOSTICS_RETENTION_DAYS_KEY = 'diagnostics_retention_days'
 export const NETWORK_SSL_CERT_FILE_KEY = 'network_ssl_cert_file'
 export const NETWORK_SSL_TRUST_ALL_KEY = 'network_ssl_trustAll'
+
+// Bridge CLI Command Options
+export const BRIDGE_CLI_STAGE_OPTION = '--stage'
+export const BRIDGE_CLI_INPUT_OPTION = '--input'
+export const BRIDGE_CLI_SPACE = ' '
 
 // Bridge Exit Codes
 export const EXIT_CODE_MAP = new Map<string, string>([

@@ -2,9 +2,22 @@ import * as configVariables from 'actions-artifact-v2/lib/internal/shared/config
 import {tmpdir} from 'os'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/blackduck-security-action/artifacts'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
-import * as artifact from 'actions-artifact-v2/lib/artifact'
-const fs = require('fs')
+import * as artifact from 'actions-artifact-v2'
 import * as utility from '../../../src/blackduck-security-action/utility'
+
+const fs = require('fs')
+
+jest.mock('actions-artifact-v2', () => ({
+  DefaultArtifactClient: jest.fn().mockImplementation(() => ({
+    uploadArtifact: jest.fn(),
+    downloadArtifact: jest.fn()
+  }))
+}))
+
+// Mock the internal config module
+jest.mock('actions-artifact-v2/lib/internal/shared/config', () => ({
+  getGitHubWorkspaceDir: jest.fn().mockReturnValue('.')
+}))
 
 // Mock the artifact module
 jest.mock('actions-artifact-v2', () => ({
