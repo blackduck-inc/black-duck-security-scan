@@ -2927,7 +2927,6 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
     })
   })
 
-
   describe('BridgeClientBase - getNormalizedVersionUrl', () => {
     it('should replace latest pattern with versions.txt', () => {
       // Arrange
@@ -3051,8 +3050,8 @@ describe('BridgeClientBase - getBridgeUrlAndVersion', () => {
       ;(bridgeClient as any).bridgePath = '/test/bridge'
 
       const mockExec = jest.fn().mockResolvedValue(0)
-      jest.doMock('@actions/exec', () => ({ exec: mockExec }))
-      const { exec } = require('@actions/exec')
+      jest.doMock('@actions/exec', () => ({exec: mockExec}))
+      const {exec} = require('@actions/exec')
       exec.mockResolvedValue(0)
 
       // Act

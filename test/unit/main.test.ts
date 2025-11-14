@@ -21,7 +21,7 @@ jest.mock('actions-artifact-v2/lib/internal/shared/config')
 jest.mock('../../src/blackduck-security-action/utility', () => ({
   ...jest.requireActual('../../src/blackduck-security-action/utility'),
   createTempDir: jest.fn(),
-  cleanupTempDir: jest.fn(),
+  cleanupTempDir: jest.fn()
 }))
 
 describe('Main Workflow Tests', () => {
@@ -122,10 +122,7 @@ describe('Main Workflow Tests', () => {
       expect(mockBridgeClient.prepareCommand).toHaveBeenCalledWith('/tmp/test-temp-dir')
       expect(mockBridgeClient.downloadBridge).toHaveBeenCalledWith('/tmp/test-temp-dir')
       expect(mockBridgeClient.getBridgeVersion).toHaveBeenCalled()
-      expect(mockBridgeClient.executeBridgeCommand).toHaveBeenCalledWith(
-        formattedCommand,
-        '/github/workspace'
-      )
+      expect(mockBridgeClient.executeBridgeCommand).toHaveBeenCalledWith(formattedCommand, '/github/workspace')
       expect(mockInfo).toHaveBeenCalledWith('Black Duck Security Action workflow execution completed successfully.')
       expect(mockCleanupTempDir).toHaveBeenCalledWith('/tmp/test-temp-dir')
       expect(result).toBe(0)
@@ -222,11 +219,7 @@ describe('Main Workflow Tests', () => {
       await main.run()
 
       // Assert
-      expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(
-        constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY,
-        inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH,
-        expect.stringContaining('blackduck_sarif_report_')
-      )
+      expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, expect.stringContaining('blackduck_sarif_report_'))
     })
 
     test('should upload SARIF reports for new bridge version', async () => {
@@ -240,11 +233,7 @@ describe('Main Workflow Tests', () => {
       await main.run()
 
       // Assert
-      expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(
-        constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY,
-        inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH,
-        expect.stringContaining('blackduck_sarif_report_')
-      )
+      expect(mockUploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, expect.stringContaining('blackduck_sarif_report_'))
     })
 
     test('should skip SARIF upload during pull request events', async () => {
@@ -284,10 +273,7 @@ describe('Main Workflow Tests', () => {
 
       // Assert
       expect(mockGetGitHubClientServiceInstance).toHaveBeenCalled()
-      expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(
-        constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY,
-        inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH
-      )
+      expect(mockGitHubClientService.uploadSarifReport).toHaveBeenCalledWith(constants.INTEGRATIONS_BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH)
     })
 
     test('should skip GitHub upload when token is empty', async () => {
@@ -398,11 +384,7 @@ describe('Main Workflow Tests', () => {
     describe('markBuildStatusIfIssuesArePresent', () => {
       test('should handle break exit code with success status', () => {
         // Test actual function behavior
-        main.markBuildStatusIfIssuesArePresent(
-          constants.BRIDGE_BREAK_EXIT_CODE,
-          constants.BUILD_STATUS.SUCCESS,
-          'Bridge execution completed with issues 8'
-        )
+        main.markBuildStatusIfIssuesArePresent(constants.BRIDGE_BREAK_EXIT_CODE, constants.BUILD_STATUS.SUCCESS, 'Bridge execution completed with issues 8')
 
         expect(mockDebug).toHaveBeenCalledWith('Bridge execution completed with issues 8')
         expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('Exit Code: 8'))
@@ -410,11 +392,7 @@ describe('Main Workflow Tests', () => {
       })
 
       test('should handle non-break exit code with failure', () => {
-        main.markBuildStatusIfIssuesArePresent(
-          1,
-          constants.BUILD_STATUS.FAILURE,
-          'Bridge execution failed 1'
-        )
+        main.markBuildStatusIfIssuesArePresent(1, constants.BUILD_STATUS.FAILURE, 'Bridge execution failed 1')
 
         expect(mockSetFailed).toHaveBeenCalledWith(expect.stringContaining('Workflow failed!'))
       })

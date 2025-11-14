@@ -419,7 +419,7 @@ export abstract class BridgeClientBase {
         port: parsedUrl.port || 443,
         path: parsedUrl.pathname + parsedUrl.search,
         method: 'GET',
-        agent: getSharedHttpsAgent()
+        agent: getSharedHttpsAgent(requestUrl)
       }
 
       const req = https.request(options, res => {

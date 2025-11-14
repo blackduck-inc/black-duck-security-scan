@@ -1,13 +1,4 @@
-import {
-  validateBlackduckFailureSeverities,
-  validateBlackDuckInputs,
-  validateCoverityInputs,
-  validateCoverityInstallDirectoryParam,
-  validateParameters,
-  validatePolarisInputs,
-  validateSRMInputs,
-  validateScanTypes
-} from '../../../src/blackduck-security-action/validators'
+import {validateBlackduckFailureSeverities, validateBlackDuckInputs, validateCoverityInputs, validateCoverityInstallDirectoryParam, validateParameters, validatePolarisInputs, validateSRMInputs, validateScanTypes} from '../../../src/blackduck-security-action/validators'
 import * as constants from '../../../src/application-constants'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 

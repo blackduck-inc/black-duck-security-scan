@@ -1,18 +1,4 @@
-import {
-  checkJobResult,
-  cleanUrl,
-  clearHttpClientCache,
-  createSSLConfiguredHttpClient,
-  isBoolean,
-  isPullRequestEvent,
-  parseToBoolean,
-  extractInputJsonFilename,
-  getSharedHttpClient,
-  sleep,
-  createTempDir,
-  cleanupTempDir,
-  checkIfPathExists
-} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, clearHttpClientCache, createSSLConfiguredHttpClient, isBoolean, isPullRequestEvent, parseToBoolean, extractInputJsonFilename, getSharedHttpClient, sleep, createTempDir, cleanupTempDir, checkIfPathExists} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -267,7 +253,6 @@ describe('sleep', () => {
     expect(elapsed).toBeGreaterThanOrEqual(40)
     expect(elapsed).toBeLessThan(100)
   })
-
 })
 
 import {rmRF} from '@actions/io'
