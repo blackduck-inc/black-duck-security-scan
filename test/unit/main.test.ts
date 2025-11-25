@@ -23,7 +23,8 @@ jest.mock('@actions/io', () => ({
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   renameSync: jest.fn(),
-  existsSync: jest.fn().mockReturnValue(false)
+  existsSync: jest.fn().mockReturnValue(false),
+  readFileSync: jest.fn().mockReturnValue('bridge-cli-bundle: 0.1.0')
 }))
 
 beforeEach(() => {
@@ -125,6 +126,8 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     })
 
     jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    // Mock readFileSync to return version 0.1.0 from versions.txt
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 0.1.0')
     const downloadFileResp: DownloadFileResponse = {
       filePath: 'C://user/temp/download/',
       fileName: 'C://user/temp/download/bridge-win.zip'
