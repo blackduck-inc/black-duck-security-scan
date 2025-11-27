@@ -2,12 +2,13 @@ import {UploadArtifactResponse, UploadArtifactOptions} from 'actions-artifact-v2
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as fs from 'fs'
 import * as inputs from './inputs'
-import {getDefaultSarifReportPath, isGitHubCloud, getRealSystemTime, getIntegrationDefaultSarifReportPath} from './utility'
+import {getDefaultSarifReportPath, isGitHubCloud, getRealSystemTime, getIntegrationDefaultSarifReportPath, checkIfPathExists} from './utility'
 import {warning} from '@actions/core'
 import path from 'path'
 import * as artifact from 'actions-artifact-v1'
 import {DefaultArtifactClient} from 'actions-artifact-v2'
 import * as constants from '../application-constants'
+import {exists} from '@actions/io/lib/io-util'
 
 export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void> {
   let artifactClient
@@ -63,25 +64,25 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
   return allFiles
 }
 
-export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse> {
-  let artifactClient
-  let options: artifact.UploadOptions = {}
-  let sarifFilePath
-  if (isGitHubCloud()) {
-    artifactClient = new DefaultArtifactClient()
-  } else {
-    artifactClient = artifact.create()
-    options = {
-      continueOnError: true
-    } as artifact.UploadOptions
-  }
+export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse | undefined> {
+  const artifactClient = new DefaultArtifactClient()
+  const options: UploadArtifactOptions = {}
+
+  let sarifFilePath: string
+  let rootDir: string
+
   if (defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY) {
     sarifFilePath = userSarifFilePath ? userSarifFilePath : getDefaultSarifReportPath(defaultSarifReportDirectory, true)
-    const rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getDefaultSarifReportPath(defaultSarifReportDirectory, false)
-    return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
+    rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getDefaultSarifReportPath(defaultSarifReportDirectory, false)
   } else {
     sarifFilePath = userSarifFilePath ? userSarifFilePath : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, true)
-    const rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, false)
+    rootDir = userSarifFilePath ? path.dirname(userSarifFilePath) : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, false)
+  }
+
+  if ((await exists(rootDir)) && checkIfPathExists(sarifFilePath)) {
     return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
+  } else {
+    warning(`SARIF report not found at: ${sarifFilePath}`)
+    return undefined
   }
 }

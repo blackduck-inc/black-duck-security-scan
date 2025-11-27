@@ -4,7 +4,9 @@ import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/black
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as artifact from 'actions-artifact-v2/lib/artifact'
 const fs = require('fs')
+import * as core from '@actions/core'
 import * as utility from '../../../src/blackduck-security-action/utility'
+import * as ioUtil from '@actions/io/lib/io-util'
 
 // Mock the artifact module
 jest.mock('actions-artifact-v2', () => ({
@@ -44,6 +46,28 @@ describe('uploadDiagnostics - success', () => {
 
     expect(mockUploadArtifact).toHaveBeenCalledTimes(1)
     expect(mockUploadArtifact).toHaveBeenCalledWith('bridge_diagnostics_1749123407519', ['./.bridge/bridge.log'], './.bridge', {})
+  })
+
+  it('should handle missing SARIF file', async () => {
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation()
+    jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(false)
+    jest.spyOn(fs, 'exists').mockResolvedValue(true)
+
+    const result = await uploadSarifReportAsArtifact('.', 'missing-file.sarif', 'test-artifact')
+
+    expect(result).toBeUndefined()
+    expect(warningSpy).toHaveBeenCalledWith('SARIF report not found at: missing-file.sarif')
+  })
+
+  it('should handle missing root directory', async () => {
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation()
+    jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
+    jest.spyOn(ioUtil, 'exists').mockResolvedValue(false)
+
+    const result = await uploadSarifReportAsArtifact('.', 'test.sarif', 'test-artifact')
+
+    expect(result).toBeUndefined()
+    expect(warningSpy).toHaveBeenCalled()
   })
 })
 
