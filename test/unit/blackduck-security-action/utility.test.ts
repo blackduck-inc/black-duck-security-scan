@@ -1,4 +1,4 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
@@ -231,6 +231,82 @@ describe('SSL HTTP Client Functions', () => {
 
       // Cleanup
       require('fs').unlinkSync(tempFile)
+    })
+  })
+})
+
+describe('Version Comparison Helper Functions', () => {
+  describe('isVersionLess', () => {
+    test('should return true when first version is less than second version (normal versions)', () => {
+      expect(isVersionLess('3.8.0', '3.9.0')).toBe(true)
+    })
+
+    test('should return false when first version is greater than second version (normal versions)', () => {
+      expect(isVersionLess('3.9.0', '3.8.0')).toBe(false)
+    })
+
+    test('should return false when both versions are equal (normal versions)', () => {
+      expect(isVersionLess('3.9.0', '3.9.0')).toBe(false)
+    })
+
+    test('should return true when first version is less than second version (RC versions)', () => {
+      expect(isVersionLess('3.9.2rc2', '3.9.3')).toBe(true)
+    })
+
+    test('should return false when first version is greater than second version (RC versions)', () => {
+      expect(isVersionLess('3.9.3', '3.9.2rc2')).toBe(false)
+    })
+
+    test('should handle RC version vs normal version comparison correctly (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', so 3.9.0 < 3.9.0 = false
+      expect(isVersionLess('3.9.0rc1', '3.9.0')).toBe(false)
+    })
+
+    test('should handle comparison between two RC versions (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', coerce('3.9.0rc2') -> '3.9.0', so 3.9.0 < 3.9.0 = false
+      expect(isVersionLess('3.9.0rc1', '3.9.0rc2')).toBe(false)
+    })
+
+    test('should return false when versions cannot be coerced', () => {
+      expect(isVersionLess('invalid', '3.9.0')).toBe(false)
+      expect(isVersionLess('3.9.0', 'invalid')).toBe(false)
+    })
+  })
+
+  describe('isVersionGreaterOrEqual', () => {
+    test('should return true when first version is greater than second version (normal versions)', () => {
+      expect(isVersionGreaterOrEqual('3.9.0', '3.8.0')).toBe(true)
+    })
+
+    test('should return false when first version is less than second version (normal versions)', () => {
+      expect(isVersionGreaterOrEqual('3.8.0', '3.9.0')).toBe(false)
+    })
+
+    test('should return true when both versions are equal (normal versions)', () => {
+      expect(isVersionGreaterOrEqual('3.9.0', '3.9.0')).toBe(true)
+    })
+
+    test('should return true when first version is greater than second version (RC versions)', () => {
+      expect(isVersionGreaterOrEqual('3.9.3', '3.9.2rc2')).toBe(true)
+    })
+
+    test('should return false when first version is less than second version (RC versions)', () => {
+      expect(isVersionGreaterOrEqual('3.9.2rc2', '3.9.3')).toBe(false)
+    })
+
+    test('should handle RC version vs normal version comparison correctly (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', so 3.9.0 >= 3.9.0 = true
+      expect(isVersionGreaterOrEqual('3.9.0', '3.9.0rc1')).toBe(true)
+    })
+
+    test('should handle comparison between two RC versions (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', coerce('3.9.0rc2') -> '3.9.0', so 3.9.0 >= 3.9.0 = true
+      expect(isVersionGreaterOrEqual('3.9.0rc2', '3.9.0rc1')).toBe(true)
+    })
+
+    test('should return false when versions cannot be coerced', () => {
+      expect(isVersionGreaterOrEqual('invalid', '3.9.0')).toBe(false)
+      expect(isVersionGreaterOrEqual('3.9.0', 'invalid')).toBe(false)
     })
   })
 })
