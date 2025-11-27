@@ -1,9 +1,10 @@
 import {debug, info, setFailed, setOutput} from '@actions/core'
-import {checkJobResult, cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean, isVersionLessThan} from './blackduck-security-action/utility'
+import {checkJobResult, cleanupTempDir, createTempDir, isPullRequestEvent, parseToBoolean} from './blackduck-security-action/utility'
 import {Bridge} from './blackduck-security-action/bridge-cli'
 import {getGitHubWorkspaceDir as getGitHubWorkspaceDirV2} from 'actions-artifact-v2/lib/internal/shared/config'
 import * as constants from './application-constants'
 import * as inputs from './blackduck-security-action/inputs'
+import {lt, coerce} from 'semver'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-security-action/artifacts'
 import * as util from './blackduck-security-action/utility'
 import {readFileSync} from 'fs'
@@ -68,7 +69,9 @@ export async function run() {
         await uploadDiagnostics()
       }
       if (!isPullRequestEvent() && uploadSarifReportBasedOnExitCode) {
-        if (isVersionLessThan(bridgeVersion, constants.VERSION)) {
+        const v1 = coerce(bridgeVersion)
+        const v2 = coerce(constants.VERSION)
+        if (v1 && v2 && lt(v1, v2)) {
           // Upload Polaris sarif file as GitHub artifact (Deprecated Logic)
           if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE)) {
             await uploadSarifReportAsArtifact(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH, constants.BLACKDUCK_SARIF_ARTIFACT_NAME.concat(util.getRealSystemTime()))
@@ -90,7 +93,9 @@ export async function run() {
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
           const gitHubClientService = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
-          if (isVersionLessThan(bridgeVersion, constants.VERSION)) {
+          const v1 = coerce(bridgeVersion)
+          const v2 = coerce(constants.VERSION)
+          if (v1 && v2 && lt(v1, v2)) {
             // Upload Black Duck SARIF Report to code scanning tab
             if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCK_UPLOAD_SARIF_REPORT)) {
               await gitHubClientService.uploadSarifReport(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH)

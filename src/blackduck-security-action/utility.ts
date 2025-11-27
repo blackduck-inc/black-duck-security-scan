@@ -15,71 +15,7 @@ import {debug, warning, info} from '@actions/core'
 import * as https from 'https'
 import {HttpClient} from 'typed-rest-client/HttpClient'
 import {getSSLConfig, getSSLConfigHash, createHTTPSAgent} from './ssl-utils'
-import semver from 'semver'
-
-/**
- * Compares two version strings using semantic versioning.
- * Falls back to string comparison if either version is invalid.
- * @param version1 First version to compare
- * @param version2 Second version to compare
- * @returns true if version1 < version2, false otherwise
- */
-export function isVersionLessThan(version1: string, version2: string): boolean {
-  try {
-    if (!version1 || !version2) {
-      // Fall back to string comparison for empty versions
-      return version1 < version2
-    }
-
-    // Coerce versions to valid semver format (handles rc5, alpha1, beta2, etc.)
-    const v1 = semver.coerce(version1)
-    const v2 = semver.coerce(version2)
-
-    if (v1 && v2) {
-      return semver.lt(v1, v2)
-    }
-
-    // If coercion failed, fall back to string comparison
-    debug(`Version coercion failed for "${version1}" or "${version2}", using string comparison`)
-    return version1 < version2
-  } catch (error) {
-    // Fall back to string comparison if semver fails
-    debug(`Version comparison using semver failed, falling back to string comparison: ${error}`)
-    return version1 < version2
-  }
-}
-
-/**
- * Compares two version strings using semantic versioning.
- * Falls back to string comparison if either version is invalid.
- * @param version1 First version to compare
- * @param version2 Second version to compare
- * @returns true if version1 >= version2, false otherwise
- */
-export function isVersionGreaterThanOrEqual(version1: string, version2: string): boolean {
-  try {
-    if (!version1 || !version2) {
-      // Fall back to string comparison for empty versions
-      return version1 >= version2
-    }
-
-    // Coerce versions to valid semver format (handles rc5, alpha1, beta2, etc.)
-    const v1 = semver.coerce(version1)
-    const v2 = semver.coerce(version2)
-
-    if (v1 && v2) {
-      return semver.gte(v1, v2)
-    }
-
-    // If coercion failed, fall back to string comparison
-    debug(`Version coercion failed for "${version1}" or "${version2}", using string comparison`)
-    return version1 >= version2
-  } catch (error) {
-    // Fall back to string comparison if semver fails
-    debug(`Version comparison using semver failed, falling back to string comparison: ${error}`)
-    return version1 >= version2
-  }
-}
+import {lt, gte, coerce} from 'semver'
 
 export function cleanUrl(url: string): string {
   if (url && url.endsWith('/')) {
@@ -240,12 +176,16 @@ export function extractInputJsonFilename(command: string): string {
 
 export function updateSarifFilePaths(productInputFileName: string, bridgeVersion: string, productInputFilPath: string): void {
   if (productInputFileName === 'polaris_input.json') {
-    const sarifPath = isVersionLessThan(bridgeVersion, constants.VERSION) ? (isNullOrEmptyValue(inputs.POLARIS_REPORTS_SARIF_FILE_PATH) ? path.join(constants.BRIDGE_LOCAL_DIRECTORY, constants.POLARIS_SARIF_GENERATOR_DIRECTORY, constants.SARIF_DEFAULT_FILE_NAME) : inputs.POLARIS_REPORTS_SARIF_FILE_PATH.trim()) : isNullOrEmptyValue(inputs.POLARIS_REPORTS_SARIF_FILE_PATH) ? constants.INTEGRATIONS_POLARIS_DEFAULT_SARIF_FILE_PATH : inputs.POLARIS_REPORTS_SARIF_FILE_PATH.trim()
+    const v1 = coerce(bridgeVersion)
+    const v2 = coerce(constants.VERSION)
+    const sarifPath = v1 && v2 && lt(v1, v2) ? (isNullOrEmptyValue(inputs.POLARIS_REPORTS_SARIF_FILE_PATH) ? path.join(constants.BRIDGE_LOCAL_DIRECTORY, constants.POLARIS_SARIF_GENERATOR_DIRECTORY, constants.SARIF_DEFAULT_FILE_NAME) : inputs.POLARIS_REPORTS_SARIF_FILE_PATH.trim()) : isNullOrEmptyValue(inputs.POLARIS_REPORTS_SARIF_FILE_PATH) ? constants.INTEGRATIONS_POLARIS_DEFAULT_SARIF_FILE_PATH : inputs.POLARIS_REPORTS_SARIF_FILE_PATH.trim()
     updatePolarisSarifPath(productInputFilPath, sarifPath)
   }
 
   if (productInputFileName === 'bd_input.json') {
-    const sarifPath = isVersionLessThan(bridgeVersion, constants.VERSION) ? (isNullOrEmptyValue(inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH) ? path.join(constants.BRIDGE_LOCAL_DIRECTORY, constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, constants.SARIF_DEFAULT_FILE_NAME) : inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH.trim()) : isNullOrEmptyValue(inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH) ? constants.INTEGRATIONS_BLACKDUCK_SCA_DEFAULT_SARIF_FILE_PATH : inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH.trim()
+    const v1 = coerce(bridgeVersion)
+    const v2 = coerce(constants.VERSION)
+    const sarifPath = v1 && v2 && lt(v1, v2) ? (isNullOrEmptyValue(inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH) ? path.join(constants.BRIDGE_LOCAL_DIRECTORY, constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, constants.SARIF_DEFAULT_FILE_NAME) : inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH.trim()) : isNullOrEmptyValue(inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH) ? constants.INTEGRATIONS_BLACKDUCK_SCA_DEFAULT_SARIF_FILE_PATH : inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH.trim()
     updateBlackDuckSarifPath(productInputFilPath, sarifPath)
   }
 }
@@ -257,7 +197,9 @@ export function updateCoverityConfigForBridgeVersion(productInputFileName: strin
       const covData = JSON.parse(inputFileContent)
 
       // Use semantic version comparison
-      if (covData.data?.coverity?.prcomment && isVersionLessThan(bridgeVersion, constants.COVERITY_PRCOMMENT_NEW_FORMAT_VERSION)) {
+      const v1 = coerce(bridgeVersion)
+      const v2 = coerce(constants.COVERITY_PRCOMMENT_NEW_FORMAT_VERSION)
+      if (covData.data?.coverity?.prcomment && v1 && v2 && lt(v1, v2)) {
         // Convert new format to legacy format for Bridge CLI < 3.9.0
         debug(`Bridge CLI version ${bridgeVersion} < 3.9.0, converting to legacy automation format`)
 
@@ -399,7 +341,9 @@ export function clearHttpClientCache(): void {
   debug('HTTP client and HTTPS agent caches cleared')
 }
 export function validateSourceUploadValue(bridgeVersion: string): void {
-  if (isVersionGreaterThanOrEqual(bridgeVersion, constants.SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION) && !isNullOrEmptyValue(inputs.POLARIS_ASSESSMENT_MODE)) {
+  const v1 = coerce(bridgeVersion)
+  const v2 = coerce(constants.SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION)
+  if (v1 && v2 && gte(v1, v2) && !isNullOrEmptyValue(inputs.POLARIS_ASSESSMENT_MODE)) {
     info('polaris_assessment_mode is deprecated. Use polaris_test_sast_location=remote and/or polaris_test_sca_location=remote for source upload scans instead.')
   }
 }
