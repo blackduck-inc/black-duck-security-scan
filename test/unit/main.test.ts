@@ -1115,6 +1115,115 @@ describe('Version Comparison Tests for SARIF Paths', () => {
     Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
     Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
   })
+
+  test('should use new SARIF path when bridge version is RC version (3.5.0rc1)', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
+
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    // Mock bridge version to be 3.5.0rc1 (coerce strips 'rc1', becomes 3.5.0, which is >= 3.5.0)
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 3.5.0rc1')
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
+
+    const response = await run()
+    expect(response).toEqual(0)
+    // Verify that new SARIF path is used (RC version coerced to 3.5.0, which is >= 3.5.0)
+    expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_POLARIS_SARIF_GENERATOR_DIRECTORY, '/', constants.POLARIS_SARIF_ARTIFACT_NAME.concat('1749123407519'))
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
+  })
+})
+
+describe('Version Comparison Helper Functions Tests', () => {
+  describe('isVersionLess', () => {
+    test('should return true when first version is less than second version (normal versions)', () => {
+      expect(utility.isVersionLess('3.8.0', '3.9.0')).toBe(true)
+    })
+
+    test('should return false when first version is greater than second version (normal versions)', () => {
+      expect(utility.isVersionLess('3.9.0', '3.8.0')).toBe(false)
+    })
+
+    test('should return false when both versions are equal (normal versions)', () => {
+      expect(utility.isVersionLess('3.9.0', '3.9.0')).toBe(false)
+    })
+
+    test('should return true when first version is less than second version (RC versions)', () => {
+      expect(utility.isVersionLess('3.9.2rc2', '3.9.3')).toBe(true)
+    })
+
+    test('should return false when first version is greater than second version (RC versions)', () => {
+      expect(utility.isVersionLess('3.9.3', '3.9.2rc2')).toBe(false)
+    })
+
+    test('should handle RC version vs normal version comparison correctly (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', so 3.9.0 < 3.9.0 = false
+      expect(utility.isVersionLess('3.9.0rc1', '3.9.0')).toBe(false)
+    })
+
+    test('should handle comparison between two RC versions (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', coerce('3.9.0rc2') -> '3.9.0', so 3.9.0 < 3.9.0 = false
+      expect(utility.isVersionLess('3.9.0rc1', '3.9.0rc2')).toBe(false)
+    })
+
+    test('should return false when versions cannot be coerced', () => {
+      expect(utility.isVersionLess('invalid', '3.9.0')).toBe(false)
+      expect(utility.isVersionLess('3.9.0', 'invalid')).toBe(false)
+    })
+  })
+
+  describe('isVersionGreaterOrEqual', () => {
+    test('should return true when first version is greater than second version (normal versions)', () => {
+      expect(utility.isVersionGreaterOrEqual('3.9.0', '3.8.0')).toBe(true)
+    })
+
+    test('should return false when first version is less than second version (normal versions)', () => {
+      expect(utility.isVersionGreaterOrEqual('3.8.0', '3.9.0')).toBe(false)
+    })
+
+    test('should return true when both versions are equal (normal versions)', () => {
+      expect(utility.isVersionGreaterOrEqual('3.9.0', '3.9.0')).toBe(true)
+    })
+
+    test('should return true when first version is greater than second version (RC versions)', () => {
+      expect(utility.isVersionGreaterOrEqual('3.9.3', '3.9.2rc2')).toBe(true)
+    })
+
+    test('should return false when first version is less than second version (RC versions)', () => {
+      expect(utility.isVersionGreaterOrEqual('3.9.2rc2', '3.9.3')).toBe(false)
+    })
+
+    test('should handle RC version vs normal version comparison correctly (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', so 3.9.0 >= 3.9.0 = true
+      expect(utility.isVersionGreaterOrEqual('3.9.0', '3.9.0rc1')).toBe(true)
+    })
+
+    test('should handle comparison between two RC versions (coerce strips pre-release)', () => {
+      // coerce('3.9.0rc1') -> '3.9.0', coerce('3.9.0rc2') -> '3.9.0', so 3.9.0 >= 3.9.0 = true
+      expect(utility.isVersionGreaterOrEqual('3.9.0rc2', '3.9.0rc1')).toBe(true)
+    })
+
+    test('should return false when versions cannot be coerced', () => {
+      expect(utility.isVersionGreaterOrEqual('invalid', '3.9.0')).toBe(false)
+      expect(utility.isVersionGreaterOrEqual('3.9.0', 'invalid')).toBe(false)
+    })
+  })
 })
 
 describe('SSL Configuration Tests', () => {
