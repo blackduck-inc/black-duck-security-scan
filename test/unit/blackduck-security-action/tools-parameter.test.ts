@@ -1513,3 +1513,166 @@ test('Test getFormattedCommandForPolaris with both POLARIS_TEST_SCA_LOCATION and
   expect(jsonData.data.polaris.test.sca.location).toBe('local')
   expect(jsonData.data.polaris.test.sast.location).toBe('local')
 })
+
+describe('Polaris with Coverity Version Support', () => {
+  test('should include coverity version in polaris_input.json when COVERITY_VERSION is set', () => {
+    // Set required Polaris inputs
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+    // Set Coverity version
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '2024.6.0', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    // Verify command is generated
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    // Read and parse the generated JSON
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    // Verify version is included in coverity object
+    expect(jsonData.data.coverity).toBeDefined()
+    expect(jsonData.data.coverity.version).toBe('2024.6.0')
+
+    // Cleanup
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '', configurable: true})
+  })
+
+  test('should not include coverity version when COVERITY_VERSION is not set', () => {
+    // Set required Polaris inputs
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+    // Explicitly set COVERITY_VERSION to empty
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    // Verify command is generated
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    // Read and parse the generated JSON
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    // Verify version is NOT included when not set
+    if (jsonData.data.coverity) {
+      expect(jsonData.data.coverity.version).toBeUndefined()
+    }
+  })
+
+  test('should include version alongside other coverity parameters (build, clean, config, args)', () => {
+    // Set required Polaris inputs
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+    // Set Coverity version
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '2024.6.0', configurable: true})
+
+    // Set other Coverity parameters
+    Object.defineProperty(inputs, 'COVERITY_BUILD_COMMAND', {value: 'mvn clean install', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CLEAN_COMMAND', {value: 'mvn clean', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CONFIG_PATH', {value: '/path/to/config.yml', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_ARGS', {value: '--some-args', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    // Verify command is generated
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    // Read and parse the generated JSON
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    // Verify all coverity fields are present
+    expect(jsonData.data.coverity).toBeDefined()
+    expect(jsonData.data.coverity.version).toBe('2024.6.0')
+    expect(jsonData.data.coverity.build.command).toBe('mvn clean install')
+    expect(jsonData.data.coverity.clean.command).toBe('mvn clean')
+    expect(jsonData.data.coverity.config.path).toBe('/path/to/config.yml')
+    expect(jsonData.data.coverity.args).toBe('--some-args')
+
+    // Cleanup
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_BUILD_COMMAND', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CLEAN_COMMAND', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CONFIG_PATH', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_ARGS', {value: '', configurable: true})
+  })
+
+  test('should create coverity object with only version when no build/clean/config/args are provided', () => {
+    // Set required Polaris inputs
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+    // Set ONLY Coverity version (no build, clean, config, or args)
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '2024.6.0', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_BUILD_COMMAND', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CLEAN_COMMAND', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_CONFIG_PATH', {value: '', configurable: true})
+    Object.defineProperty(inputs, 'COVERITY_ARGS', {value: '', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    // Verify command is generated
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    // Read and parse the generated JSON
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    // Verify coverity object exists with only version
+    expect(jsonData.data.coverity).toBeDefined()
+    expect(jsonData.data.coverity.version).toBe('2024.6.0')
+
+    // Verify other fields are not present
+    expect(jsonData.data.coverity.build).toBeUndefined()
+    expect(jsonData.data.coverity.clean).toBeUndefined()
+    expect(jsonData.data.coverity.config).toBeUndefined()
+    expect(jsonData.data.coverity.args).toBeUndefined()
+
+    // Cleanup
+    Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '', configurable: true})
+  })
+
+  test('should handle different version formats', () => {
+    const versionFormats = ['2024.6.0', '2023.12', '2024.6.0-beta', 'latest']
+
+    versionFormats.forEach(version => {
+      // Set required Polaris inputs
+      Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+      Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+      Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SAST', configurable: true})
+
+      // Set Coverity version
+      Object.defineProperty(inputs, 'COVERITY_VERSION', {value: version, configurable: true})
+
+      const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+      const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+      // Read and parse the generated JSON
+      const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+      const jsonData = JSON.parse(jsonString)
+
+      // Verify version is correctly set
+      expect(jsonData.data.coverity.version).toBe(version)
+
+      // Cleanup
+      Object.defineProperty(inputs, 'COVERITY_VERSION', {value: '', configurable: true})
+    })
+  })
+})
