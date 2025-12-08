@@ -257,13 +257,25 @@ export class BridgeToolsParameter {
       polData.data.coverity = {...polData.data.coverity, ...coverityArgs}
     }
 
+    // Set Coverity version if provided
+    debug(`COVERITY_VERSION input value: '${inputs.COVERITY_VERSION}'`)
+    if (inputs.COVERITY_VERSION) {
+      if (!polData.data.coverity) {
+        polData.data.coverity = {}
+      }
+      polData.data.coverity.version = inputs.COVERITY_VERSION
+      debug(`Set coverity version to: ${inputs.COVERITY_VERSION}`)
+    } else {
+      debug('COVERITY_VERSION is empty, not setting version')
+    }
+
     if (Object.keys(detectArgs).length > 0) {
       polData.data.detect = {...polData.data.detect, ...detectArgs}
     }
 
     polData.data.network = this.setNetworkObj()
 
-    const inputJson = JSON.stringify(polData)
+    const inputJson = JSON.stringify(polData, null, 2)
     const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
     fs.writeFileSync(stateFilePath, inputJson)
 

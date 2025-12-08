@@ -81,5 +81,8 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
 
   if ((await exists(rootDir)) && checkIfPathExists(sarifFilePath)) {
     return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
+  } else {
+    warning(`SARIF report not found at: ${sarifFilePath}`)
+    return undefined
   }
 }

@@ -23,7 +23,8 @@ jest.mock('@actions/io', () => ({
 jest.mock('fs', () => ({
   ...jest.requireActual('fs'),
   renameSync: jest.fn(),
-  existsSync: jest.fn().mockReturnValue(false)
+  existsSync: jest.fn().mockReturnValue(false),
+  readFileSync: jest.fn().mockReturnValue('bridge-cli-bundle: 0.1.0')
 }))
 
 beforeEach(() => {
@@ -125,6 +126,8 @@ describe('Black Duck Security Action: Handling isBridgeExecuted and Exit Code In
     })
 
     jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    // Mock readFileSync to return version 0.1.0 from versions.txt
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 0.1.0')
     const downloadFileResp: DownloadFileResponse = {
       filePath: 'C://user/temp/download/',
       fileName: 'C://user/temp/download/bridge-win.zip'
@@ -1042,6 +1045,109 @@ test('should not upload polaris sarif for pr context', async () => {
   Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
   Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
   Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: null})
+})
+
+describe('Version Comparison Tests for SARIF Paths', () => {
+  test('should use old SARIF path when bridge version is less than 3.5.0', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '1.5.0'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
+
+    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
+    // Mock bridge version to be 1.5.0 (less than 3.5.0)
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 1.5.0')
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
+
+    const response = await run()
+    expect(response).toEqual(0)
+    // Verify that old SARIF path is used (Polaris SARIF Generator Directory)
+    expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.POLARIS_SARIF_GENERATOR_DIRECTORY, '/', constants.POLARIS_SARIF_ARTIFACT_NAME.concat('1749123407519'))
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
+  })
+
+  test('should use new SARIF path when bridge version is greater than or equal to 3.5.0', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: '3.6.0'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
+
+    jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
+    // Mock bridge version to be 3.6.0 (greater than or equal to 3.5.0)
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 3.6.0')
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
+
+    const response = await run()
+    expect(response).toEqual(0)
+    // Verify that new SARIF path is used (Integrations Polaris SARIF Generator Directory)
+    expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_POLARIS_SARIF_GENERATOR_DIRECTORY, '/', constants.POLARIS_SARIF_ARTIFACT_NAME.concat('1749123407519'))
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
+  })
+
+  test('should use new SARIF path when bridge version is RC version (3.5.0rc1)', async () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url'})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token'})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME'})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,sast'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: 'true'})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_FILE_PATH', {value: '/'})
+
+    jest.spyOn(Bridge.prototype, 'getBridgeVersionFromLatestURL').mockResolvedValueOnce('0.1.0')
+    // Mock bridge version to be 3.5.0rc1 (coerce strips 'rc1', becomes 3.5.0, which is >= 3.5.0)
+    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('bridge-cli-bundle: 3.5.0rc1')
+    const uploadResponse: UploadArtifactResponse = {size: 0, id: 123}
+    jest.spyOn(diagnostics, 'uploadSarifReportAsArtifact').mockResolvedValueOnce(uploadResponse)
+    const downloadFileResp: DownloadFileResponse = {
+      filePath: 'C://user/temp/download/',
+      fileName: 'C://user/temp/download/bridge-win.zip'
+    }
+    jest.spyOn(downloadUtility, 'getRemoteFile').mockResolvedValueOnce(downloadFileResp)
+    jest.spyOn(downloadUtility, 'extractZipped').mockResolvedValueOnce(true)
+    jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValueOnce('/home/bridge')
+    jest.spyOn(Bridge.prototype, 'executeBridgeCommand').mockResolvedValueOnce(0)
+    jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
+
+    const response = await run()
+    expect(response).toEqual(0)
+    // Verify that new SARIF path is used (RC version coerced to 3.5.0, which is >= 3.5.0)
+    expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledWith(constants.INTEGRATIONS_POLARIS_SARIF_GENERATOR_DIRECTORY, '/', constants.POLARIS_SARIF_ARTIFACT_NAME.concat('1749123407519'))
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
+    Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
+  })
 })
 
 describe('SSL Configuration Tests', () => {
