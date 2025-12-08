@@ -44,13 +44,9 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
       sarifFilePath = userSarifFilePath ? userSarifFilePath : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, true)
     }
 
-    if (!checkIfPathExists(sarifFilePath)) {
-      warning(`SARIF report not found at: ${sarifFilePath}`)
-      return undefined
-    }
-    info('Uploading SARIF results to GitHub')
-    info(`Sarif file path:::: ${sarifFilePath}`)
     if (checkIfPathExists(sarifFilePath)) {
+      info('Uploading SARIF results to GitHub')
+      info(`Sarif file path:::: ${sarifFilePath}`)
       try {
         const sarifContent = fs.readFileSync(sarifFilePath, 'utf8')
         const compressedSarif = zlib.gzipSync(sarifContent)
@@ -91,6 +87,9 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
       } catch (error) {
         throw new Error(constants.SARIF_GAS_UPLOAD_FAILED_ERROR + error)
       }
+    } else if (!checkIfPathExists(sarifFilePath)) {
+      info(`SARIF report is not available: ${sarifFilePath}`)
+      return undefined
     } else {
       throw new Error(constants.SARIF_FILE_NO_FOUND_FOR_UPLOAD_ERROR)
     }
