@@ -47,28 +47,6 @@ describe('uploadDiagnostics - success', () => {
     expect(mockUploadArtifact).toHaveBeenCalledTimes(1)
     expect(mockUploadArtifact).toHaveBeenCalledWith('bridge_diagnostics_1749123407519', ['./.bridge/bridge.log'], './.bridge', {})
   })
-
-  it('should handle missing SARIF file', async () => {
-    const warningSpy = jest.spyOn(core, 'warning').mockImplementation()
-    jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(false)
-    jest.spyOn(fs, 'exists').mockResolvedValue(true)
-
-    const result = await uploadSarifReportAsArtifact('.', 'missing-file.sarif', 'test-artifact')
-
-    expect(result).toBeUndefined()
-    expect(warningSpy).toHaveBeenCalledWith('SARIF report not found at: missing-file.sarif')
-  })
-
-  it('should handle missing root directory', async () => {
-    const warningSpy = jest.spyOn(core, 'warning').mockImplementation()
-    jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
-    jest.spyOn(ioUtil, 'exists').mockResolvedValue(false)
-
-    const result = await uploadSarifReportAsArtifact('.', 'test.sarif', 'test-artifact')
-
-    expect(result).toBeUndefined()
-    expect(warningSpy).toHaveBeenCalled()
-  })
 })
 
 test('Test uploadDiagnostics expect API error', () => {

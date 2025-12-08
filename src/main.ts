@@ -10,6 +10,7 @@ import {readFileSync} from 'fs'
 import {join, basename} from 'path'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
+import {lt} from 'semver'
 
 export async function run() {
   info('Black Duck Security Action started...')
@@ -90,7 +91,8 @@ export async function run() {
         }
         if (!isNullOrEmptyValue(inputs.GITHUB_TOKEN)) {
           const gitHubClientService = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
-          if (bridgeVersion < constants.VERSION) {
+
+          if (lt(bridgeVersion, constants.VERSION)) {
             // Upload Black Duck SARIF Report to code scanning tab
             if (inputs.BLACKDUCKSCA_URL && parseToBoolean(inputs.BLACKDUCK_UPLOAD_SARIF_REPORT)) {
               await gitHubClientService.uploadSarifReport(constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY, inputs.BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH)
