@@ -10,7 +10,6 @@ import {readFileSync} from 'fs'
 import {join, basename} from 'path'
 import {isNullOrEmptyValue} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
-import {lt} from 'semver'
 
 export async function run() {
   info('Black Duck Security Action started...')
