@@ -52,7 +52,7 @@
     "@actions/tool-cache": "2.0.1",
     "@types/unzipper": "0.10.10",
     "actions-artifact-v1": "npm:@actions/artifact@1.1.0",
-    "actions-artifact-v2": "npm:@actions/artifact@2.1.8",
+    "actions-artifact-v2": "npm:@actions/artifact@2.1.11",
     "dom-parser": "0.1.6",
     "nock": "13.5.5",
     "path": "0.12.7",

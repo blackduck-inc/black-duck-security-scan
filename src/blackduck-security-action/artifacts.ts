@@ -40,7 +40,7 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
 }
 
 function getBridgeDiagnosticsFolder(): string {
-  return '.bridge'  // Remove leading separators, let path.join handle them
+  return '.bridge'
 }
 
 export function getFiles(dir: string, allFiles: string[]): string[] {
@@ -59,7 +59,6 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
   }
   return allFiles
 }
-
 
 export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse | undefined> {
   const artifactClient = new DefaultArtifactClient()
