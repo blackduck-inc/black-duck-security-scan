@@ -73,6 +73,12 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
   })
 
+  it('should return GithubClientServiceCloud service for GHEC with custom domain', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.ghe.com'
+
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
+  })
+
   it('should return GithubClientServiceV1 service for version 3.11', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.11')

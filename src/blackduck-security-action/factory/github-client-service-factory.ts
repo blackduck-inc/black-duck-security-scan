@@ -43,21 +43,30 @@ export const GitHubClientServiceFactory = {
     info('Fetching GitHub client service instance...')
     const githubApiUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
 
-    if (githubApiUrl === constants.GITHUB_CLOUD_API_URL) {
-      debug(`Using GitHub client service Cloud instance`)
-      return new GithubClientServiceCloud()
-    } else {
-      const version = await this.fetchVersion(githubApiUrl)
-      const [major, minor] = version.split('.').slice(0, 2)
-      const majorMinorVersion = major.concat('.').concat(minor)
-      // When there is contract change use if-else/switch-case and handle v1/v2 based on supported versions
-      if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
-        info(`Using GitHub Enterprise Server API v1 for version ${version}`)
-      } else {
-        info(`GitHub Enterprise Server version ${version} is not supported, proceeding with default version ${this.DEFAULT_VERSION}`)
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === constants.GITHUB_CLOUD_API_URL || host.endsWith('.ghe.com')
+      } catch {
+        return url === constants.GITHUB_CLOUD_API_URL
       }
-      debug(`Using GitHub client service V1 instance`)
-      return new GithubClientServiceV1()
     }
+
+    if (useCloudInstance(githubApiUrl)) {
+      debug('Using GitHub client service Cloud instance')
+      return new GithubClientServiceCloud()
+    }
+
+    const version = await this.fetchVersion(githubApiUrl)
+    const [major, minor] = version.split('.').slice(0, 2)
+    const majorMinorVersion = `${major}.${minor}`
+
+    if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
+      info(`Using GitHub Enterprise Server API v1 for version ${version}`)
+    } else {
+      info(`GitHub Enterprise Server version ${version} is not supported, proceeding with default version ${this.DEFAULT_VERSION}`)
+    }
+    debug('Using GitHub client service V1 instance')
+    return new GithubClientServiceV1()
   }
 }

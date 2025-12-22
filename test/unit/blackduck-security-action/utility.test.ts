@@ -1,4 +1,4 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, isGitHubCloud, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
@@ -66,6 +66,42 @@ describe('isPullRequestEvent', () => {
   it('should return false if event name is undefined', () => {
     process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_EVENT_NAME] = undefined
     const result = isPullRequestEvent()
+    expect(result).toEqual(false)
+  })
+})
+
+describe('isGitHubCloud', () => {
+  let originalServerUrl: string
+
+  beforeEach(() => {
+    originalServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+  })
+
+  afterEach(() => {
+    process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] = originalServerUrl
+  })
+
+  it('should return true if server URL is GitHub Cloud URL', () => {
+    process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] = constants.GITHUB_CLOUD_URL
+    const result = isGitHubCloud()
+    expect(result).toEqual(true)
+  })
+
+  it('should return true if server URL is a GHEC domain with data residency (*.ghe.com)', () => {
+    process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] = 'https://example.ghe.com'
+    const result = isGitHubCloud()
+    expect(result).toEqual(true)
+  })
+
+  it('should return false if server URL is a GitHub Enterprise Server URL', () => {
+    process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] = 'https://github.example.com'
+    const result = isGitHubCloud()
+    expect(result).toEqual(false)
+  })
+
+  it('should return false if server URL is undefined', () => {
+    process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] = undefined
+    const result = isGitHubCloud()
     expect(result).toEqual(false)
   })
 })
