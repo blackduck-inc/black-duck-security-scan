@@ -14,11 +14,19 @@ export const GitHubClientServiceFactory = {
   // Add new version here
 
   async fetchVersion(githubApiUrl: string): Promise<string> {
+    // Handle empty or undefined URL
+    if (!githubApiUrl || githubApiUrl.trim() === '') {
+      debug(`Empty or undefined GitHub API URL provided. Default version: ${this.DEFAULT_VERSION} will be used.`)
+      return this.DEFAULT_VERSION
+    }
+
     const githubEnterpriseMetaUrl = '/meta'
     const githubToken = inputs.GITHUB_TOKEN
-    const endpoint = githubApiUrl.concat(githubEnterpriseMetaUrl)
 
     try {
+      const endpoint = githubApiUrl.concat(githubEnterpriseMetaUrl)
+      debug(`Fetching GitHub Enterprise Server version from: ${endpoint}`)
+
       const httpClient = getSharedHttpClient()
       const httpResponse = await httpClient.get(endpoint, {
         Authorization: `Bearer ${githubToken}`,
@@ -44,10 +52,19 @@ export const GitHubClientServiceFactory = {
     const githubApiUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
 
     const useCloudInstance = (url: string): boolean => {
+      // Handle empty URL case first
+      if (!url || url.trim() === '') {
+        debug('Empty GitHub API URL provided, treating as non-cloud instance')
+        return false
+      }
+
       try {
         const host = new URL(url).hostname
-        return url === constants.GITHUB_CLOUD_API_URL || host.endsWith('.ghe.com')
-      } catch {
+        const isCloud = url === constants.GITHUB_CLOUD_API_URL || host.endsWith('.ghe.com')
+        debug(`GitHub API URL: ${url}, hostname: ${host}, isCloud: ${isCloud}`)
+        return isCloud
+      } catch (error) {
+        debug(`Error parsing GitHub API URL: ${error}. URL: ${url}`)
         return url === constants.GITHUB_CLOUD_API_URL
       }
     }
@@ -57,9 +74,22 @@ export const GitHubClientServiceFactory = {
       return new GithubClientServiceCloud()
     }
 
+    debug(`Using GitHub Enterprise Server with API URL: ${githubApiUrl}`)
     const version = await this.fetchVersion(githubApiUrl)
-    const [major, minor] = version.split('.').slice(0, 2)
-    const majorMinorVersion = `${major}.${minor}`
+
+    // Safely handle version splitting
+    let major = ''
+    let minor = ''
+
+    if (version && typeof version === 'string') {
+      const versionParts = version.split('.').slice(0, 2)
+      major = versionParts[0] || ''
+      minor = versionParts[1] || ''
+    } else {
+      debug(`Invalid version returned: ${version}, using default version parts`)
+    }
+
+    const majorMinorVersion = major && minor ? `${major}.${minor}` : this.DEFAULT_VERSION
 
     if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
       info(`Using GitHub Enterprise Server API v1 for version ${version}`)

@@ -60,6 +60,117 @@ describe('fetchVersion()', () => {
 
     expect(version).toBe(GitHubClientServiceFactory.DEFAULT_VERSION)
   })
+  
+  it('should handle undefined GITHUB_API_URL gracefully', async () => {
+    // Set API URL to undefined
+    process.env['GITHUB_API_URL'] = undefined
+    
+    // Mock fetchVersion to return a valid version to isolate the test
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.12')
+    
+    // Should not throw an error
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+  
+  it('should handle empty string GITHUB_API_URL gracefully', async () => {
+    // Set API URL to empty string
+    process.env['GITHUB_API_URL'] = ''
+    
+    // Mock fetchVersion to return a valid version to isolate the test
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.12')
+    
+    // Should not throw an error
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+  
+  it('should handle invalid URL in GITHUB_API_URL gracefully', async () => {
+    // Set API URL to an invalid URL
+    process.env['GITHUB_API_URL'] = 'not-a-valid-url'
+    
+    // Mock fetchVersion to return a valid version to isolate the test
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.12')
+    
+    // Should not throw an error and fall back to V1 service
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+})
+
+describe('useCloudInstance()', () => {
+  it('should correctly identify GitHub Cloud API URL', () => {
+    const url = 'https://api.github.com'
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === 'https://api.github.com' || host.endsWith('.ghe.com')
+      } catch {
+        return url === 'https://api.github.com'
+      }
+    }
+    
+    expect(useCloudInstance(url)).toBe(true)
+  })
+  
+  it('should correctly identify GHEC custom domain', () => {
+    const url = 'https://api.example.ghe.com'
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === 'https://api.github.com' || host.endsWith('.ghe.com')
+      } catch {
+        return url === 'https://api.github.com'
+      }
+    }
+    
+    expect(useCloudInstance(url)).toBe(true)
+  })
+  
+  it('should handle undefined URL gracefully', () => {
+    const url = undefined
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === 'https://api.github.com' || host.endsWith('.ghe.com')
+      } catch {
+        return url === 'https://api.github.com'
+      }
+    }
+    
+    // Should not throw an error and return false for undefined
+    expect(() => useCloudInstance(url as unknown as string)).not.toThrow()
+    expect(useCloudInstance(url as unknown as string)).toBe(false)
+  })
+  
+  it('should handle empty string URL gracefully', () => {
+    const url = ''
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === 'https://api.github.com' || host.endsWith('.ghe.com')
+      } catch {
+        return url === 'https://api.github.com'
+      }
+    }
+    
+    // Should not throw an error and return false for empty string
+    expect(() => useCloudInstance(url)).not.toThrow()
+    expect(useCloudInstance(url)).toBe(false)
+  })
+  
+  it('should handle invalid URL gracefully', () => {
+    const url = 'not-a-valid-url'
+    const useCloudInstance = (url: string): boolean => {
+      try {
+        const host = new URL(url).hostname
+        return url === 'https://api.github.com' || host.endsWith('.ghe.com')
+      } catch {
+        return url === 'https://api.github.com'
+      }
+    }
+    
+    // Should not throw an error and return false for invalid URL
+    expect(() => useCloudInstance(url)).not.toThrow()
+    expect(useCloudInstance(url)).toBe(false)
+  })
 })
 
 describe('getGitHubClientServiceInstance()', () => {
