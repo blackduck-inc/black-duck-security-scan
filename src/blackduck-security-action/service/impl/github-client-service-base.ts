@@ -35,7 +35,7 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
     let retryDelay = constants.RETRY_DELAY_IN_MILLISECONDS
     let sarifFilePath = ''
     const stringFormat = (url: string, ...args: string[]): string => {
-      return url.replace(/{(\d+)}/g, (match, index) => args[index] || '')
+      return url.replace(/{(\d+)}/g, (_match, index) => args[index] || '')
     }
     const endpoint = stringFormat(this.githubApiURL.concat(this.gitHubCodeScanningUrl), this.repoOwner, this.repoName)
     if (defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY) {
