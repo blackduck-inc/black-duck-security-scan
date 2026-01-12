@@ -37,7 +37,13 @@ export const GitHubClientServiceFactory = {
         const metaDataResponse = JSON.parse(await httpResponse.readBody())
         const installedVersion = metaDataResponse.installed_version
         debug(`Installed version: ${installedVersion}`)
-        return installedVersion
+        // Ensure installedVersion is a valid string before returning
+        if (installedVersion && typeof installedVersion === 'string') {
+          return installedVersion
+        } else {
+          debug(`Invalid installed_version in response: ${installedVersion}. Default version: ${this.DEFAULT_VERSION} will be used.`)
+          return this.DEFAULT_VERSION
+        }
       } else {
         debug(`No version info found for endpoint : ${endpoint}. Default version: ${this.DEFAULT_VERSION} will be used.`)
       }
@@ -48,75 +54,95 @@ export const GitHubClientServiceFactory = {
   },
 
   async getGitHubClientServiceInstance(): Promise<GithubClientServiceInterface> {
-    info('Fetching GitHub client service instance...')
-    const githubApiUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
+    try {
+      info('Fetching GitHub client service instance...')
+      const envVarName = constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL
+      info(`Environment variable name: ${envVarName}`)
+      const envValue = process.env[envVarName]
+      info(`Environment variable value: ${envValue}`)
+      info(`Environment variable type: ${typeof envValue}`)
 
-    info(`Raw GitHub API URL from environment: '${githubApiUrl}'`)
-    info(`Environment variable name: ${constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL}`)
+      const githubApiUrl = envValue || ''
+      info(`Raw GitHub API URL from environment: '${githubApiUrl}' (length: ${githubApiUrl.length})`)
 
-    const useCloudInstance = (url: string): boolean => {
-      // Handle empty URL case first
-      if (!url || url.trim() === '') {
-        info('Empty GitHub API URL provided, treating as non-cloud instance')
-        return false
+      const useCloudInstance = (url: string): boolean => {
+        // Handle empty URL case first
+        if (!url || url.trim() === '') {
+          info('Empty GitHub API URL provided, treating as non-cloud instance')
+          return false
+        }
+
+        try {
+          const parsedUrl = new URL(url)
+          const host = parsedUrl.hostname
+          const isExactMatch = url === constants.GITHUB_CLOUD_API_URL
+          const isGheComDomain = host.endsWith('.ghe.com')
+          const isCloud = isExactMatch || isGheComDomain
+
+          info(`URL parsing details:`)
+          info(`  - Full URL: ${url}`)
+          info(`  - Hostname: ${host}`)
+          info(`  - Expected cloud URL: ${constants.GITHUB_CLOUD_API_URL}`)
+          info(`  - Exact match: ${isExactMatch}`)
+          info(`  - Ends with .ghe.com: ${isGheComDomain}`)
+          info(`  - Final isCloud result: ${isCloud}`)
+
+          return isCloud
+        } catch (error) {
+          info(`Error parsing GitHub API URL: ${error}. URL: ${url}`)
+          return url === constants.GITHUB_CLOUD_API_URL
+        }
       }
 
-      try {
-        const parsedUrl = new URL(url)
-        const host = parsedUrl.hostname
-        const isExactMatch = url === constants.GITHUB_CLOUD_API_URL
-        const isGheComDomain = host.endsWith('.ghe.com')
-        const isCloud = isExactMatch || isGheComDomain
+      const isCloudInstance = useCloudInstance(githubApiUrl)
+      info(`Cloud instance check result: ${isCloudInstance}`)
 
-        info(`URL parsing details:`)
-        info(`  - Full URL: ${url}`)
-        info(`  - Hostname: ${host}`)
-        info(`  - Expected cloud URL: ${constants.GITHUB_CLOUD_API_URL}`)
-        info(`  - Exact match: ${isExactMatch}`)
-        info(`  - Ends with .ghe.com: ${isGheComDomain}`)
-        info(`  - Final isCloud result: ${isCloud}`)
-
-        return isCloud
-      } catch (error) {
-        info(`Error parsing GitHub API URL: ${error}. URL: ${url}`)
-        return url === constants.GITHUB_CLOUD_API_URL
+      if (isCloudInstance) {
+        info('Using GitHub client service Cloud instance')
+        info('About to create GithubClientServiceCloud instance...')
+        const cloudInstance = new GithubClientServiceCloud()
+        info('Successfully created GithubClientServiceCloud instance')
+        return cloudInstance
       }
+
+      info(`Using GitHub Enterprise Server with API URL: ${githubApiUrl}`)
+      const version = await this.fetchVersion(githubApiUrl)
+      info(`Fetched version: ${version}`)
+      info(`Version type: ${typeof version}`)
+
+      // Safely handle version splitting
+      let major = ''
+      let minor = ''
+
+      if (version && typeof version === 'string' && version.trim() !== '') {
+        const versionParts = version.split('.').slice(0, 2)
+        major = versionParts[0] || ''
+        minor = versionParts[1] || ''
+        info(`Version parts - major: ${major}, minor: ${minor}`)
+      } else {
+        info(`Invalid version returned: ${version}, using default version parts`)
+        const defaultParts = this.DEFAULT_VERSION.split('.').slice(0, 2)
+        major = defaultParts[0] || ''
+        minor = defaultParts[1] || ''
+      }
+
+      const majorMinorVersion = major && minor ? `${major}.${minor}` : this.DEFAULT_VERSION
+      info(`Final major.minor version: ${majorMinorVersion}`)
+
+      if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
+        info(`Using GitHub Enterprise Server API v1 for version ${version}`)
+      } else {
+        info(`GitHub Enterprise Server version ${version} is not supported, proceeding with default version ${this.DEFAULT_VERSION}`)
+      }
+      info('Using GitHub client service V1 instance')
+      info('About to create GithubClientServiceV1 instance...')
+      const v1Instance = new GithubClientServiceV1()
+      info('Successfully created GithubClientServiceV1 instance')
+      return v1Instance
+    } catch (error) {
+      info(`ERROR in getGitHubClientServiceInstance: ${error}`)
+      info(`ERROR stack: ${error instanceof Error ? error.stack : 'No stack trace'}`)
+      throw error
     }
-
-    const isCloudInstance = useCloudInstance(githubApiUrl)
-    info(`Cloud instance check result: ${isCloudInstance}`)
-
-    if (isCloudInstance) {
-      info('Using GitHub client service Cloud instance')
-      return new GithubClientServiceCloud()
-    }
-
-    info(`Using GitHub Enterprise Server with API URL: ${githubApiUrl}`)
-    const version = await this.fetchVersion(githubApiUrl)
-    info(`Fetched version: ${version}`)
-
-    // Safely handle version splitting
-    let major = ''
-    let minor = ''
-
-    if (version && typeof version === 'string') {
-      const versionParts = version.split('.').slice(0, 2)
-      major = versionParts[0] || ''
-      minor = versionParts[1] || ''
-      info(`Version parts - major: ${major}, minor: ${minor}`)
-    } else {
-      info(`Invalid version returned: ${version}, using default version parts`)
-    }
-
-    const majorMinorVersion = major && minor ? `${major}.${minor}` : this.DEFAULT_VERSION
-    info(`Final major.minor version: ${majorMinorVersion}`)
-
-    if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
-      info(`Using GitHub Enterprise Server API v1 for version ${version}`)
-    } else {
-      info(`GitHub Enterprise Server version ${version} is not supported, proceeding with default version ${this.DEFAULT_VERSION}`)
-    }
-    info('Using GitHub client service V1 instance')
-    return new GithubClientServiceV1()
   }
 }
