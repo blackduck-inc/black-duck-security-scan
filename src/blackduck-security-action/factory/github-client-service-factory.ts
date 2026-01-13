@@ -115,12 +115,14 @@ export const GitHubClientServiceFactory = {
       let minor = ''
 
       if (version && typeof version === 'string' && version.trim() !== '') {
+        info(`[SPLIT DEBUG] About to split version: ${version}`)
         const versionParts = version.split('.').slice(0, 2)
         major = versionParts[0] || ''
         minor = versionParts[1] || ''
         info(`Version parts - major: ${major}, minor: ${minor}`)
       } else {
         info(`Invalid version returned: ${version}, using default version parts`)
+        info(`[SPLIT DEBUG] About to split DEFAULT_VERSION: ${this.DEFAULT_VERSION}`)
         const defaultParts = this.DEFAULT_VERSION.split('.').slice(0, 2)
         major = defaultParts[0] || ''
         minor = defaultParts[1] || ''

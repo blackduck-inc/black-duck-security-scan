@@ -39,6 +39,7 @@ export class BridgeToolsParameter {
     const assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
       // converting provided assessmentTypes to uppercase
+      info('[DEBUG] converting provided assessmentTypes to uppercase')
       const assessmentTypes = inputs.POLARIS_ASSESSMENT_TYPES.toUpperCase().split(',')
       for (const assessmentType of assessmentTypes) {
         const regEx = new RegExp('^[a-zA-Z]+$')
@@ -101,9 +102,10 @@ export class BridgeToolsParameter {
 
       if (inputs.POLARIS_TEST_SAST_TYPE || inputs.POLARIS_TEST_SAST_LOCATION) {
         polData.data.polaris.test.sast = {
-          ...(inputs.POLARIS_TEST_SAST_TYPE && {
-            type: inputs.POLARIS_TEST_SAST_TYPE.split(',').map(polarisTestSastType => polarisTestSastType.trim())
-          }),
+          ...(inputs.POLARIS_TEST_SAST_TYPE && (() => {
+            info(`[SPLIT DEBUG] About to split POLARIS_TEST_SAST_TYPE: ${inputs.POLARIS_TEST_SAST_TYPE}`)
+            return {type: inputs.POLARIS_TEST_SAST_TYPE.split(',').map(polarisTestSastType => polarisTestSastType.trim())}
+          })()),
           ...(inputs.POLARIS_TEST_SAST_LOCATION && {location: inputs.POLARIS_TEST_SAST_LOCATION})
         }
       }
@@ -132,6 +134,7 @@ export class BridgeToolsParameter {
         }
 
         if (inputs.PROJECT_SOURCE_EXCLUDES) {
+          info(`[SPLIT DEBUG] About to split PROJECT_SOURCE_EXCLUDES: ${inputs.PROJECT_SOURCE_EXCLUDES}`)
           const sourceExcludesList: string[] = inputs.PROJECT_SOURCE_EXCLUDES.split(',').map(sourceExclude => sourceExclude.trim())
           polData.data.project.source.excludes = sourceExcludesList
         }
@@ -179,6 +182,7 @@ export class BridgeToolsParameter {
         const prCommentSeverities: string[] = []
         const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES
         if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
+          info(`[SPLIT DEBUG] About to split POLARIS_PRCOMMENT_SEVERITIES: ${inputPrCommentSeverities}`)
           const severityValues = inputPrCommentSeverities.split(',')
           for (const severity of severityValues) {
             if (severity.trim()) {
@@ -202,6 +206,7 @@ export class BridgeToolsParameter {
         const sarifReportFilterSeverities: string[] = []
         const sarifReportFilterAssessmentIssuesType: string[] = []
         if (inputs.POLARIS_REPORTS_SARIF_SEVERITIES) {
+          info(`[SPLIT DEBUG] About to split POLARIS_REPORTS_SARIF_SEVERITIES: ${inputs.POLARIS_REPORTS_SARIF_SEVERITIES}`)
           const filterSeverities = inputs.POLARIS_REPORTS_SARIF_SEVERITIES.split(',')
           for (const sarifSeverity of filterSeverities) {
             if (sarifSeverity) {
@@ -211,6 +216,7 @@ export class BridgeToolsParameter {
         }
 
         if (inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES) {
+          info(`[SPLIT DEBUG] About to split POLARIS_REPORTS_SARIF_ISSUE_TYPES: ${inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES}`)
           const filterIssueTypes = inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES.split(',')
           for (const issueType of filterIssueTypes) {
             if (issueType) {
@@ -359,6 +365,7 @@ export class BridgeToolsParameter {
         // Always use new format initially - version detection will convert if needed
         const prCommentImpacts: string[] = []
         if (inputs.COVERITY_PRCOMMENT_IMPACTS && inputs.COVERITY_PRCOMMENT_IMPACTS.length > 0) {
+          info(`[SPLIT DEBUG] About to split COVERITY_PRCOMMENT_IMPACTS: ${inputs.COVERITY_PRCOMMENT_IMPACTS}`)
           const impactValues = inputs.COVERITY_PRCOMMENT_IMPACTS.split(',')
           for (const impact of impactValues) {
             if (impact.trim()) {
@@ -399,6 +406,7 @@ export class BridgeToolsParameter {
       try {
         const failureSeveritiesInput = inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES
         if (failureSeveritiesInput != null && failureSeveritiesInput.length > 0) {
+          info(`[SPLIT DEBUG] About to split BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES: ${failureSeveritiesInput}`)
           const failureSeveritiesArray = failureSeveritiesInput.toUpperCase().split(',')
           for (const failureSeverity of failureSeveritiesArray) {
             if (failureSeverity.trim().length > 0) {
@@ -495,6 +503,7 @@ export class BridgeToolsParameter {
         /** Set Black Duck SARIF inputs in case of non PR context */
         const sarifReportFilterSeverities: string[] = []
         if (inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES) {
+          info(`[SPLIT DEBUG] About to split BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES: ${inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES}`)
           const filterSeverities = inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES.split(',')
           for (const sarifSeverity of filterSeverities) {
             if (sarifSeverity) {
@@ -573,6 +582,7 @@ export class BridgeToolsParameter {
     const customHeader = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] === constants.GITHUB_CLOUD_URL ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
+      info(`[SPLIT DEBUG] About to split SRM_ASSESSMENT_TYPES: ${inputs.SRM_ASSESSMENT_TYPES}`)
       assessmentTypes = inputs.SRM_ASSESSMENT_TYPES.split(',')
     }
 
@@ -676,6 +686,7 @@ export class BridgeToolsParameter {
 
     // pr number will be part of "refs/pull/<pr_number>/merge"
     // if there is manual run without raising pr then GITHUB_REF will return refs/heads/branch_name
+    info(`[SPLIT DEBUG] About to split githubRef: ${githubRef}`)
     const githubPrNumber = githubRef !== undefined ? githubRef.split('/')[2].trim() : ''
     const githubRepoOwner = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY_OWNER] || ''
 
@@ -759,6 +770,7 @@ export class BridgeToolsParameter {
 
     const useUpgradeGuidance: string[] = []
     if (inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE != null && inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE.length > 0) {
+      info(`[SPLIT DEBUG] About to split BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE: ${inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE}`)
       const useUpgradeGuidanceList = inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE.split(',')
       for (const upgradeGuidance of useUpgradeGuidanceList) {
         if (upgradeGuidance != null && upgradeGuidance !== '') {
@@ -769,6 +781,7 @@ export class BridgeToolsParameter {
     }
     const fixPRFilterSeverities: string[] = []
     if (inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES != null && inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES.length > 0) {
+      info(`[SPLIT DEBUG] About to split BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES: ${inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES}`)
       const filterSeverities = inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES.split(',')
       for (const fixPrSeverity of filterSeverities) {
         if (fixPrSeverity != null && fixPrSeverity !== '') {

@@ -154,6 +154,7 @@ export class Bridge {
           await rmRF(this.bridgePath)
         }
         await extractZipped(downloadResponse.filePath, extractZippedFilePath)
+        info(`[SPLIT DEBUG] About to split downloadResponse.filePath by pathSeprator: ${downloadResponse.filePath}, pathSeprator: ${pathSeprator}`)
         const sourceFile = extractZippedFilePath
           .concat(pathSeprator)
           .concat(downloadResponse.filePath.split(pathSeprator).pop() as string)
@@ -402,9 +403,11 @@ export class Bridge {
           } else if (response.statusCode === 200) {
             retryCountLocal = 0
             const htmlResponse = response.body.trim()
+            info(`[SPLIT DEBUG] About to split htmlResponse into lines, length: ${htmlResponse.length}`)
             const lines = htmlResponse.split('\n')
             for (const line of lines) {
               if (line.includes('bridge-cli-bundle')) {
+                info(`[SPLIT DEBUG] About to split line for bridge-cli-bundle: ${line}`)
                 return line.split(':')[1].trim()
               }
             }
