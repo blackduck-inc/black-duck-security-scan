@@ -65,8 +65,17 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
 }
 
 export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse | undefined> {
-  const artifactClient = new DefaultArtifactClient()
-  const options: UploadArtifactOptions = {}
+  let artifactClient
+  let options: UploadArtifactOptions | artifact.UploadOptions = {}
+
+  if (isGitHubCloud()) {
+    artifactClient = new DefaultArtifactClient()
+  } else {
+    artifactClient = artifact.create()
+    options = {
+      continueOnError: true
+    } as artifact.UploadOptions
+  }
 
   let sarifFilePath: string
   let rootDir: string
