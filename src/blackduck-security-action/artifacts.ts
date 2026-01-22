@@ -1,14 +1,16 @@
-import {UploadArtifactResponse, UploadArtifactOptions} from 'actions-artifact-v2/lib/internal/shared/interfaces'
-import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
+import * as artifact from 'actions-artifact-v1'
+import * as constants from '../application-constants'
 import * as fs from 'fs'
 import * as inputs from './inputs'
-import {getDefaultSarifReportPath, isGitHubCloud, getRealSystemTime, getIntegrationDefaultSarifReportPath, checkIfPathExists} from './utility'
-import {warning} from '@actions/core'
-import path from 'path'
-import * as artifact from 'actions-artifact-v1'
+
+import {UploadArtifactOptions, UploadArtifactResponse} from 'actions-artifact-v2/lib/internal/shared/interfaces'
+import {checkIfPathExists, getDefaultSarifReportPath, getIntegrationDefaultSarifReportPath, getRealSystemTime, isGitHubCloud} from './utility'
+
 import {DefaultArtifactClient} from 'actions-artifact-v2'
-import * as constants from '../application-constants'
 import {exists} from '@actions/io/lib/io-util'
+import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
+import path from 'path'
+import {warning} from '@actions/core'
 
 export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void> {
   let artifactClient
@@ -65,8 +67,17 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
 }
 
 export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: string, userSarifFilePath: string, artifactName: string): Promise<UploadArtifactResponse | undefined> {
-  const artifactClient = new DefaultArtifactClient()
-  const options: UploadArtifactOptions = {}
+  let artifactClient
+  let options: UploadArtifactOptions | artifact.UploadOptions = {}
+
+  if (isGitHubCloud()) {
+    artifactClient = new DefaultArtifactClient()
+  } else {
+    artifactClient = artifact.create()
+    options = {
+      continueOnError: true
+    } as artifact.UploadOptions
+  }
 
   let sarifFilePath: string
   let rootDir: string
