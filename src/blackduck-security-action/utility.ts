@@ -100,7 +100,14 @@ export function isPullRequestEvent(): boolean {
 
 export function isGitHubCloud(): boolean {
   const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
-  return githubServerUrl === constants.GITHUB_CLOUD_URL
+  try {
+    const host = new URL(githubServerUrl).hostname
+    return githubServerUrl === constants.GITHUB_CLOUD_URL || host.endsWith('.ghe.com')
+  } catch (error) {
+    // If URL parsing fails, fall back to the original check
+    debug(`Error parsing GitHub Server URL: ${error}. Falling back to simple URL comparison.`)
+    return githubServerUrl === constants.GITHUB_CLOUD_URL
+  }
 }
 
 export function getRealSystemTime(): string {

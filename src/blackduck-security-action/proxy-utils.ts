@@ -1,4 +1,4 @@
-import {debug} from '@actions/core'
+import {debug, info} from '@actions/core'
 
 export interface ProxyConfig {
   useProxy: boolean
@@ -75,6 +75,7 @@ export function shouldBypassProxy(targetUrl: string, noProxy: string): boolean {
     const hostname = target.hostname.toLowerCase()
 
     // Split NO_PROXY by comma and trim whitespace
+    info(`[SPLIT DEBUG] About to split noProxy: ${noProxy}`)
     const noProxyList = noProxy.split(',').map(entry => entry.trim().toLowerCase())
 
     for (const entry of noProxyList) {

@@ -19,15 +19,35 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
   githubRef: string
 
   constructor() {
+    info('GithubClientServiceBase constructor called')
     this.gitHubCodeScanningUrl = '/repos/{0}/{1}/code-scanning/sarifs'
+    info('Set gitHubCodeScanningUrl')
+
     this.githubToken = inputs.GITHUB_TOKEN
+    info(`Set githubToken: ${this.githubToken ? '[PRESENT]' : '[EMPTY]'}`)
+
     this.githubRepo = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY] || ''
+    info(`Set githubRepo: ${this.githubRepo}`)
+
     this.repoName = this.githubRepo !== '' ? this.githubRepo.substring(this.githubRepo.indexOf('/') + 1, this.githubRepo.length).trim() : ''
+    info(`Set repoName: ${this.repoName}`)
+
     this.repoOwner = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY_OWNER] || ''
+    info(`Set repoOwner: ${this.repoOwner}`)
+
     this.githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+    info(`Set githubServerUrl: ${this.githubServerUrl}`)
+
     this.githubApiURL = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
+    info(`Set githubApiURL: ${this.githubApiURL}`)
+
     this.commit_sha = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SHA] || ''
+    info(`Set commit_sha: ${this.commit_sha}`)
+
     this.githubRef = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF] || ''
+    info(`Set githubRef: ${this.githubRef}`)
+
+    info('GithubClientServiceBase constructor completed successfully')
   }
 
   async uploadSarifReport(defaultSarifReportDirectory: string, userSarifFilePath: string): Promise<void> {
