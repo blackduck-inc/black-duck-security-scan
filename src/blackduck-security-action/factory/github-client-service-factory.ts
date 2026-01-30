@@ -59,7 +59,6 @@ export const GitHubClientServiceFactory = {
       } else {
         info(`Proceeding with default REST API version`)
       }
-      debug(`Using GitHub client service V1 instance`)
       return new GithubClientServiceV1()
     }
   }
