@@ -1,16 +1,18 @@
-import {GithubClientServiceInterface} from '../service/github-client-service-interface'
-import {GithubClientServiceCloud} from '../service/impl/cloud/github-client-service-cloud'
-import {debug, info} from '@actions/core'
 import * as constants from '../../application-constants'
-import {GithubClientServiceV1} from '../service/impl/enterprise/v1/github-client-service-v1'
 import * as inputs from '../inputs'
+
+import {debug, info} from '@actions/core'
+
+import {GithubClientServiceCloud} from '../service/impl/cloud/github-client-service-cloud'
+import {GithubClientServiceInterface} from '../service/github-client-service-interface'
+import {GithubClientServiceV1} from '../service/impl/enterprise/v1/github-client-service-v1'
 import {getSharedHttpClient} from '../utility'
 
 export const GitHubClientServiceFactory = {
-  DEFAULT_VERSION: '3.12',
+  DEFAULT_VERSION: '3.17',
   // V1 will have all currently supported versions
   // {V2, V3 ... Vn} will have breaking changes
-  SUPPORTED_VERSIONS_V1: ['3.11', '3.12'],
+  SUPPORTED_VERSIONS_V1: ['3.15', '3.16', '3.17'],
   // Add new version here
 
   async fetchVersion(githubApiUrl: string): Promise<string> {
@@ -50,11 +52,12 @@ export const GitHubClientServiceFactory = {
       const version = await this.fetchVersion(githubApiUrl)
       const [major, minor] = version.split('.').slice(0, 2)
       const majorMinorVersion = major.concat('.').concat(minor)
+      info(`GitHub Enterprise version: ${majorMinorVersion}, Supported versions: ${this.SUPPORTED_VERSIONS_V1}`)
       // When there is contract change use if-else/switch-case and handle v1/v2 based on supported versions
       if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
-        info(`Using GitHub Enterprise Server API v1 for version ${version}`)
+        info(`GitHub Enterprise Version is supported`)
       } else {
-        info(`GitHub Enterprise Server version ${version} is not supported, proceeding with default version ${this.DEFAULT_VERSION}`)
+        info(`Proceeding with default REST API version`)
       }
       debug(`Using GitHub client service V1 instance`)
       return new GithubClientServiceV1()
