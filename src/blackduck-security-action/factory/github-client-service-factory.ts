@@ -53,7 +53,7 @@ export const GitHubClientServiceFactory = {
       const [major, minor] = version.split('.').slice(0, 2)
       const majorMinorVersion = major.concat('.').concat(minor)
       info(`GitHub Enterprise version: ${majorMinorVersion}, Supported versions: ${this.SUPPORTED_VERSIONS_V1}`)
-      
+
       if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
         info(`GitHub Enterprise Version is supported`)
       } else {
