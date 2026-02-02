@@ -7,6 +7,7 @@ const fs = require('fs')
 import * as core from '@actions/core'
 import * as utility from '../../../src/blackduck-security-action/utility'
 import * as ioUtil from '@actions/io/lib/io-util'
+import path from 'path'
 
 // Mock the artifact module
 jest.mock('actions-artifact-v2', () => ({
@@ -42,10 +43,21 @@ describe('uploadDiagnostics - success', () => {
     jest.spyOn(fs, 'readdirSync').mockReturnValue(['bridge.log'])
     jest.spyOn(configVariables, 'getGitHubWorkspaceDir').mockReturnValue('.')
 
+    // Mock fs.statSync to return an object with isDirectory method
+    const mockStatSync = jest.fn().mockReturnValue({
+      isDirectory: () => false
+    })
+    fs.statSync = mockStatSync
+
     await uploadDiagnostics()
 
     expect(mockUploadArtifact).toHaveBeenCalledTimes(1)
-    expect(mockUploadArtifact).toHaveBeenCalledWith('bridge_diagnostics_1749123407519', ['./.bridge/bridge.log'], './.bridge', {})
+    expect(mockUploadArtifact).toHaveBeenCalledWith(
+      'bridge_diagnostics_1749123407519',
+      [path.join('.', '.bridge', 'bridge.log')],
+      path.join('.', '.bridge'),
+      {}
+    )
   })
 })
 
@@ -56,7 +68,12 @@ test('Test uploadDiagnostics expect API error', () => {
 
   const dir = (fs.readdirSync = jest.fn())
   dir.mockReturnValue(files)
-  jest.spyOn(fs.statSync('./.bridge/bridge.log'), 'isDirectory').mockReturnValue(false)
+
+  const mockStatSync = jest.fn().mockReturnValue({
+    isDirectory: () => false
+  })
+  fs.statSync = mockStatSync
+
   uploadDiagnostics().catch(Error)
 })
 
@@ -67,7 +84,13 @@ test('Test uploadDiagnostics - invalid value for retention days', () => {
 
   const dir = (fs.readdirSync = jest.fn())
   dir.mockReturnValue(files)
-  jest.spyOn(fs.statSync('./.bridge/bridge.log'), 'isDirectory').mockReturnValue(false)
+
+  // Update mock to use path.join for the file path
+  const mockStatSync = jest.fn().mockReturnValue({
+    isDirectory: () => false
+  })
+  fs.statSync = mockStatSync
+
   uploadDiagnostics().catch(Error)
 })
 
@@ -82,6 +105,7 @@ describe('uploadSarifReport', () => {
     jest.spyOn(artifact, 'DefaultArtifactClient').mockReturnValue(mockArtifactClient as artifact.ArtifactClient)
     jest.spyOn(utility, 'getDefaultSarifReportPath').mockReturnValue('mocked-sarif-path')
     jest.spyOn(utility, 'checkIfPathExists').mockReturnValue(true)
+    jest.spyOn(ioUtil, 'exists').mockResolvedValue(true)
 
     const defaultSarifReportDirectory = '.'
     const userSarifFilePath = 'mocked-sarif-path'

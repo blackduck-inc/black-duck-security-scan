@@ -24,7 +24,7 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
       continueOnError: true
     } as artifact.UploadOptions
   }
-  const pwd = getGitHubWorkspaceDir().concat(getBridgeDiagnosticsFolder())
+  const pwd = path.join(getGitHubWorkspaceDir(), getBridgeDiagnosticsFolder())
   let files: string[] = []
   files = getFiles(pwd, files)
 
@@ -42,11 +42,7 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
 }
 
 function getBridgeDiagnosticsFolder(): string {
-  if (process.platform === 'win32') {
-    return '\\.bridge'
-  } else {
-    return '/.bridge'
-  }
+  return '.bridge'
 }
 
 export function getFiles(dir: string, allFiles: string[]): string[] {
@@ -55,7 +51,7 @@ export function getFiles(dir: string, allFiles: string[]): string[] {
   if (fs.existsSync(dir)) {
     const currDirFiles = fs.readdirSync(dir)
     for (const item of currDirFiles) {
-      const name = dir.concat('/').concat() + item
+      const name = path.join(dir, item)
       if (fs.statSync(name).isDirectory()) {
         getFiles(name, allFiles)
       } else {
