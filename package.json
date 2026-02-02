@@ -59,5 +59,8 @@
     "typed-rest-client": "2.2.0",
     "unzipper": "0.10.14",
     "uuid": "8.3.2"
+  },
+  "overrides": {
+    "fast-xml-parser": "5.3.4"
   }
 }
