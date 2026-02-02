@@ -120,7 +120,7 @@ describe('getGitHubClientServiceInstance()', () => {
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17,'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17.7'))
     expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
   })
 
@@ -131,7 +131,7 @@ describe('getGitHubClientServiceInstance()', () => {
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.20,'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.20.1'))
     expect(infoSpy).toHaveBeenCalledWith('Proceeding with default REST API version')
   })
 
@@ -155,9 +155,9 @@ describe('getGitHubClientServiceInstance()', () => {
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
-    // Should log 3.17 (not 3.17.999)
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17,'))
-    // Should be supported (because 3.17 is in the list)
+    // Should log full version (3.17.999)
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17.999'))
+    // Should be supported (because major.minor 3.17 is in the list)
     expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
   })
 
