@@ -6,6 +6,7 @@ import {Socket} from 'net'
 import Mocked = jest.Mocked
 import {GithubClientServiceCloud} from '../../../../src/blackduck-security-action/service/impl/cloud/github-client-service-cloud'
 import {GithubClientServiceV1} from '../../../../src/blackduck-security-action/service/impl/enterprise/v1/github-client-service-v1'
+import * as core from '@actions/core'
 
 describe('fetchVersion()', () => {
   beforeEach(() => {
@@ -63,8 +64,19 @@ describe('fetchVersion()', () => {
 })
 
 describe('getGitHubClientServiceInstance()', () => {
+  const originalEnv = process.env
+
+  beforeEach(() => {
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token'})
+    // Reset process.env for clean state
+    process.env = {...originalEnv}
+  })
+
   afterEach(() => {
     jest.restoreAllMocks()
+    // Clean up environment variables
+    delete process.env['GITHUB_API_URL']
+    process.env = originalEnv
   })
 
   it('should return GithubClientServiceCloud service', async () => {
@@ -73,17 +85,98 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
   })
 
-  it('should return GithubClientServiceV1 service for version 3.11', async () => {
+  it('should return GithubClientServiceV1 service for version 3.15', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
-    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.11')
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.15.0')
+
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+
+  it('should return GithubClientServiceV1 service for version 3.16', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.16.5')
+
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+
+  it('should return GithubClientServiceV1 service for version 3.17', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.17.7')
 
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
   })
 
   it('should return GithubClientServiceV1 service for unsupported version', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
-    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.13')
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.18.0')
 
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
+  })
+
+  it('should log supported version message when version is supported', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.17.7')
+    const infoSpy = jest.spyOn(core, 'info').mockImplementation()
+
+    await GitHubClientServiceFactory.getGitHubClientServiceInstance()
+
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17.7'))
+    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
+  })
+
+  it('should log unsupported version message when version is not supported', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.20.1')
+    const infoSpy = jest.spyOn(core, 'info').mockImplementation()
+
+    await GitHubClientServiceFactory.getGitHubClientServiceInstance()
+
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.20.1'))
+    expect(infoSpy).toHaveBeenCalledWith('Proceeding with default REST API version')
+  })
+
+  it('should always log supported versions list', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.17.0')
+    const infoSpy = jest.spyOn(core, 'info').mockImplementation()
+
+    await GitHubClientServiceFactory.getGitHubClientServiceInstance()
+
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('Supported versions:'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.15'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.16'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.17'))
+  })
+
+  it('should extract only major.minor version and ignore patch version', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.17.999')
+    const infoSpy = jest.spyOn(core, 'info').mockImplementation()
+
+    await GitHubClientServiceFactory.getGitHubClientServiceInstance()
+
+    // Should log full version (3.17.999)
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17.999'))
+    // Should be supported (because major.minor 3.17 is in the list)
+    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
+  })
+
+  it('should return GithubClientServiceV1 for version 3.15.0 (supported)', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.example.com'
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.15.0')
+
+    const service = await GitHubClientServiceFactory.getGitHubClientServiceInstance()
+
+    expect(service).toBeInstanceOf(GithubClientServiceV1)
+  })
+
+  it('should use default version 3.17', () => {
+    expect(GitHubClientServiceFactory.DEFAULT_VERSION).toBe('3.17')
+  })
+
+  it('should have all supported versions in the list', () => {
+    expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.15')
+    expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.16')
+    expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.17')
   })
 })
