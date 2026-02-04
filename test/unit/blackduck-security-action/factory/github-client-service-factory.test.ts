@@ -180,13 +180,13 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.17')
   })
 
-    it('should return GithubClientServiceCloud service for GHEC data residency domain', async () => {
-        process.env['GITHUB_API_URL'] = 'https://api.mercedes-benz.ghe.com'
-        expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
-    })
+  it('should return GithubClientServiceCloud service for GHEC data residency domain', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.mercedes-benz.ghe.com'
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
+  })
 
-    it('should return GithubClientServiceCloud service for GHEC .github.com domain', async () => {
-        process.env['GITHUB_API_URL'] = 'https://api.custom.github.com'
-        expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
-    })
+  it('should return GithubClientServiceCloud service for GHEC .github.com domain', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.custom.github.com'
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
+  })
 })

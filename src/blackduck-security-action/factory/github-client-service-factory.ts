@@ -44,12 +44,10 @@ export const GitHubClientServiceFactory = {
   async getGitHubClientServiceInstance(): Promise<GithubClientServiceInterface> {
     info('Fetching GitHub client service instance...')
     const githubApiUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
-
     // Treat GitHub Cloud and GHEC (data residency) domains as cloud
-    // Use regex to match *.ghe.com and *.github.com domains as cloud
-    const cloudDomainRegex = /^https:\/\/api\.[\w-]+\.(ghe|github)\.com$/i
-    const isCloud = githubApiUrl === constants.GITHUB_CLOUD_API_URL || cloudDomainRegex.test(githubApiUrl)
-
+    // Use regex to match *.ghe.com and *.github.com domains as cloud (includes api.github.com)
+    const cloudDomainRegex = /^https:\/\/api\.(?:[\w-]+\.)?(ghe|github)\.com$/i
+    const isCloud = cloudDomainRegex.test(githubApiUrl)
     if (isCloud) {
       debug(`Using GitHub client service Cloud instance`)
       return new GithubClientServiceCloud()
