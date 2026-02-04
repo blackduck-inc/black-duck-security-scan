@@ -181,7 +181,7 @@ describe('getGitHubClientServiceInstance()', () => {
   })
 
   it('should return GithubClientServiceCloud service for GHEC data residency domain', async () => {
-    process.env['GITHUB_API_URL'] = 'https://api.mercedes-benz.ghe.com'
+    process.env['GITHUB_API_URL'] = 'https://api.blackduck.ghe.com'
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
   })
 
