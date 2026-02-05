@@ -4,11 +4,11 @@ import * as fs from 'fs'
 import * as inputs from './inputs'
 
 import {UploadArtifactOptions, UploadArtifactResponse} from 'actions-artifact-v2/lib/internal/shared/interfaces'
-import {checkIfPathExists, getDefaultSarifReportPath, getIntegrationDefaultSarifReportPath, getRealSystemTime, isGitHubCloud} from './utility'
+import {checkIfPathExists, getDefaultSarifReportPath, getIntegrationDefaultSarifReportPath, getRealSystemTime} from './utility'
 
 import {DefaultArtifactClient} from 'actions-artifact-v2'
 import {exists} from '@actions/io/lib/io-util'
-import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
+import {getGitHubWorkspaceDir, isGhes} from 'actions-artifact-v2/lib/internal/shared/config'
 import path from 'path'
 import {warning} from '@actions/core'
 
@@ -16,7 +16,7 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
   let artifactClient
   let options: UploadArtifactOptions | artifact.UploadOptions = {}
 
-  if (isGitHubCloud()) {
+  if (!isGhes()) {
     artifactClient = new DefaultArtifactClient()
   } else {
     artifactClient = artifact.create()
@@ -70,7 +70,7 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
   let artifactClient
   let options: UploadArtifactOptions | artifact.UploadOptions = {}
 
-  if (isGitHubCloud()) {
+  if (!isGhes()) {
     artifactClient = new DefaultArtifactClient()
   } else {
     artifactClient = artifact.create()

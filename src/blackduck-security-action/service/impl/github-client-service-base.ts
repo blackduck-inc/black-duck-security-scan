@@ -38,20 +38,11 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
       return url.replace(/{(\d+)}/g, (match, index) => args[index] || '')
     }
     const endpoint = stringFormat(this.githubApiURL.concat(this.gitHubCodeScanningUrl), this.repoOwner, this.repoName)
-    info(`Determining SARIF file path - defaultSarifReportDirectory: ${defaultSarifReportDirectory}`)
-    info(`User provided SARIF file path: ${userSarifFilePath || 'none'}`)
-
     if (defaultSarifReportDirectory === constants.BLACKDUCK_SARIF_GENERATOR_DIRECTORY || defaultSarifReportDirectory === constants.POLARIS_SARIF_GENERATOR_DIRECTORY) {
-      info(`Using default SARIF generator directory (BlackDuck or Polaris)`)
       sarifFilePath = userSarifFilePath ? userSarifFilePath : getDefaultSarifReportPath(defaultSarifReportDirectory, true)
-      info(`Resolved SARIF file path using getDefaultSarifReportPath: ${sarifFilePath}`)
     } else {
-      info(`Using integration default SARIF generator directory`)
       sarifFilePath = userSarifFilePath ? userSarifFilePath : getIntegrationDefaultSarifReportPath(defaultSarifReportDirectory, true)
-      info(`Resolved SARIF file path using getIntegrationDefaultSarifReportPath: ${sarifFilePath}`)
     }
-
-    info(`Final SARIF file path selected: ${sarifFilePath}`)
 
     if (checkIfPathExists(sarifFilePath)) {
       info('Uploading SARIF results to GitHub')
