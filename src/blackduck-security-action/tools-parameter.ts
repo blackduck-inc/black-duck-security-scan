@@ -9,7 +9,8 @@ import {Coverity, CoverityDetect} from './input-data/coverity'
 import {BlackDuckSCA, BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData} from './input-data/blackduck'
 import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
-import {isBoolean, isPullRequestEvent, parseToBoolean, isGitHubCloud} from './utility'
+import {isBoolean, isPullRequestEvent, parseToBoolean} from './utility'
+import {isGhes} from 'actions-artifact-v2/lib/internal/shared/config'
 import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
@@ -35,7 +36,7 @@ export class BridgeToolsParameter {
   }
   getFormattedCommandForPolaris(githubRepoName: string): string {
     let command = ''
-    const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
+    const customHeader = !isGhes() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     const assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
       // converting provided assessmentTypes to uppercase
@@ -287,7 +288,7 @@ export class BridgeToolsParameter {
 
   getFormattedCommandForCoverity(githubRepoName: string): string {
     let command = ''
-    const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
+    const customHeader = !isGhes() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let coverityStreamName = inputs.COVERITY_STREAM_NAME
     const isPrEvent = isPullRequestEvent()
 
@@ -394,7 +395,7 @@ export class BridgeToolsParameter {
 
   getFormattedCommandForBlackduck(): string {
     const failureSeverities: string[] = []
-    const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
+    const customHeader = !isGhes() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     if (inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES != null && inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES.length > 0) {
       try {
         const failureSeveritiesInput = inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES
@@ -570,7 +571,7 @@ export class BridgeToolsParameter {
 
   getFormattedCommandForSRM(githubRepoName: string): string {
     let command = ''
-    const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
+    const customHeader = !isGhes() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
       assessmentTypes = inputs.SRM_ASSESSMENT_TYPES.split(',')
@@ -666,7 +667,7 @@ export class BridgeToolsParameter {
     const githubBranchName = this.getGithubBranchName()
     const githubRef = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF]
     const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
-    const githubHostUrl = isGitHubCloud() ? '' : githubServerUrl
+    const githubHostUrl = !isGhes() ? '' : githubServerUrl
 
     debug(`Github Repository: ${process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]}`)
     debug(`Github Ref Name: ${process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF_NAME]}`)
