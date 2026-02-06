@@ -46,8 +46,7 @@ export const GitHubClientServiceFactory = {
     const githubApiUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_API_URL] || ''
     // Treat GitHub Cloud and GHEC (data residency) domains as cloud
     // Use regex to match api.github.com (cloud) and api.<subdomain>.ghe.com (data residency) domains as cloud
-    const cloudDomainRegex = /^https:\/\/api\.(github\.com|([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com)$/
-    const isCloud = cloudDomainRegex.test(githubApiUrl)
+    const isCloud = constants.GITHUB_CLOUD_DOMAIN_REGEX.test(githubApiUrl)
     if (isCloud) {
       debug(`Using GitHub client service Cloud instance`)
       return new GithubClientServiceCloud()
