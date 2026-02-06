@@ -247,7 +247,8 @@ export const RETRY_DELAY_IN_MILLISECONDS = 15000
 export const RETRY_COUNT = 3
 export const NON_RETRY_HTTP_CODES = new Set([200, 201, 401, 403, 416])
 export const GITHUB_CLOUD_URL = 'https://github.com'
-export const GITHUB_DATA_RESIDENCY_URL_PATTERN = /^https:\/\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com$/
+export const GITHUB_DATA_RESIDENCY_SERVER_URL_PATTERN = /^https:\/\/([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com$/
+export const GITHUB_CLOUD_API_DOMAIN_REGEX = /^https:\/\/api\.(github\.com|([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com)$/
 export const BRIDGE_LOCAL_DIRECTORY = '.bridge'
 export const INTEGRATIONS_LOCAL_DIRECTORY = '.blackduck/integrations'
 export const BLACKDUCK_SARIF_GENERATOR_DIRECTORY = 'Blackduck SCA SARIF Generator'
@@ -325,6 +326,3 @@ export const VERSION = '3.5.0'
 export const SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION = '3.7.8'
 export const COVERITY_PRCOMMENT_NEW_FORMAT_VERSION = '3.9.0'
 export const NETWORK_SSL_VALIDATION_ERROR_MESSAGE = 'Both "network.ssl.cert.file" and "network.ssl.trustAll" are set. Only one of these resources should be set at a time."'
-
-// GitHub Cloud Domain Regex
-export const GITHUB_CLOUD_DOMAIN_REGEX = /^https:\/\/api\.(github\.com|([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com)$/

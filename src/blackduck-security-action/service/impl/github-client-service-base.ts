@@ -101,7 +101,7 @@ export class GithubClientServiceBase implements GithubClientServiceInterface {
       ref: this.githubRef,
       sarif: base64Sarif
     }
-    const isCloud = constants.GITHUB_CLOUD_DOMAIN_REGEX.test(this.githubApiURL)
+    const isCloud = constants.GITHUB_CLOUD_API_DOMAIN_REGEX.test(this.githubApiURL)
     if (isCloud) {
       data.validate = true
     }
