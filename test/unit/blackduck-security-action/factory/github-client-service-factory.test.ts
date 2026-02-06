@@ -179,4 +179,9 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.16')
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.17')
   })
+
+  it('should return GithubClientServiceCloud service for GHEC data residency domain', async () => {
+    process.env['GITHUB_API_URL'] = 'https://api.blackduck.ghe.com'
+    expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceCloud)
+  })
 })
