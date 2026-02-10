@@ -666,7 +666,7 @@ export class BridgeToolsParameter {
     const githubBranchName = this.getGithubBranchName()
     const githubRef = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF]
     const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
-    const githubHostUrl = isGitHubCloud() ? '' : githubServerUrl
+    const githubHostUrl = githubServerUrl === constants.GITHUB_CLOUD_URL ? '' : githubServerUrl
 
     debug(`Github Repository: ${process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]}`)
     debug(`Github Ref Name: ${process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF_NAME]}`)
