@@ -326,6 +326,3 @@ export const VERSION = '3.5.0'
 export const SOURCE_UPLOAD_UNSUPPORTED_BRIDGE_VERSION = '3.7.8'
 export const COVERITY_PRCOMMENT_NEW_FORMAT_VERSION = '3.9.0'
 export const NETWORK_SSL_VALIDATION_ERROR_MESSAGE = 'Both "network.ssl.cert.file" and "network.ssl.trustAll" are set. Only one of these resources should be set at a time."'
-
-// GitHub Cloud Domain Regex
-export const GITHUB_CLOUD_DOMAIN_REGEX = /^https:\/\/api\.(github\.com|([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+ghe\.com)$/

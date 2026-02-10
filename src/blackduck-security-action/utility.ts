@@ -100,6 +100,7 @@ export function isPullRequestEvent(): boolean {
 
 export function isGitHubCloud(): boolean {
   const githubServerUrl = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_SERVER_URL] || ''
+  info(`GitHub Server URL: ${githubServerUrl}`)
   return githubServerUrl === constants.GITHUB_CLOUD_URL || constants.GITHUB_DATA_RESIDENCY_SERVER_URL_PATTERN.test(githubServerUrl)
 }
 
