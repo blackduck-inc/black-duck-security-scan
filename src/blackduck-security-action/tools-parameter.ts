@@ -660,6 +660,7 @@ export class BridgeToolsParameter {
   }
 
   private getGithubRepoInfo(): GithubData | undefined {
+    info('HEEEEEE')
     const githubToken = inputs.GITHUB_TOKEN
     const githubRepo = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
     const githubRepoName = githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
@@ -685,6 +686,7 @@ export class BridgeToolsParameter {
 
     // This condition is required as per ts-lint as these fields may have undefined as well
     if (githubRepoName != null && githubBranchName != null && githubRepoOwner != null) {
+      info('HEEEEEE')
       return this.setGithubData(githubToken, githubRepoName, githubRepoOwner, githubBranchName, githubPrNumber, githubHostUrl)
     }
     return undefined
@@ -707,6 +709,7 @@ export class BridgeToolsParameter {
   }
 
   private setGithubData(githubToken: string, githubRepoName: string, githubRepoOwner: string, githubBranchName: string, githubPrNumber: string, githubHostUrl: string): GithubData {
+    info('HEEEEEEYY')
     const isPrEvent = isPullRequestEvent()
     const githubData: GithubData = {
       user: {
