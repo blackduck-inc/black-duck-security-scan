@@ -108,6 +108,13 @@ export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLi
 export const PROJECT_SOURCE_EXCLUDES_KEY = 'project_source_excludes'
 export const PROJECT_DIRECTORY_KEY = 'project_directory'
 
+// Black Duck GitHub Issues fetch parametrs
+export const POLARIS_EXTERNALISSUES_CREATE = 'polaris_externalIssues_create'
+export const POLARIS_EXTERNALISSUES_SEVERITIES = 'polaris_externalIssues_severities'
+export const POLARIS_EXTERNALISSUES_TYPES = 'polaris_externalIssues_types'
+export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES = 'polaris_externalIssues_groupSCAIssues'
+export const POLARIS_EXTERNALISSUES_MAXCOUNT = 'polaris_externalIssues_maxCount'
+
 // Blackduck
 /**
  * @deprecated Use blackducksca_url instead. This can be removed in future release.
@@ -220,6 +227,13 @@ export const BLACKDUCKSCA_POLICY_BADGES_CREATE_KEY = 'blackducksca_policy_badges
  */
 export const BLACKDUCK_POLICY_BADGES_MAX_COUNT_KEY = 'blackduck_policy_badges_maxCount'
 export const BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT_KEY = 'blackducksca_policy_badges_maxCount'
+
+// Black Duck GitHub Issues fetch parametrs
+export const BLACKDUCKSCA_EXTERNALISSUES_CREATE = 'blackducksca_externalIssues_create'
+export const BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES = 'blackducksca_externalIssues_severities'
+export const BLACKDUCKSCA_EXTERNALISSUES_TYPES = 'blackducksca_externalIssues_types'
+export const BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES = 'blackducksca_externalIssues_groupSCAIssues'
+export const BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT = 'blackducksca_externalIssues_maxCount'
 
 export const GITHUB_HOST_URL_KEY = 'github_host_url'
 export const GITHUB_TOKEN_KEY = 'github_token'

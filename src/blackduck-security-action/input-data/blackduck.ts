@@ -33,6 +33,7 @@ export interface BlackDuckSCAData extends Common {
   fixpr?: BlackDuckFixPrData
   reports?: Reports
   policy?: Policy
+  externalIssues?: ExternalIssues
 }
 
 export interface Policy {
@@ -77,4 +78,12 @@ export interface BlackDuckFixPrData {
 
 export interface BlackDuckFixPrFilerData {
   severities?: string[]
+}
+
+export interface ExternalIssues {
+  create?: boolean
+  severities?: string[]
+  types?: string[]
+  groupSCAIssues?: boolean
+  maxCount?: number
 }
