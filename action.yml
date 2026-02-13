@@ -119,7 +119,7 @@ inputs:
   polaris_waitForScan: 
     description: 'Specifies if the workflow should wait for the analysis to complete. Default value: true. If set to false, post merge workflows like PR comment, Fix PR, SARIF etc will not be applicable.'
     required: false
-  polaris_assessment_mode:
+  polaris_extrnalIssues_groupScaIssues:
     description: 'The test mode type of this scan'
     required: false
   polaris_externalIssues_create:
@@ -221,6 +221,25 @@ inputs:
   blackducksca_policy_badges_maxCount:
     description: 'To limit number of badges to be displayed on the GitHub repository'
     required: false
+  blackducksca_extrnalIssues_groupScaIssues:
+    description: 'The test mode type of this scan'
+    required: false
+  blackducksca_externalIssues_create:
+    description: 'Polaris External Issues Create'
+    required: false
+  blackducksca_externalIssues_types:
+    description: 'Polaris External Issues Types'
+    required: false
+  blackducksca_externalIssues_severities:
+    description: 'Polaris External Issues severities'
+    required: false
+  blackducksca_externalIssues_groupScaIssues:
+    description: 'Polaris External Issues groupScaIssues'
+    required: false
+  blackducksca_externalIssues_maxCount:
+    description: 'Polaris External Issues maxCount'
+    required: false
+
   srm_url:
     description: 'SRM Url'
     required: false
