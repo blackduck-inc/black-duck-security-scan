@@ -49,7 +49,7 @@ export const PROJECT_SOURCE_EXCLUDES = getInput(constants.PROJECT_SOURCE_EXCLUDE
 export const POLARIS_EXTERNALISSUES_CREATE = getInput(constants.POLARIS_EXTERNALISSUES_CREATE)?.trim().toLowerCase() === 'true' || false
 export const POLARIS_EXTERNALISSUES_SEVERITIES = getInput(constants.POLARIS_EXTERNALISSUES_SEVERITIES)?.trim() || ''
 export const POLARIS_EXTERNALISSUES_TYPES = getInput(constants.POLARIS_EXTERNALISSUES_TYPES)?.trim() || ''
-export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES = getInput(constants.POLARIS_EXTERNALISSUES_CREATE)?.trim().toLowerCase() === 'true' || false
+export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES = getInput(constants.POLARIS_EXTERNALISSUES_GROUPSCAISSUES)?.trim().toLowerCase() === 'true' || false
 export const POLARIS_EXTERNALISSUES_MAXCOUNT = getInput(constants.POLARIS_EXTERNALISSUES_MAXCOUNT)?.trim() || ''
 
 // Coverity related inputs
