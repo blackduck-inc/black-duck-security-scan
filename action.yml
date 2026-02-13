@@ -122,6 +122,21 @@ inputs:
   polaris_assessment_mode:
     description: 'The test mode type of this scan'
     required: false
+  polaris_externalIssues_create:
+    description: 'Polaris External Issues Create'
+    required: false
+  polaris_externalIssues_types:
+    description: 'Polaris External Issues Types'
+    required: false
+  polaris_externalIssues_severities:
+    description: 'Polaris External Issues severities'
+    required: false
+  polaris_externalIssues_groupScaIssues:
+    description: 'Polaris External Issues groupScaIssues'
+    required: false
+  polaris_externalIssues_maxCount:
+    description: 'Polaris External Issues maxCount'
+    required: false
   project_directory:
     description: 'The project source directory. Defaults to repository root directory. Set this to specify a custom folder that is other than repository root'
     required: false
