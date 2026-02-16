@@ -595,7 +595,7 @@ export class BridgeToolsParameter {
 
     blackduckData.data.network = this.setNetworkObj()
     // Github Issues Input parameters
-    if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE || inputs.BLACKDUCKSCA_EXTERNALISSUES_TYPES || inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES || inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES || inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT) {
+    if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE || inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES || inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES || inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT) {
       blackduckData.data.blackducksca.externalIssues = {}
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE) {
         blackduckData.data.blackducksca.externalIssues.create = inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE
@@ -612,19 +612,6 @@ export class BridgeToolsParameter {
           }
         }
         blackduckData.data.blackducksca.externalIssues.severities = externalIssuesSeverities
-      }
-      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_TYPES) {
-        const externalIssuesTypes: string[] = []
-        const inputExternalIssuesTypes = inputs.BLACKDUCKSCA_EXTERNALISSUES_TYPES
-        if (inputExternalIssuesTypes != null && inputExternalIssuesTypes.length > 0) {
-          const typesValues = inputExternalIssuesTypes.split(',')
-          for (const type of typesValues) {
-            if (type.trim()) {
-              externalIssuesTypes.push(type.trim())
-            }
-          }
-        }
-        blackduckData.data.blackducksca.externalIssues.types = externalIssuesTypes
       }
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES) {
         blackduckData.data.blackducksca.externalIssues.groupSCAIssues = inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES

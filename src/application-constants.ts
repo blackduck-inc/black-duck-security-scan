@@ -231,7 +231,6 @@ export const BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT_KEY = 'blackducksca_policy_bad
 // Black Duck GitHub Issues fetch parametrs
 export const BLACKDUCKSCA_EXTERNALISSUES_CREATE_KEY = 'blackducksca_externalIssues_create'
 export const BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES_KEY = 'blackducksca_externalIssues_severities'
-export const BLACKDUCKSCA_EXTERNALISSUES_TYPES_KEY = 'blackducksca_externalIssues_types'
 export const BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES_KEY = 'blackducksca_externalIssues_groupSCAIssues'
 export const BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT_KEY = 'blackducksca_externalIssues_maxCount'
 

@@ -83,7 +83,6 @@ export interface BlackDuckFixPrFilerData {
 export interface ExternalIssues {
   create?: boolean
   severities?: string[]
-  types?: string[]
   groupSCAIssues?: boolean
   maxCount?: number
 }
