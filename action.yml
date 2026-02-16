@@ -122,9 +122,6 @@ inputs:
   polaris_assessment_mode:
     description: 'The test mode type of this scan'
     required: false
-  polaris_extrnalIssues_groupScaIssues:
-    description: 'The test mode type of this scan'
-    required: false
   polaris_externalIssues_create:
     description: 'Polaris External Issues Create'
     required: false
