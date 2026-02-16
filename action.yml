@@ -221,9 +221,6 @@ inputs:
   blackducksca_policy_badges_maxCount:
     description: 'To limit number of badges to be displayed on the GitHub repository'
     required: false
-  blackducksca_extrnalIssues_groupScaIssues:
-    description: 'The test mode type of this scan'
-    required: false
   blackducksca_externalIssues_create:
     description: 'Black Duck SCA External Issues Create'
     required: false
