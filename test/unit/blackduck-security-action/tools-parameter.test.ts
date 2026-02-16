@@ -1676,3 +1676,236 @@ describe('Polaris with Coverity Version Support', () => {
     })
   })
 })
+
+describe('Polaris External Issues', () => {
+  beforeEach(() => {
+    // Clean up all external issues related inputs
+    delete (inputs as any).POLARIS_EXTERNALISSUES_CREATE
+    delete (inputs as any).POLARIS_EXTERNALISSUES_TYPES
+    delete (inputs as any).POLARIS_EXTERNALISSUES_SEVERITIES
+    delete (inputs as any).POLARIS_EXTERNALISSUES_GROUPSCAISSUES
+    delete (inputs as any).POLARIS_EXTERNALISSUES_MAXCOUNT
+  })
+
+  test('should handle all external issues inputs', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_CREATE', {value: 'true', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_TYPES', {value: 'BUG, VULNERABILITY', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_SEVERITIES', {value: 'CRITICAL, HIGH', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_GROUPSCAISSUES', {value: 'true', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_MAXCOUNT', {value: '10', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+    expect(jsonData.data.polaris.externalIssues.create).toBe(true)
+    expect(jsonData.data.polaris.externalIssues.types).toEqual(['BUG', 'VULNERABILITY'])
+    expect(jsonData.data.polaris.externalIssues.severities).toEqual(['CRITICAL', 'HIGH'])
+    expect(jsonData.data.polaris.externalIssues.groupSCAIssues).toBe(true)
+    expect(jsonData.data.polaris.externalIssues.maxCount).toBe(10)
+  })
+  test('should handle create false', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_CREATE', {value: 'false', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.polaris.externalIssues.create).toBe(false)
+  })
+
+  test('should handle groupSCAIssues false', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_GROUPSCAISSUES', {value: 'false', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.polaris.externalIssues.groupSCAIssues).toBe(false)
+  })
+
+  test('should handle only severities', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_SEVERITIES', {value: 'LOW, MEDIUM', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.polaris.externalIssues.severities).toEqual(['LOW', 'MEDIUM'])
+  })
+
+  test('should handle empty strings', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_CREATE', {value: '', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.polaris.externalIssues).toBeUndefined()
+  })
+
+  test('should handle invalid maxCount', () => {
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_EXTERNALISSUES_MAXCOUNT', {value: 'invalid', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.polaris.externalIssues.maxCount).toBeUndefined()
+  })
+})
+
+describe('Black Duck External Issues', () => {
+  beforeEach(() => {
+    // Clean up all external issues related inputs
+    delete (inputs as any).BLACKDUCKSCA_EXTERNALISSUES_CREATE
+    delete (inputs as any).BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES
+    delete (inputs as any).BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES
+    delete (inputs as any).BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT
+  })
+
+  test('should handle all external issues inputs', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_CREATE', {value: 'true', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES', {value: 'CRITICAL, HIGH', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES', {value: 'true', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT', {value: '10', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage blackduck')
+    expect(jsonData.data.blackducksca.externalIssues.create).toBe(true)
+    expect(jsonData.data.blackducksca.externalIssues.severities).toEqual(['CRITICAL', 'HIGH'])
+    expect(jsonData.data.blackducksca.externalIssues.groupSCAIssues).toBe(true)
+    expect(jsonData.data.blackducksca.externalIssues.maxCount).toBe(10)
+  })
+  test('should handle create false', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_CREATE', {value: 'false', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.blackducksca.externalIssues.create).toBe(false)
+  })
+
+  test('should handle groupSCAIssues false', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES', {value: 'false', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.blackducksca.externalIssues.groupSCAIssues).toBe(false)
+  })
+
+  test('should handle only severities', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES', {value: 'LOW, MEDIUM', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.blackducksca.externalIssues.severities).toEqual(['LOW', 'MEDIUM'])
+  })
+
+  test('should handle empty strings', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_CREATE', {value: '', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.blackducksca.externalIssues).toBeUndefined()
+  })
+
+  test('should handle invalid maxCount', () => {
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN', configurable: true})
+    Object.defineProperty(inputs, 'BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT', {value: 'invalid', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForBlackduck()
+
+    const jsonString = fs.readFileSync(tempPath.concat(blackduck_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(resp).not.toBeNull()
+    expect(jsonData.data.blackducksca.externalIssues.maxCount).toBeUndefined()
+  })
+})

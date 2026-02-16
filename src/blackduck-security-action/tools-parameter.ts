@@ -199,8 +199,8 @@ export class BridgeToolsParameter {
     // Github Issues Input parameters
     if (inputs.POLARIS_EXTERNALISSUES_CREATE || inputs.POLARIS_EXTERNALISSUES_TYPES || inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES || inputs.POLARIS_EXTERNALISSUES_SEVERITIES || inputs.POLARIS_EXTERNALISSUES_MAXCOUNT) {
       polData.data.polaris.externalIssues = {}
-      if (inputs.POLARIS_EXTERNALISSUES_CREATE) {
-        polData.data.polaris.externalIssues.create = inputs.POLARIS_EXTERNALISSUES_CREATE
+      if (inputs.POLARIS_EXTERNALISSUES_CREATE !== '' && inputs.POLARIS_EXTERNALISSUES_CREATE !== undefined) {
+        polData.data.polaris.externalIssues.create = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)
       }
       if (inputs.POLARIS_EXTERNALISSUES_SEVERITIES) {
         const externalIssuesSeverities: string[] = []
@@ -228,10 +228,10 @@ export class BridgeToolsParameter {
         }
         polData.data.polaris.externalIssues.types = externalIssuesTypes
       }
-      if (inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES) {
-        polData.data.polaris.externalIssues.groupSCAIssues = inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES
+      if (inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
+        polData.data.polaris.externalIssues.groupSCAIssues = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES)
       }
-      if (inputs.POLARIS_EXTERNALISSUES_MAXCOUNT) {
+      if (Number.isInteger(parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT))) {
         polData.data.polaris.externalIssues.maxCount = parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT)
       }
     }
@@ -596,8 +596,8 @@ export class BridgeToolsParameter {
     // Github Issues Input parameters
     if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE || inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES || inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES || inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT) {
       blackduckData.data.blackducksca.externalIssues = {}
-      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE) {
-        blackduckData.data.blackducksca.externalIssues.create = inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE
+      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== undefined) {
+        blackduckData.data.blackducksca.externalIssues.create = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE)
       }
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES) {
         const externalIssuesSeverities: string[] = []
@@ -612,10 +612,10 @@ export class BridgeToolsParameter {
         }
         blackduckData.data.blackducksca.externalIssues.severities = externalIssuesSeverities
       }
-      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES) {
-        blackduckData.data.blackducksca.externalIssues.groupSCAIssues = inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES
+      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
+        blackduckData.data.blackducksca.externalIssues.groupSCAIssues = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES)
       }
-      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT) {
+      if (Number.isInteger(parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT))) {
         blackduckData.data.blackducksca.externalIssues.maxCount = parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT)
       }
     }

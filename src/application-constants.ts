@@ -108,7 +108,7 @@ export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLi
 export const PROJECT_SOURCE_EXCLUDES_KEY = 'project_source_excludes'
 export const PROJECT_DIRECTORY_KEY = 'project_directory'
 
-// Black Duck GitHub Issues fetch parametrs
+// Black Duck GitHub Issues fetch parameters
 export const POLARIS_EXTERNALISSUES_CREATE_KEY = 'polaris_externalIssues_create'
 export const POLARIS_EXTERNALISSUES_SEVERITIES_KEY = 'polaris_externalIssues_severities'
 export const POLARIS_EXTERNALISSUES_TYPES_KEY = 'polaris_externalIssues_types'
@@ -228,7 +228,7 @@ export const BLACKDUCKSCA_POLICY_BADGES_CREATE_KEY = 'blackducksca_policy_badges
 export const BLACKDUCK_POLICY_BADGES_MAX_COUNT_KEY = 'blackduck_policy_badges_maxCount'
 export const BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT_KEY = 'blackducksca_policy_badges_maxCount'
 
-// Black Duck GitHub Issues fetch parametrs
+// Black Duck GitHub Issues fetch parameters
 export const BLACKDUCKSCA_EXTERNALISSUES_CREATE_KEY = 'blackducksca_externalIssues_create'
 export const BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES_KEY = 'blackducksca_externalIssues_severities'
 export const BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES_KEY = 'blackducksca_externalIssues_groupSCAIssues'
