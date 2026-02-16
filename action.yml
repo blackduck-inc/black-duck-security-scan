@@ -228,16 +228,16 @@ inputs:
     description: 'The test mode type of this scan'
     required: false
   blackducksca_externalIssues_create:
-    description: 'Polaris External Issues Create'
+    description: 'Black Duck SCA External Issues Create'
     required: false
   blackducksca_externalIssues_severities:
-    description: 'Polaris External Issues severities'
+    description: 'Black Duck SCA External Issues severities'
     required: false
   blackducksca_externalIssues_groupSCAIssues:
-    description: 'Polaris External Issues groupScaIssues'
+    description: 'Black Duck SCA External Issues groupSCAIssues'
     required: false
   blackducksca_externalIssues_maxCount:
-    description: 'Polaris External Issues maxCount'
+    description: 'Black Duck SCA External Issues maxCount'
     required: false
 
   srm_url:
