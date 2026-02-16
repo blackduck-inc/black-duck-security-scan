@@ -234,6 +234,7 @@ export class BridgeToolsParameter {
       if (Number.isInteger(parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT))) {
         polData.data.polaris.externalIssues.maxCount = parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT)
       }
+      polData.data.github = this.getGithubRepoInfo()
     }
     if (!isPrEvent) {
       if (parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
@@ -319,6 +320,7 @@ export class BridgeToolsParameter {
     fs.writeFileSync(stateFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
+    info('Polaris Input.json content - '.concat(inputJson))
 
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
     return command
@@ -618,6 +620,7 @@ export class BridgeToolsParameter {
       if (Number.isInteger(parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT))) {
         blackduckData.data.blackducksca.externalIssues.maxCount = parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT)
       }
+      blackduckData.data.github = this.getGithubRepoInfo()
     }
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
