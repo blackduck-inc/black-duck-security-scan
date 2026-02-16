@@ -201,6 +201,7 @@ export class BridgeToolsParameter {
       polData.data.polaris.externalIssues = {}
       if (inputs.POLARIS_EXTERNALISSUES_CREATE !== '' && inputs.POLARIS_EXTERNALISSUES_CREATE !== undefined) {
         polData.data.polaris.externalIssues.create = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)
+        polData.data.github = this.getGithubRepoInfo()
       }
       if (inputs.POLARIS_EXTERNALISSUES_SEVERITIES) {
         const externalIssuesSeverities: string[] = []
@@ -234,7 +235,6 @@ export class BridgeToolsParameter {
       if (Number.isInteger(parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT))) {
         polData.data.polaris.externalIssues.maxCount = parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT)
       }
-      polData.data.github = this.getGithubRepoInfo()
     }
     if (!isPrEvent) {
       if (parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
@@ -600,6 +600,7 @@ export class BridgeToolsParameter {
       blackduckData.data.blackducksca.externalIssues = {}
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== undefined) {
         blackduckData.data.blackducksca.externalIssues.create = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE)
+        blackduckData.data.github = this.getGithubRepoInfo()
       }
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES) {
         const externalIssuesSeverities: string[] = []
@@ -620,7 +621,6 @@ export class BridgeToolsParameter {
       if (Number.isInteger(parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT))) {
         blackduckData.data.blackducksca.externalIssues.maxCount = parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT)
       }
-      blackduckData.data.github = this.getGithubRepoInfo()
     }
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
@@ -631,6 +631,7 @@ export class BridgeToolsParameter {
     fs.writeFileSync(stateFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
+    info('BlackduckSca Input.json content - '.concat(inputJson))
 
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.BLACKDUCK_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
     return command
