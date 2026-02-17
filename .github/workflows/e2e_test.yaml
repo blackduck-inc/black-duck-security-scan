@@ -1,48 +1,48 @@
 name: "E2E Deployment testing workflow"
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+    branches: [main]
 jobs:
-
-  delivery_stages:
-
-     runs-on: [ E2E-test-linux ]
-
-     steps:
-      
-      - name: unit testing
-        run: |
-          echo "unit testing stage"
-      - name: build
-        run: |
-          echo "build stage"
-      - name: pop
-        run: |
-          echo "Pop stage"
-      
-      
-  e2e_linux_executions:
+  e2e-executions:
+    runs-on:
+      group: linux-x64
     
-      needs: delivery_stages         
-      runs-on: [ E2E-test-linux ]
-
-      steps:
-
-      - name: install
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: linux-x64
+            runner_os: linux
+          - runner: linux-arm64
+            runner_os: linux
+          - runner: macos-arm64
+            runner_os: mac
+          - runner: macos-x64
+            runner_os: mac
+          - runner: windows-x64
+            runner_os: Windows
+    steps:
+      - name: Set up Java 11
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -qqy awscli jq openjdk-11-jdk
-            
-      - name: download e2e artifacts
+          sudo apt-get install -qqy jq unzip curl
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -q awscliv2.zip
+          sudo ./aws/install
+          aws --version
+      
+      - name: Download e2e artifacts
         run: |
           aws s3 cp --recursive s3://e2e-integrations-test/e2e-artifacts/integrations/yml-data integrations/yml-data --no-progress
-          ls -al
           aws s3 cp s3://e2e-integrations-test/e2e-artifacts/test-integrations-0.0.1-SNAPSHOT.jar test-integrations-0.0.1-SNAPSHOT.jar --no-progress
           ls -al
-          pwd
+          
       - name: Extract secrets
         uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
@@ -50,155 +50,43 @@ jobs:
             QA_GITHUB_TOKEN
           parse-json-secrets: true
       
-      - name: e2e_tests_linux
+      - name: Run e2e tests for ${{ matrix.platform.runner }}
+        env:
+          JAR_NAME: test-integrations-0.0.1-SNAPSHOT.jar
+          XML_PATH: com/synopsys/test/integrations/cases/suites/deployment/testng-scm-deployment.xml
         run: |
-          pwd
-          ls -la
           if [[ $GITHUB_EVENT_NAME == 'push' ]]; then
-            echo github.action.version=${GITHUB_REF#refs/heads/} >> /tmp/test.properties
+            echo "github.action.version=${GITHUB_REF#refs/heads/}" >> /tmp/test.properties
           else
-            echo github.action.version=$GITHUB_HEAD_REF >> /tmp/test.properties
+            echo "github.action.version=$GITHUB_HEAD_REF" >> /tmp/test.properties
           fi
-          echo "product=integrations" >> /tmp/test.properties
-          echo "product.name=integrations" >> /tmp/test.properties
-          echo "scm=github" >> /tmp/test.properties
-          echo "runner=linux" >> /tmp/test.properties
-          echo "runner.os=linux" >> /tmp/test.properties
-          echo "pipeline=true" >> /tmp/test.properties
-          echo "cloud.storage=S3" >> /tmp/test.properties
-          echo "github.token=${{env.QA_GITHUB_TOKEN_QA_GITHUB_TOKEN}}" >> /tmp/test.properties
-          chmod 755 test-integrations-0.0.1-SNAPSHOT.jar
-          pwd  && ls -la
+          
+          cat >> /tmp/test.properties << EOF
+          product=integrations
+          product.name=integrations
+          scm=github
+          runner=${{ matrix.platform.runner }}
+          runner.os=${{ matrix.platform.runner_os }}
+          pipeline=true
+          cloud.storage=S3
+          github.token=${{ env.QA_GITHUB_TOKEN_QA_GITHUB_TOKEN }}
+          github.type=blackduck
+          EOF
+          
+          chmod 755 $JAR_NAME
+          pwd && ls -la
           cat /tmp/test.properties
-          java -enableassertions -DPropertyManager.file=/tmp/test.properties -jar test-integrations-0.0.1-SNAPSHOT.jar -testjar test-integrations-0.0.1-SNAPSHOT.jar  -xmlpathinjar com/synopsys/test/integrations/cases/suites/deployment/testng-github-scm.xml
+          
+          java -enableassertions \
+            -DPropertyManager.file=/tmp/test.properties \
+            -jar $JAR_NAME \
+            -testjar $JAR_NAME \
+            -xmlpathinjar $XML_PATH
       
       - name: Archive results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-output
-          path: test-output
-
-
-  e2e_mac_executions:
-
-      needs: delivery_stages
-      runs-on: [ E2E-test-linux ]
-
-      steps:
-
-      - name: install
-        run: |
-          sudo apt-get update
-          sudo apt-get install -qqy awscli jq openjdk-11-jdk  
-      
-      - name: download e2e artifacts
-        run: |
-          aws s3 cp --recursive s3://e2e-integrations-test/e2e-artifacts/integrations/yml-data integrations/yml-data --no-progress
-          ls -al
-          aws s3 cp s3://e2e-integrations-test/e2e-artifacts/test-integrations-0.0.1-SNAPSHOT.jar test-integrations-0.0.1-SNAPSHOT.jar --no-progress
-          ls -al
-          pwd
-          
-      - name: Extract secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            QA_GITHUB_TOKEN
-          parse-json-secrets: true    
-
-      - name: e2e_tests_mac
-        run: |
-          
-          if [[ $GITHUB_EVENT_NAME == 'push' ]]; then
-            echo github.action.version=${GITHUB_REF#refs/heads/} >> /tmp/test.properties
-          else
-            echo github.action.version=$GITHUB_HEAD_REF >> /tmp/test.properties
-          fi
-          echo "product=integrations" >> /tmp/test.properties
-          echo "product.name=integrations" >> /tmp/test.properties
-          echo "scm=github" >> /tmp/test.properties
-          echo "runner=macos" >> /tmp/test.properties
-          echo "runner.os=mac" >> /tmp/test.properties
-          echo "pipeline=true" >> /tmp/test.properties
-          echo "cloud.storage=S3" >> /tmp/test.properties
-          echo "github.token=${{env.QA_GITHUB_TOKEN_QA_GITHUB_TOKEN}}" >> /tmp/test.properties
-          chmod 755 test-integrations-0.0.1-SNAPSHOT.jar
-          pwd  && ls -la
-          cat /tmp/test.properties
-          java -enableassertions -DPropertyManager.file=/tmp/test.properties -jar test-integrations-0.0.1-SNAPSHOT.jar -testjar test-integrations-0.0.1-SNAPSHOT.jar  -xmlpathinjar com/synopsys/test/integrations/cases/suites/deployment/testng-github-scm.xml
-
-
-      - name: Archive results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: test-output
-              
-  e2e_windows_executions:
-    
-      needs: delivery_stages
-      runs-on: [ E2E-test-linux ]
-
-      steps:
-
-      - name: install
-        run: |
-          sudo apt-get update
-          sudo apt-get install -qqy awscli jq openjdk-11-jdk  
-
-      - name: download e2e artifacts
-        run: |
-          aws s3 cp --recursive s3://e2e-integrations-test/e2e-artifacts/integrations/yml-data integrations/yml-data --no-progress
-          ls -al
-          aws s3 cp s3://e2e-integrations-test/e2e-artifacts/test-integrations-0.0.1-SNAPSHOT.jar test-integrations-0.0.1-SNAPSHOT.jar --no-progress
-          ls -al
-          pwd 
-
-      - name: Extract secrets
-        uses: aws-actions/aws-secretsmanager-get-secrets@v2
-        with:
-          secret-ids: |
-            QA_GITHUB_TOKEN
-          parse-json-secrets: true    
-        
-      - name: e2e_tests_windows
-        run: |
-          
-          if [[ $GITHUB_EVENT_NAME == 'push' ]]; then
-            echo github.action.version=${GITHUB_REF#refs/heads/} >> /tmp/test.properties
-          else
-            echo github.action.version=$GITHUB_HEAD_REF >> /tmp/test.properties
-          fi
-          echo "product=integrations" >> /tmp/test.properties
-          echo "product.name=integrations" >> /tmp/test.properties
-          echo "scm=github" >> /tmp/test.properties
-          echo "runner=Windows" >> /tmp/test.properties
-          echo "runner.os=Windows" >> /tmp/test.properties
-          echo "pipeline=true" >> /tmp/test.properties
-          echo "cloud.storage=S3" >> /tmp/test.properties
-          echo "github.token=${{env.QA_GITHUB_TOKEN_QA_GITHUB_TOKEN}}" >> /tmp/test.properties
-          chmod 755 test-integrations-0.0.1-SNAPSHOT.jar
-          pwd  && ls -la
-          cat /tmp/test.properties
-          java -enableassertions -DPropertyManager.file=/tmp/test.properties -jar test-integrations-0.0.1-SNAPSHOT.jar -testjar test-integrations-0.0.1-SNAPSHOT.jar  -xmlpathinjar com/synopsys/test/integrations/cases/suites/deployment/testng-github-scm.xml
-  
-      - name: Archive results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-output
-          path: test-output
-
-  post_e2e_executions:
-
-      needs: [e2e_linux_executions, e2e_mac_executions, e2e_windows_executions]
-      runs-on: [ E2E-test-linux ]
-
-      steps:
-
-      - name: publish
-        run: |
-          echo "publish stage"  
+          name: test-output-${{ matrix.platform.runner }}
+          path: test-output 
 
