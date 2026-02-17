@@ -45,6 +45,13 @@ export const PROJECT_SOURCE_ARCHIVE = getInput(constants.PROJECT_SOURCE_ARCHIVE_
 export const PROJECT_SOURCE_PRESERVESYMLINKS = getInput(constants.PROJECT_SOURCE_PRESERVESYMLINKS_KEY)?.trim() || ''
 export const PROJECT_SOURCE_EXCLUDES = getInput(constants.PROJECT_SOURCE_EXCLUDES_KEY)?.trim() || ''
 
+// GitHub Issues Parameters for Polaris
+export const POLARIS_EXTERNALISSUES_CREATE = getInput(constants.POLARIS_EXTERNALISSUES_CREATE_KEY)?.trim() || ''
+export const POLARIS_EXTERNALISSUES_SEVERITIES = getInput(constants.POLARIS_EXTERNALISSUES_SEVERITIES_KEY)?.trim() || ''
+export const POLARIS_EXTERNALISSUES_TYPES = getInput(constants.POLARIS_EXTERNALISSUES_TYPES_KEY)?.trim() || ''
+export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES = getInput(constants.POLARIS_EXTERNALISSUES_GROUPSCAISSUES_KEY)?.trim() || ''
+export const POLARIS_EXTERNALISSUES_MAXCOUNT = getInput(constants.POLARIS_EXTERNALISSUES_MAXCOUNT_KEY)?.trim() || ''
+
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''
 export const COVERITY_USER = getInput(constants.COVERITY_USER_KEY)?.trim() || ''
@@ -81,6 +88,13 @@ export const BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES = getInput(constants.BLACKDUC
 export const BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES = getInput(constants.BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY)?.trim() || getInput(constants.BLACKDUCK_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY)?.trim() || ''
 export const BLACKDUCK_UPLOAD_SARIF_REPORT = getInput(constants.BLACKDUCKSCA_UPLOAD_SARIF_REPORT_KEY)?.trim() || getInput(constants.BLACKDUCK_UPLOAD_SARIF_REPORT_KEY)?.trim() || ''
 export const BLACKDUCKSCA_WAITFORSCAN = getInput(constants.BLACKDUCKSCA_WAITFORSCAN_KEY)?.trim() || getInput(constants.BLACKDUCK_WAITFORSCAN_KEY)?.trim() || ''
+
+// GitHub Issues Parameters for Polaris
+export const BLACKDUCKSCA_EXTERNALISSUES_CREATE = getInput(constants.BLACKDUCKSCA_EXTERNALISSUES_CREATE_KEY)?.trim() || ''
+export const BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES = getInput(constants.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES_KEY)?.trim() || ''
+export const BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES = getInput(constants.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES_KEY)?.trim() || ''
+export const BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT = getInput(constants.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT_KEY)?.trim() || ''
+
 export const DETECT_SEARCH_DEPTH = getInput(constants.DETECT_SEARCH_DEPTH_KEY)?.trim() || getInput(constants.BLACKDUCK_SEARCH_DEPTH_KEY)?.trim() || ''
 export const DETECT_CONFIG_PATH = getInput(constants.DETECT_CONFIG_PATH_KEY)?.trim() || getInput(constants.BLACKDUCK_CONFIG_PATH_KEY)?.trim() || ''
 export const DETECT_ARGS = getInput(constants.DETECT_ARGS_KEY)?.trim() || getInput(constants.BLACKDUCK_ARGS_KEY)?.trim() || ''

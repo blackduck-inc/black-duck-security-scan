@@ -108,6 +108,13 @@ export const PROJECT_SOURCE_PRESERVESYMLINKS_KEY = 'project_source_preserveSymLi
 export const PROJECT_SOURCE_EXCLUDES_KEY = 'project_source_excludes'
 export const PROJECT_DIRECTORY_KEY = 'project_directory'
 
+// Black Duck GitHub Issues fetch parameters
+export const POLARIS_EXTERNALISSUES_CREATE_KEY = 'polaris_externalIssues_create'
+export const POLARIS_EXTERNALISSUES_SEVERITIES_KEY = 'polaris_externalIssues_severities'
+export const POLARIS_EXTERNALISSUES_TYPES_KEY = 'polaris_externalIssues_types'
+export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES_KEY = 'polaris_externalIssues_groupSCAIssues'
+export const POLARIS_EXTERNALISSUES_MAXCOUNT_KEY = 'polaris_externalIssues_maxCount'
+
 // Blackduck
 /**
  * @deprecated Use blackducksca_url instead. This can be removed in future release.
@@ -221,6 +228,12 @@ export const BLACKDUCKSCA_POLICY_BADGES_CREATE_KEY = 'blackducksca_policy_badges
 export const BLACKDUCK_POLICY_BADGES_MAX_COUNT_KEY = 'blackduck_policy_badges_maxCount'
 export const BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT_KEY = 'blackducksca_policy_badges_maxCount'
 
+// Black Duck GitHub Issues fetch parameters
+export const BLACKDUCKSCA_EXTERNALISSUES_CREATE_KEY = 'blackducksca_externalIssues_create'
+export const BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES_KEY = 'blackducksca_externalIssues_severities'
+export const BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES_KEY = 'blackducksca_externalIssues_groupSCAIssues'
+export const BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT_KEY = 'blackducksca_externalIssues_maxCount'
+
 export const GITHUB_HOST_URL_KEY = 'github_host_url'
 export const GITHUB_TOKEN_KEY = 'github_token'
 export const INCLUDE_DIAGNOSTICS_KEY = 'include_diagnostics'
@@ -284,7 +297,7 @@ export const COVERITY_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS = 'Coverity PR Commen
 export const BLACKDUCK_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS = 'Black Duck PR Comment is ignored for non pull request scan'
 export const BLACKDUCK_FIXPR_LOG_INFO_FOR_PR_SCANS = 'Black Duck Fix PR is ignored for pull request scan'
 export const GITHUB_TOKEN_VALIDATION_SARIF_UPLOAD_ERROR = 'Missing required GitHub token for uploading SARIF report to GitHub Advanced Security'
-export const MISSING_GITHUB_TOKEN_FOR_FIX_PR_AND_PR_COMMENT_ERROR = 'Missing required github token for fix pull request/pull request comments/Github Badges'
+export const MISSING_GITHUB_TOKEN_FOR_FIX_PR_AND_PR_COMMENT_ERROR = 'Missing required github token for fix pull request/pull request comments/Github Badges/GitHub Issues integration'
 export const BRIDGE_VERSION_NOT_FOUND_ERROR = 'Provided Bridge CLI version not found in artifactory'
 export const BRIDGE_CLI_URL_NOT_VALID_OS_ERROR = 'Provided Bridge CLI url is not valid for the configured '
 export const BRIDGE_CLI_URL_NOT_VALID_ERROR = 'Invalid URL'

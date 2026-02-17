@@ -196,6 +196,48 @@ export class BridgeToolsParameter {
         info(constants.POLARIS_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS)
       }
     }
+    // Github Issues Input parameters
+    if (inputs.POLARIS_EXTERNALISSUES_CREATE || inputs.POLARIS_EXTERNALISSUES_TYPES || inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES || inputs.POLARIS_EXTERNALISSUES_SEVERITIES || inputs.POLARIS_EXTERNALISSUES_MAXCOUNT) {
+      polData.data.polaris.externalIssues = {}
+      if (inputs.POLARIS_EXTERNALISSUES_CREATE !== '' && inputs.POLARIS_EXTERNALISSUES_CREATE !== undefined) {
+        if (parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)) {
+          polData.data.github = this.getGithubRepoInfo()
+        }
+        polData.data.polaris.externalIssues.create = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)
+      }
+      if (inputs.POLARIS_EXTERNALISSUES_SEVERITIES) {
+        const externalIssuesSeverities: string[] = []
+        const inputExternalIssuesSeverities = inputs.POLARIS_EXTERNALISSUES_SEVERITIES
+        if (inputExternalIssuesSeverities != null && inputExternalIssuesSeverities.length > 0) {
+          const severityValues = inputExternalIssuesSeverities.split(',')
+          for (const severity of severityValues) {
+            if (severity.trim()) {
+              externalIssuesSeverities.push(severity.trim())
+            }
+          }
+        }
+        polData.data.polaris.externalIssues.severities = externalIssuesSeverities
+      }
+      if (inputs.POLARIS_EXTERNALISSUES_TYPES) {
+        const externalIssuesTypes: string[] = []
+        const inputExternalIssuesTypes = inputs.POLARIS_EXTERNALISSUES_TYPES
+        if (inputExternalIssuesTypes != null && inputExternalIssuesTypes.length > 0) {
+          const typesValues = inputExternalIssuesTypes.split(',')
+          for (const type of typesValues) {
+            if (type.trim()) {
+              externalIssuesTypes.push(type.trim())
+            }
+          }
+        }
+        polData.data.polaris.externalIssues.types = externalIssuesTypes
+      }
+      if (inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
+        polData.data.polaris.externalIssues.groupSCAIssues = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES)
+      }
+      if (Number.isInteger(parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT))) {
+        polData.data.polaris.externalIssues.maxCount = parseInt(inputs.POLARIS_EXTERNALISSUES_MAXCOUNT)
+      }
+    }
     if (!isPrEvent) {
       if (parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
         /** Set Polaris SARIF inputs in case of non PR context */
@@ -554,6 +596,35 @@ export class BridgeToolsParameter {
     }
 
     blackduckData.data.network = this.setNetworkObj()
+    // Github Issues Input parameters
+    if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE || inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES || inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES || inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT) {
+      blackduckData.data.blackducksca.externalIssues = {}
+      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE !== undefined) {
+        if (parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE)) {
+          blackduckData.data.github = this.getGithubRepoInfo()
+        }
+        blackduckData.data.blackducksca.externalIssues.create = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE)
+      }
+      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES) {
+        const externalIssuesSeverities: string[] = []
+        const inputExternalIssuesSeverities = inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES
+        if (inputExternalIssuesSeverities != null && inputExternalIssuesSeverities.length > 0) {
+          const severityValues = inputExternalIssuesSeverities.split(',')
+          for (const severity of severityValues) {
+            if (severity.trim()) {
+              externalIssuesSeverities.push(severity.trim())
+            }
+          }
+        }
+        blackduckData.data.blackducksca.externalIssues.severities = externalIssuesSeverities
+      }
+      if (inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
+        blackduckData.data.blackducksca.externalIssues.groupSCAIssues = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES)
+      }
+      if (Number.isInteger(parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT))) {
+        blackduckData.data.blackducksca.externalIssues.maxCount = parseInt(inputs.BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT)
+      }
+    }
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
 

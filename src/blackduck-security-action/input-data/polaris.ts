@@ -34,6 +34,7 @@ export interface PolarisData extends Common {
   test?: Test
   reports?: Reports
   policy?: Policy
+  externalIssues?: ExternalIssues
 }
 
 export interface Policy {
@@ -72,4 +73,12 @@ export interface Test {
 interface TestDetails {
   type?: string | string[]
   location?: string
+}
+
+export interface ExternalIssues {
+  create?: boolean
+  severities?: string[]
+  types?: string[]
+  groupSCAIssues?: boolean
+  maxCount?: number
 }

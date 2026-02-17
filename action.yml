@@ -122,6 +122,21 @@ inputs:
   polaris_assessment_mode:
     description: 'The test mode type of this scan'
     required: false
+  polaris_externalIssues_create:
+    description: 'Polaris External Issues Create'
+    required: false
+  polaris_externalIssues_types:
+    description: 'Polaris External Issues Types'
+    required: false
+  polaris_externalIssues_severities:
+    description: 'Polaris External Issues severities'
+    required: false
+  polaris_externalIssues_groupSCAIssues:
+    description: 'Polaris External Issues groupSCAIssues'
+    required: false
+  polaris_externalIssues_maxCount:
+    description: 'Polaris External Issues maxCount'
+    required: false
   project_directory:
     description: 'The project source directory. Defaults to repository root directory. Set this to specify a custom folder that is other than repository root'
     required: false
@@ -206,6 +221,19 @@ inputs:
   blackducksca_policy_badges_maxCount:
     description: 'To limit number of badges to be displayed on the GitHub repository'
     required: false
+  blackducksca_externalIssues_create:
+    description: 'Black Duck SCA External Issues Create'
+    required: false
+  blackducksca_externalIssues_severities:
+    description: 'Black Duck SCA External Issues severities'
+    required: false
+  blackducksca_externalIssues_groupSCAIssues:
+    description: 'Black Duck SCA External Issues groupSCAIssues'
+    required: false
+  blackducksca_externalIssues_maxCount:
+    description: 'Black Duck SCA External Issues maxCount'
+    required: false
+
   srm_url:
     description: 'SRM Url'
     required: false
