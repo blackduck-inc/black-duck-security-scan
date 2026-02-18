@@ -1,6 +1,6 @@
 {
   "name": "black-duck-security-scan",
-  "version": "2.7.1",
+  "version": "2.8.0",
   "private": true,
   "description": "Perform security scan using Blackduck Tools",
   "main": "lib/main.js",
