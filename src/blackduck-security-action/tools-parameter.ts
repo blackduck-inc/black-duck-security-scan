@@ -322,6 +322,7 @@ export class BridgeToolsParameter {
     fs.writeFileSync(stateFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
+    info('Input Json File - '.concat(inputJson))
 
     command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
     return command
