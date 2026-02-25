@@ -764,13 +764,11 @@ export class BridgeToolsParameter {
 
   private getGithubBranchName(): string {
     let branchName = ''
-    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED) || parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)) {
+    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED)) {
       // Only polaris use case
-      info('Entered into branch name condition for Polaris PR comment or Polaris Github issues as these features require branch name for both PR and non-PR events to set correct context in GitHub. For PR events, GITHUB_HEAD_REF will be used which gives the source branch name and for non-PR events, GITHUB_REF_NAME will be used which gives the branch name for that event.')
       branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] || ''
     } else {
       // For pull requests, non-pull requests and manual trigger events
-      info('Entered into else condition when there is no pull requests or non pull request events.')
       if (process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] !== '') {
         branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] || ''
       } else {
