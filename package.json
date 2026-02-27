@@ -35,10 +35,11 @@
     "@typescript-eslint/eslint-plugin": "8.56.1",
     "@typescript-eslint/parser": "8.56.1",
     "@vercel/ncc": "0.31.1",
-    "eslint": "10.0.2",
+    "eslint": "9.39.3",
     "eslint-plugin-github": "6.0.0",
     "eslint-plugin-jest": "29.15.0",
-    "eslint-plugin-prettier": "5.2.1",
+    "eslint-plugin-prettier": "5.5.5",
+
     "jest": "29.7.0",
     "prettier": "3.3.3",
     "ts-jest": "29.4.6",
@@ -62,7 +63,7 @@
   },
   "overrides": {
     "fast-xml-parser": "5.4.1",
-    "ajv": "8.18.0",
+    "ajv": "6.12.6",
     "minimatch": "10.2.4"
   }
 }
