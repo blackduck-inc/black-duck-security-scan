@@ -59,6 +59,7 @@ export class BridgeToolsParameter {
     if (isNullOrEmptyValue(applicationName)) {
       applicationName = githubRepoName
     }
+
     debug(`Polaris application name: ${applicationName}`)
     debug(`Polaris project name: ${projectName}`)
 
@@ -87,6 +88,8 @@ export class BridgeToolsParameter {
 
     if (inputs.POLARIS_BRANCH_NAME) {
       polData.data.polaris.branch = {name: inputs.POLARIS_BRANCH_NAME}
+    } else {
+      polData.data.polaris.branch = {name: this.getGithubBranchName()}
     }
 
     if (inputs.POLARIS_TEST_SCA_TYPE || inputs.POLARIS_TEST_SAST_TYPE || inputs.POLARIS_TEST_SCA_LOCATION || inputs.POLARIS_TEST_SAST_LOCATION) {
