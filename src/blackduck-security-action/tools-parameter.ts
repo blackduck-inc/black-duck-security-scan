@@ -763,7 +763,8 @@ export class BridgeToolsParameter {
 
   private getGithubBranchName(): string {
     let branchName = ''
-    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED)) {
+    const isPrEvent = isPullRequestEvent()
+    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED) && isPrEvent) {
       // Only polaris use case
       branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] || ''
     } else {
