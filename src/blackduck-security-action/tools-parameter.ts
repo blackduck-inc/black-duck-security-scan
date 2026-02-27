@@ -764,9 +764,13 @@ export class BridgeToolsParameter {
   private getGithubBranchName(): string {
     let branchName = ''
     const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES
-    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED) && inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
+    if (parseToBoolean(inputs.POLARIS_PRCOMMENT_ENABLED)) {
+      if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
+        // Only polaris use case
+        branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] || ''
+      }
       // Only polaris use case
-      branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] || ''
+      branchName = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REF_NAME] || ''
     } else {
       // For pull requests, non-pull requests and manual trigger events
       if (process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_HEAD_REF] !== '') {
