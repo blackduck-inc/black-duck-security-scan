@@ -6,7 +6,7 @@ jobs:
   e2e-executions:
     runs-on:
       group: linux-x64
-
+    
     strategy:
       fail-fast: false
       matrix:
@@ -27,7 +27,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '11'
-
+      
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -36,20 +36,20 @@ jobs:
           unzip -q awscliv2.zip
           sudo ./aws/install
           aws --version
-
+      
       - name: Download e2e artifacts
         run: |
           aws s3 cp --recursive s3://e2e-integrations-test/e2e-artifacts/integrations/yml-data integrations/yml-data --no-progress
           aws s3 cp s3://e2e-integrations-test/e2e-artifacts/test-integrations-0.0.1-SNAPSHOT.jar test-integrations-0.0.1-SNAPSHOT.jar --no-progress
           ls -al
-
+          
       - name: Extract secrets
         uses: aws-actions/aws-secretsmanager-get-secrets@v2
         with:
           secret-ids: |
             QA_GITHUB_TOKEN
           parse-json-secrets: true
-
+      
       - name: Run e2e tests for ${{ matrix.platform.runner }}
         env:
           JAR_NAME: test-integrations-0.0.1-SNAPSHOT.jar
@@ -82,11 +82,11 @@ jobs:
             -jar $JAR_NAME \
             -testjar $JAR_NAME \
             -xmlpathinjar $XML_PATH
-
+      
       - name: Archive results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-output-${{ matrix.platform.runner }}
-          path: test-output
+          path: test-output 
 
