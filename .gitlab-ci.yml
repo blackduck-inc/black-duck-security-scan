@@ -35,6 +35,7 @@ variables:
 ##### MERGE REQUEST PIPELINE #####
 
 build_unit_test_job:
+  image: us-docker.pkg.dev/cloudops-artifacts-prd/polaris/ember_cli:3.28.5-node_20
   extends:
     - .build_unit_tests
   stage: build
