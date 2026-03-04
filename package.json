@@ -64,7 +64,7 @@
   "overrides": {
     "underscore": "1.13.8",
     "fast-xml-parser": "5.4.1",
-    "minimatch": "10.2.4",
+    "minimatch": "9.0.5",
     "qs": "6.15.0",
     "actions-artifact-v2": {
       "ajv": "8.18.0"
