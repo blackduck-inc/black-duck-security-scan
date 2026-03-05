@@ -85,7 +85,7 @@ polaris_bridge:
       export DETECT_ACCURACY_REQUIRED=NONE
 
 pop_blackduck:
-  image: us-docker.pkg.dev/cloudops-artifacts-prd/polaris/node:20
+  image: us-docker.pkg.dev/cloudops-artifacts-prd/public/danlynn/ember-cli:5.9.0-node_20.14
   extends:
     - .new_pop_blackduck
   before_script:
