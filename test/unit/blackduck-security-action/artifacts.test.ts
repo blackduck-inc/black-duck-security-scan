@@ -1,5 +1,4 @@
 import * as configVariables from 'actions-artifact-v2/lib/internal/shared/config'
-import {tmpdir} from 'os'
 import {uploadDiagnostics, uploadSarifReportAsArtifact} from '../../../src/blackduck-security-action/artifacts'
 import * as inputs from '../../../src/blackduck-security-action/inputs'
 import * as artifact from 'actions-artifact-v2/lib/artifact'
@@ -16,9 +15,7 @@ jest.mock('actions-artifact-v2', () => ({
   }))
 }))
 
-let tempPath = '/temp'
 beforeEach(() => {
-  tempPath = tmpdir()
   Object.defineProperty(process, 'platform', {
     value: 'linux'
   })

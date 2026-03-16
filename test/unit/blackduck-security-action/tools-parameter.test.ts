@@ -1,4 +1,3 @@
-import {cleanupTempDir, createTempDir, isPullRequestEvent} from '../../../src/blackduck-security-action/utility'
 import {BridgeToolsParameter} from '../../../src/blackduck-security-action/tools-parameter'
 import mock = jest.mock
 import * as inputs from '../../../src/blackduck-security-action/inputs'
@@ -10,7 +9,7 @@ let blackduck_input_file = '/bd_input.json'
 let srm_input_file = '/srm_input.json'
 
 beforeAll(() => {
-  createTempDir().then(path => (tempPath = path))
+  utility.createTempDir().then(path => (tempPath = path))
 })
 
 beforeEach(() => {
@@ -39,7 +38,7 @@ beforeEach(() => {
 })
 
 afterAll(() => {
-  cleanupTempDir(tempPath)
+  utility.cleanupTempDir(tempPath)
 })
 
 const fs = require('fs')
@@ -187,7 +186,7 @@ test('Test getFormattedCommandForPolaris - pr comment for cloud github', () => {
   expect(resp).toContain('--stage polaris')
 
   const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
-  const jsonData = JSON.parse(jsonString)
+  expect(typeof JSON.parse(jsonString)).toBe('object')
 })
 
 test('Test getFormattedCommandForPolaris with sarif params', () => {
@@ -400,7 +399,7 @@ test('Test getFormattedCommandForCoverity - pr comment', () => {
   expect(resp).toContain('--stage connect')
 
   const jsonString = fs.readFileSync(tempPath.concat(coverity_input_file), 'utf-8')
-  const jsonData = JSON.parse(jsonString)
+  expect(typeof JSON.parse(jsonString)).toBe('object')
 
   Object.defineProperty(inputs, 'COVERITY_PRCOMMENT_ENABLED', {value: false})
   stp = new BridgeToolsParameter(tempPath)
