@@ -1514,6 +1514,180 @@ test('Test getFormattedCommandForPolaris with both POLARIS_TEST_SCA_LOCATION and
   expect(jsonData.data.polaris.test.sast.location).toBe('local')
 })
 
+// Polaris Fix PR Tests
+test('Test getFormattedCommandForPolaris - fix pr enabled', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.fixpr).toBeDefined()
+  expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+  expect(jsonData.data.polaris.fixpr.maxCount).toBe(5) // default value
+  expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toEqual(['SHORT_TERM', 'LONG_TERM']) // default
+  expect(jsonData.data.polaris.fixpr.filter.by).toBe('POLICY') // default
+  expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL', 'HIGH']) // default
+  expect(jsonData.data.github).toBeDefined()
+})
+
+test('Test getFormattedCommandForPolaris - fix pr with custom values', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: '10', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_UPGRADE_GUIDANCE', {value: 'LONG_TERM', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_BY', {value: 'SEVERITIES', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_SEVERITIES', {value: 'CRITICAL', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+  expect(jsonData.data.polaris.fixpr.maxCount).toBe(10)
+  expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toEqual(['LONG_TERM'])
+  expect(jsonData.data.polaris.fixpr.filter.by).toBe('SEVERITIES')
+  expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL'])
+})
+
+test('Test getFormattedCommandForPolaris - fix pr disabled on PR events', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  // Clean up POLARIS_FIXPR_* properties from previous tests
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_BY
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+  jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(resp).toContain('--stage polaris')
+  expect(jsonData.data.polaris.fixpr).toBeUndefined() // Should not be set for PR events
+
+  jest.restoreAllMocks()
+})
+
+test('Test getFormattedCommandForPolaris - fix pr with multiple severities', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_SEVERITIES', {value: 'CRITICAL,HIGH,MEDIUM', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL', 'HIGH', 'MEDIUM'])
+})
+
+test('Test getFormattedCommandForPolaris - fix pr with multiple upgrade guidance', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_UPGRADE_GUIDANCE', {value: 'SHORT_TERM,LONG_TERM', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toEqual(['SHORT_TERM', 'LONG_TERM'])
+})
+
+test('Test getFormattedCommandForPolaris - fix pr with invalid maxCount throws error', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: 'invalid-value', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+
+  try {
+    stp.getFormattedCommandForPolaris('blackduck-security-action')
+    fail('Should have thrown an error for invalid maxCount')
+  } catch (error: any) {
+    expect(error).toBeInstanceOf(Error)
+    expect(error.message).toContain('Invalid value for polaris_fixpr_maxCount')
+  }
+})
+
+test('Test getFormattedCommandForPolaris - fix pr boolean variations', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  // Test with false
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'false', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: '', configurable: true})
+  let stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  let resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  let jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  let jsonData = JSON.parse(jsonString)
+  expect(jsonData.data.polaris.fixpr).toBeUndefined()
+
+  // Test with empty string
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: '', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: '', configurable: true})
+  stp = new BridgeToolsParameter(tempPath)
+  resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  jsonData = JSON.parse(jsonString)
+  expect(jsonData.data.polaris.fixpr).toBeUndefined()
+
+  // Test with TRUE (uppercase)
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'TRUE', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: '', configurable: true})
+  stp = new BridgeToolsParameter(tempPath)
+  resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+  jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  jsonData = JSON.parse(jsonString)
+  expect(jsonData.data.polaris.fixpr).toBeDefined()
+  expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+})
+
 describe('Polaris with Coverity Version Support', () => {
   test('should include coverity version in polaris_input.json when COVERITY_VERSION is set', () => {
     // Set required Polaris inputs

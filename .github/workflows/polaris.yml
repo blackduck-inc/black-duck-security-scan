@@ -1,33 +1,106 @@
-# Workflow: Runs Black Duck Polaris security analysis on the repository.
-# Uses a reusable workflow for SCA and SAST assessment.
-name: Polaris Analysis
-
+name: CI-Polaris 
 on:
-  workflow_call:
-    secrets:
-      POLARIS_ACCESS_TOKEN:
-        required: true
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: polaris-${{ github.ref }}
-  cancel-in-progress: true
-
+  push:
+    branches: [ main, master, develop, stage, release ]
+  pull_request:
+    branches: [ main, master, develop, stage, release ]  
 jobs:
-  polaris:
-    name: Run Polaris Analysis
-    uses: blackduck-inc/common-repo-ci/.github/workflows/polaris.yml@main
-    with:
-      polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
-      polaris_assessment_types: "SCA,SAST"
-      polaris_prComment_enabled: true
-      polaris_application_name: "integrations"
-      polaris_project_name: "blackduck-security-action"
-      polaris_branch_name: ${{ github.head_ref || github.ref_name }}
-      polaris_branch_parent_name: ${{ github.base_ref || 'main' }}
-      bridgecli_download_url: ${{ vars.BRIDGECLI_DOWNLOAD_URL }}
-    secrets:
-      POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+  polaris-scan:
+    runs-on: [ self-hosted ]
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v3
+      - name: Polaris Full Scan
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: blackduck-inc/black-duck-security-scan@SIGINT-4621
+        with:
+          polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+          polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+          polaris_application_name: ${{ github.event.repository.name }}
+          #polaris_project_name: ${{ github.event.repository.name }}
+          polaris_assessment_types: "SCA,SAST"
+          #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
+          #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/4.0.0rc3/bridge-cli-bundle-4.0.0rc3-macos_arm.zip"
+          #polaris_assessment_mode: "SOURCE_UPLOAD"
+          bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
+          polaris_test_sca_location: "hybrid"
+          #polaris_test_sca_type: 'SCA-SIGNATURE'
+          #polaris_test_sast_type: "SAST_FULL"
+          polaris_externalIssues_create: true
+          polaris_externalIssues_types: "SCA,SAST"
+          polaris_externalIssues_severities: "critical,high,medium"
+          #polaris_externalIssues_groupSCAIssues: true
+          polaris_externalIssues_maxCount: 6
+          polaris_fixpr_enabled: true
+          polaris_fixpr_maxCount: 5
+          polaris_fixpr_useUpgradeGuidance: "SHORT_TERM,LONG_TERM"
+          polaris_fixpr_filter_by: "SEVERITIES"
+          polaris_fixpr_filter_severities: "CRITICAL,HIGH"
+          github_token: ${{ secrets.TOKEN1 }}
+          #polaris_waitforscan: false
+          #project_directory: "/Users/renukac/Downloads/github_test-main"
+          #project_source_archive: "/Users/renukac/Downloads/github_test-main.zip"
+          #project_source_excludes: “artifacts,config,test,.md,.yml”
+          ## polaris_waitForScan: false  # Used to support the async mode
+          # project_directory: ${{ vars.PROJECT_DIRECTORY }}
+          ############# Uncomment below configuration for source code upload 
+          #polaris_assessment_mode: "SOURCE_UPLOAD"
+          # project_source_archive: ${{ vars.PROJECT_SOURCE_ARCHIVE }}
+          # project_source_excludes: ${{ vars.PROJECT_SOURCE_EXCLUDES }} # Accepts Multiple Values
+          # project_source_preserveSymLinks: true
+          ############## Uncomment below configuration if Bridge diagnostic files needs to be uploaded
+          include_diagnostics: true
+          ############### SARIF report generation and upload to GitHub Adavanced Security Tab: Uncomment below to enable
+          #polaris_reports_sarif_create: true
+          #polaris_reports_sarif_file_path: '/Users/renukac/test-sast/report.sarif.json' # File path (including file name) where SARIF report is created.
+          # polaris_reports_sarif_severities: "CRITICAL,HIGH"
+          # polaris_reports_sarif_groupSCAIssues: true 
+          # polaris_reports_sarif_issue_types: 'SCA, SAST' 
+          # polaris_upload_sarif_report: true 
+          # github_token: ${{ secrets.GITHUB_TOKEN }} # Required when polaris_upload_sarif_report is set as true
+          ######## Signature scan
+          #polaris_test_sast_type: "SAST_FULL"
+
+          ###### Polaris Local scan analysis
+          #polaris_test_sca_location: "hybrid"
+          #polaris_test_sast_location: "hybrid"
+          
+          ###### Uncomment below to add arbitrary CL parameters
+          # detect_search_depth: 2
+          # detect_args: '--detect.diagnostic=true'
+          # detect_config_path: '/Users/Config/application.properties'
+          # coverity_build_command: mvn clean install
+          # coverity_clean_command: mvn clean
+          # coverity_config_path: /Users/Config/coverity.yml
+          # coverity_args: --config-override capture.build.build-command=mvn install
+      # - name: Polaris PR Scan
+      #   if: ${{ github.event_name == 'pull_request' }}
+      #   uses: blackduck-inc/black-duck-security-scan@SIGINT-3784
+      #   with:
+      #     polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+      #     polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+      #     polaris_application_name: ${{ github.event.repository.name }}
+      #     polaris_project_name: ${{ github.event.repository.name }}
+      #     polaris_assessment_types: "SCA,SAST"
+      #     # project_directory: ${{ vars.PROJECT_DIRECTORY }}
+      #     ### Uncomment below configuration for source code upload 
+
+      #     bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
+      #     polaris_test_sast_location: "remote"
+      #     polaris_test_sca_location: "remote"
+      #     #polaris_test_sca_type: 'SCA-SIGNATURE'
+      #     #polaris_test_sast_type: "SAST_RAPID"
+      #     polaris_reports_sarif_create: true
+      #     project_directory: "/Users/renukac/Downloads/github_test-main"
+      #     # project_source_archive: ${{ vars.PROJECT_SOURCE_ARCHIVE }}
+      #     # project_source_excludes: ${{ vars.PROJECT_SOURCE_EXCLUDES }} # Accepts Multiple Values
+      #     # project_source_preserveSymLinks: true
+      #     #### Below configuration is used to enable feedback from Polaris security testing as pull request comment
+      #     polaris_prComment_enabled: true 
+      #     github_token: ${{ secrets.GITHUB_TOKEN }} 
+      #     # Mandatory when polaris_prComment_enabled is set to 'true'
+      #     ### Uncomment below configuration if Bridge diagnostic files needs to be uploaded
+      #    include_diagnostics: true
+          
+          
+ 
