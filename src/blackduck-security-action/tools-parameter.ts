@@ -207,6 +207,12 @@ export class BridgeToolsParameter {
         info('Polaris Fix PR is enabled')
         polData.data.polaris.fixpr = this.setPolarisFixPrInputs()
         polData.data.github = this.getGithubRepoInfo()
+        // Set project directory to current directory if not already set to help Bridge CLI resolve file paths correctly for FixPR
+        if (!inputs.PROJECT_DIRECTORY && !polData.data.project) {
+          polData.data.project = {directory: '.'}
+        } else if (!inputs.PROJECT_DIRECTORY && polData.data.project && !polData.data.project.directory) {
+          polData.data.project.directory = '.'
+        }
       } else {
         info(constants.POLARIS_FIXPR_LOG_INFO_FOR_PR_SCANS)
       }

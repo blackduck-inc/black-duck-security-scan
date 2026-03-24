@@ -22,7 +22,7 @@ jobs:
           #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
           #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/4.0.0rc3/bridge-cli-bundle-4.0.0rc3-macos_arm.zip"
           #polaris_assessment_mode: "SOURCE_UPLOAD"
-          bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
+          bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/4.1.0rc3/bridge-cli-bundle-4.1.0rc3-macosx.zip"
           polaris_test_sca_location: "hybrid"
           #polaris_test_sca_type: 'SCA-SIGNATURE'
           #polaris_test_sast_type: "SAST_FULL"

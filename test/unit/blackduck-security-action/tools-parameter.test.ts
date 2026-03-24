@@ -1688,6 +1688,42 @@ test('Test getFormattedCommandForPolaris - fix pr boolean variations', () => {
   expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
 })
 
+test('Polaris FixPR should set project.directory when not explicitly provided', () => {
+  // Mock isPullRequestEvent to return false (non-PR context)
+  const isPRSpy = jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
+
+  try {
+    // Clear PROJECT_DIRECTORY to ensure it's not set
+    delete (inputs as any).PROJECT_DIRECTORY
+
+    Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+    Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+    Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'token', configurable: true})
+
+    const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+    const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+    // Verify command was generated
+    expect(resp).not.toBeNull()
+    expect(resp).toContain('--stage polaris')
+
+    // Read and parse the generated JSON
+    const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+    const jsonData = JSON.parse(jsonString)
+
+    expect(jsonData.data.polaris.fixpr).toBeDefined()
+    expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+    expect(jsonData.data.project).toBeDefined()
+    expect(jsonData.data.project.directory).toBe('.')
+  } finally {
+    // Restore the mock
+    isPRSpy.mockRestore()
+  }
+})
+
 describe('Polaris with Coverity Version Support', () => {
   test('should include coverity version in polaris_input.json when COVERITY_VERSION is set', () => {
     // Set required Polaris inputs
