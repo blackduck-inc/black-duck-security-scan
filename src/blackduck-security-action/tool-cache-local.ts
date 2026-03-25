@@ -160,8 +160,10 @@ async function downloadWithCustomSSL(downloadUrl: string, dest: string, sslConfi
     const requestOptions = createHTTPSRequestOptions(parsedUrl, sslConfig, headerRecord)
 
     if (auth) {
-      if (requestOptions.headers) {
-        ;(requestOptions.headers as Record<string, string>).authorization = auth
+      const normalizedHeaders = Array.isArray(requestOptions.headers) ? {} : { ...(requestOptions.headers ?? {}) }
+      requestOptions.headers = {
+        ...normalizedHeaders,
+        authorization: auth
       }
     }
 
