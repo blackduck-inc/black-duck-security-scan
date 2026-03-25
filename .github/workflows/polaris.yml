@@ -16,8 +16,8 @@ jobs:
         with:
           polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
           polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
-          polaris_application_name: ${{ github.event.repository.name }}
-          #polaris_project_name: ${{ github.event.repository.name }}
+          polaris_application_name: "bdss-fixpr-test"
+          polaris_project_name: "bdss-fixpr-test"
           polaris_assessment_types: "SCA,SAST"
           #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/3.9.0rc1/bridge-cli-bundle-3.9.0rc1-macos_arm.zip"
           #bridgecli_download_url: "https://artifactory.tools.duckutil.net/artifactory/clops-local/integrations/bridge/binaries/bridge-cli-bundle/4.0.0rc3/bridge-cli-bundle-4.0.0rc3-macos_arm.zip"
