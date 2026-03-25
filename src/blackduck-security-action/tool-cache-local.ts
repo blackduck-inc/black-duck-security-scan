@@ -258,8 +258,8 @@ async function downloadWithCustomSSL(downloadUrl: string, dest: string, sslConfi
 }
 
 function _getGlobal<T>(key: string, defaultValue: T): T {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
+   
   const value = (global as any)[key] as T | undefined
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+   
   return value !== undefined ? value : defaultValue
 }
