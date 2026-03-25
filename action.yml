@@ -314,5 +314,5 @@ outputs:
   status:
     description: 'The numeric exit code returned by the Black Duck Security Scan.'
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
