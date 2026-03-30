@@ -886,14 +886,12 @@ export class BridgeToolsParameter {
       enabled: true
     }
 
-    // Set maxCount (default: 5)
+    // Set maxCount only if provided by user (Bridge CLI default: 5)
     if (inputs.POLARIS_FIXPR_MAXCOUNT) {
       polarisFixPrData.maxCount = Number(inputs.POLARIS_FIXPR_MAXCOUNT)
-    } else {
-      polarisFixPrData.maxCount = 5
     }
 
-    // Set upgrade guidance (default: SHORT_TERM,LONG_TERM)
+    // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
     const useUpgradeGuidance: string[] = []
     if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
       const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',')
@@ -903,35 +901,38 @@ export class BridgeToolsParameter {
         }
       }
       polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance
-    } else {
-      polarisFixPrData.useUpgradeGuidance = ['SHORT_TERM', 'LONG_TERM']
     }
 
-    // Set filter data
-    const filterData: PolarisFixPrFilterData = {}
+    // Set filter data only if user provides filter configuration
+    // Bridge CLI will apply its own defaults if filter is not specified
+    // Note: We only set filter fields that the user explicitly provides
+    const hasFilterConfig = inputs.POLARIS_FIXPR_FILTER_BY || inputs.POLARIS_FIXPR_FILTER_SEVERITIES
 
-    // Set filter.by (default: POLICY)
-    if (inputs.POLARIS_FIXPR_FILTER_BY) {
-      filterData.by = inputs.POLARIS_FIXPR_FILTER_BY
-    } else {
-      filterData.by = 'POLICY'
-    }
+    if (hasFilterConfig) {
+      const filterData: PolarisFixPrFilterData = {}
 
-    // Set filter.severities (default: CRITICAL,HIGH)
-    const severities: string[] = []
-    if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
-      const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
-      for (const severity of filterSeverities) {
-        if (severity && severity.trim() !== '') {
-          severities.push(severity.trim())
-        }
+      // Set filter.by if provided (Bridge CLI will use its default if not set)
+      if (inputs.POLARIS_FIXPR_FILTER_BY) {
+        filterData.by = inputs.POLARIS_FIXPR_FILTER_BY
       }
-      filterData.severities = severities
-    } else {
-      filterData.severities = ['CRITICAL', 'HIGH']
-    }
 
-    polarisFixPrData.filter = filterData
+      // Set filter.severities if provided (Bridge CLI will use its default if not set)
+      if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
+        const severities: string[] = []
+        const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
+        for (const severity of filterSeverities) {
+          if (severity && severity.trim() !== '') {
+            severities.push(severity.trim())
+          }
+        }
+        filterData.severities = severities
+      }
+
+      // Only set filter object if we have at least one field
+      if (Object.keys(filterData).length > 0) {
+        polarisFixPrData.filter = filterData
+      }
+    }
 
     return polarisFixPrData
   }
