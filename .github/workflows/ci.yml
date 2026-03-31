@@ -72,7 +72,7 @@ jobs:
       - name: Run tests and collect results
         id: test-results
         run: |
-          npm test -- --json --outputFile=test.json --coverage --collectCoverageFrom='src/**/*.{ts,jsx}' --coverageReporters=json-summary || true
+          npm test -- --json --outputFile=test.json --coverage --collectCoverageFrom='src/**/*.{ts,jsx}' --coverageReporters=json-summary
           for key in passed failed total; do echo "$key=$(jq ".num${key^}Tests" test.json)" >> $GITHUB_OUTPUT; done
           echo "lines=$(jq '.total.lines.pct' coverage/coverage-summary.json)" >> $GITHUB_OUTPUT
 
