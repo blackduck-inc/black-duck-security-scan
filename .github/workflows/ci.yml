@@ -68,7 +68,6 @@ jobs:
       # Run unit tests
       - name: Run tests and collect results
         id: test-results
-        continue-on-error: true
         run: |
           npm test -- --json --outputFile=test.json --coverage --collectCoverageFrom='src/**/*.{ts,jsx}' --coverageReporters=json-summary || true
           for key in passed failed total; do echo "$key=$(jq ".num${key^}Tests" test.json)" >> $GITHUB_OUTPUT; done
