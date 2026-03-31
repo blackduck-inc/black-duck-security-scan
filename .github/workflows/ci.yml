@@ -63,7 +63,10 @@ jobs:
           path: dist/
           retention-days: 1
 
-      # Note: Dist check warnings are allowed for PR testing
+      # Fail job if dist check failed
+      - name: Fail if dist check failed
+        if: steps.dist-check.outputs.dist_failed == 'true'
+        run: exit 1
 
       # Run unit tests
       - name: Run tests and collect results
