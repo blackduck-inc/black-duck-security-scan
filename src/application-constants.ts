@@ -115,6 +115,13 @@ export const POLARIS_EXTERNALISSUES_TYPES_KEY = 'polaris_externalIssues_types'
 export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES_KEY = 'polaris_externalIssues_groupSCAIssues'
 export const POLARIS_EXTERNALISSUES_MAXCOUNT_KEY = 'polaris_externalIssues_maxCount'
 
+// Polaris Fix PR parameters
+export const POLARIS_FIXPR_ENABLED_KEY = 'polaris_fixpr_enabled'
+export const POLARIS_FIXPR_MAXCOUNT_KEY = 'polaris_fixpr_maxCount'
+export const POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY = 'polaris_fixpr_useUpgradeGuidance'
+export const POLARIS_FIXPR_FILTER_BY_KEY = 'polaris_fixpr_filter_by'
+export const POLARIS_FIXPR_FILTER_SEVERITIES_KEY = 'polaris_fixpr_filter_severities'
+
 // Blackduck
 /**
  * @deprecated Use blackducksca_url instead. This can be removed in future release.
@@ -296,6 +303,7 @@ export const POLARIS_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS = 'Polaris PR Comment 
 export const COVERITY_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS = 'Coverity PR Comment is ignored for non pull request scan'
 export const BLACKDUCK_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS = 'Black Duck PR Comment is ignored for non pull request scan'
 export const BLACKDUCK_FIXPR_LOG_INFO_FOR_PR_SCANS = 'Black Duck Fix PR is ignored for pull request scan'
+export const POLARIS_FIXPR_LOG_INFO_FOR_PR_SCANS = 'Polaris Fix PR is ignored for pull request scan'
 export const GITHUB_TOKEN_VALIDATION_SARIF_UPLOAD_ERROR = 'Missing required GitHub token for uploading SARIF report to GitHub Advanced Security'
 export const MISSING_GITHUB_TOKEN_FOR_FIX_PR_AND_PR_COMMENT_ERROR = 'Missing required github token for fix pull request/pull request comments/Github Badges/GitHub Issues integration'
 export const BRIDGE_VERSION_NOT_FOUND_ERROR = 'Provided Bridge CLI version not found in artifactory'

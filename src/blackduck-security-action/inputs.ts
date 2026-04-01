@@ -52,6 +52,13 @@ export const POLARIS_EXTERNALISSUES_TYPES = getInput(constants.POLARIS_EXTERNALI
 export const POLARIS_EXTERNALISSUES_GROUPSCAISSUES = getInput(constants.POLARIS_EXTERNALISSUES_GROUPSCAISSUES_KEY)?.trim() || ''
 export const POLARIS_EXTERNALISSUES_MAXCOUNT = getInput(constants.POLARIS_EXTERNALISSUES_MAXCOUNT_KEY)?.trim() || ''
 
+// Polaris Fix PR Parameters
+export const POLARIS_FIXPR_ENABLED = getInput(constants.POLARIS_FIXPR_ENABLED_KEY)?.trim() || ''
+export const POLARIS_FIXPR_MAXCOUNT = getInput(constants.POLARIS_FIXPR_MAXCOUNT_KEY)?.trim() || ''
+export const POLARIS_FIXPR_UPGRADE_GUIDANCE = getInput(constants.POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY)?.trim() || ''
+export const POLARIS_FIXPR_FILTER_BY = getInput(constants.POLARIS_FIXPR_FILTER_BY_KEY)?.trim() || ''
+export const POLARIS_FIXPR_FILTER_SEVERITIES = getInput(constants.POLARIS_FIXPR_FILTER_SEVERITIES_KEY)?.trim() || ''
+
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''
 export const COVERITY_USER = getInput(constants.COVERITY_USER_KEY)?.trim() || ''

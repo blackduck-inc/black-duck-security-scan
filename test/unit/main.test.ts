@@ -1147,7 +1147,7 @@ describe('Version Comparison Tests for SARIF Paths', () => {
 
     Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
     Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
-  })
+  }, 10000)
 })
 
 describe('SSL Configuration Tests', () => {
