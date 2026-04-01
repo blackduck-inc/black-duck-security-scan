@@ -294,9 +294,6 @@ inputs:
   polaris_fixpr_useUpgradeGuidance:
     description: 'Upgrade guidance preference. Values: SHORT_TERM, LONG_TERM, or SHORT_TERM,LONG_TERM. Default: SHORT_TERM,LONG_TERM'
     required: false
-  polaris_fixpr_filter_by:
-    description: 'Filter fix PRs by POLICY or SEVERITIES. Default: POLICY'
-    required: false
   polaris_fixpr_filter_severities:
     description: 'Comma-separated list of severities (CRITICAL, HIGH, MEDIUM, LOW). Default: CRITICAL,HIGH'
     required: false

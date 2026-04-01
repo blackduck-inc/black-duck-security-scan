@@ -31,7 +31,6 @@ export interface PolarisFixPrData {
 }
 
 export interface PolarisFixPrFilterData {
-  by?: string
   severities?: string[]
 }
 

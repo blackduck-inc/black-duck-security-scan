@@ -1549,7 +1549,6 @@ test('Test getFormattedCommandForPolaris - fix pr with custom values', () => {
   Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
   Object.defineProperty(inputs, 'POLARIS_FIXPR_MAXCOUNT', {value: '10', configurable: true})
   Object.defineProperty(inputs, 'POLARIS_FIXPR_UPGRADE_GUIDANCE', {value: 'LONG_TERM', configurable: true})
-  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_BY', {value: 'SEVERITIES', configurable: true})
   Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_SEVERITIES', {value: 'CRITICAL', configurable: true})
   Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
 
@@ -1564,7 +1563,6 @@ test('Test getFormattedCommandForPolaris - fix pr with custom values', () => {
   expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
   expect(jsonData.data.polaris.fixpr.maxCount).toBe(10)
   expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toEqual(['LONG_TERM'])
-  expect(jsonData.data.polaris.fixpr.filter.by).toBe('SEVERITIES')
   expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL'])
 })
 
@@ -1573,7 +1571,6 @@ test('Test getFormattedCommandForPolaris - fix pr disabled on PR events', () => 
   // Clean up POLARIS_FIXPR_* properties from previous tests
   delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
   delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
-  delete (inputs as any).POLARIS_FIXPR_FILTER_BY
   delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
   Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
   Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
