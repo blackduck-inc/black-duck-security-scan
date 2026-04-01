@@ -2,31 +2,35 @@ import mock = jest.mock
 import {extractZipped, getRemoteFile} from '../../../src/blackduck-security-action/download-utility'
 import {cleanupTempDir, createTempDir} from '../../../src/blackduck-security-action/utility'
 import {tmpdir} from 'os'
+import * as toolCache from '@actions/tool-cache'
 
-const path = require('path')
-mock('path')
-
-const toolCache = require('@actions/tool-cache')
 mock('@actions/tool-cache')
-
-const fs = require('fs')
+mock('@actions/core')
 mock('fs')
+mock('path', () => {
+  const actualPath = jest.requireActual('path')
+  return {
+    ...actualPath,
+    join: jest.fn(actualPath.join)
+  }
+})
+
+import * as path from 'path'
 
 let tempPath = '/temp'
 
 beforeEach(() => {
   tempPath = tmpdir()
+  jest.mocked(path.join).mockReset()
   Object.defineProperty(process, 'platform', {
     value: 'darwin'
   })
 })
 
 test('Test getRemoteFile', () => {
-  path.join = jest.fn()
-  path.join.mockReturnValueOnce('/user')
-
-  toolCache.downloadTool = jest.fn()
-  toolCache.downloadTool.mockReturnValueOnce('/path-to-bridge/bridge')
+  jest.mocked(path.join).mockReturnValueOnce('/user')
+  ;(toolCache.downloadTool as jest.Mock) = jest.fn()
+  ;(toolCache.downloadTool as jest.Mock).mockReturnValueOnce('/path-to-bridge/bridge')
 
   getRemoteFile(tempPath, 'http://blackduck.bridge.com/bridge_macOs_1.zip').then(data => {
     expect(data.fileName).toContain('bridge')
@@ -34,15 +38,13 @@ test('Test getRemoteFile', () => {
 })
 
 test('Test getRemoteFile linux', () => {
-  path.join = jest.fn()
-  path.join.mockReturnValueOnce('/user')
+  jest.mocked(path.join).mockReturnValueOnce('/user')
 
   Object.defineProperty(process, 'platform', {
     value: 'linux'
   })
-
-  toolCache.downloadTool = jest.fn()
-  toolCache.downloadTool.mockReturnValueOnce('/path-to-bridge/bridge')
+  ;(toolCache.downloadTool as jest.Mock) = jest.fn()
+  ;(toolCache.downloadTool as jest.Mock).mockReturnValueOnce('/path-to-bridge/bridge')
 
   getRemoteFile(tempPath, 'http://blackduck.bridge.com/bridge_linux_1.zip').then(data => {
     expect(data.fileName).toContain('bridge')
@@ -50,15 +52,13 @@ test('Test getRemoteFile linux', () => {
 })
 
 test('Test getRemoteFile windows', () => {
-  path.join = jest.fn()
-  path.join.mockReturnValueOnce('/user')
+  jest.mocked(path.join).mockReturnValueOnce('/user')
 
   Object.defineProperty(process, 'platform', {
     value: 'win32'
   })
-
-  toolCache.downloadTool = jest.fn()
-  toolCache.downloadTool.mockReturnValueOnce('/path-to-bridge/bridge')
+  ;(toolCache.downloadTool as jest.Mock) = jest.fn()
+  ;(toolCache.downloadTool as jest.Mock).mockReturnValueOnce('/path-to-bridge/bridge')
 
   getRemoteFile(tempPath, 'http://blackduck.bridge.com/bridge_win_1.zip').then(data => {
     expect(data.fileName).toContain('bridge')
@@ -66,20 +66,17 @@ test('Test getRemoteFile windows', () => {
 })
 
 test('Test getRemoteFile for url to be empty', () => {
-  path.join = jest.fn()
-  path.join.mockReturnValueOnce('/user')
-
-  toolCache.downloadTool = jest.fn()
-  toolCache.downloadTool.mockReturnValueOnce('/path-to-bridge/bridge')
+  jest.mocked(path.join).mockReturnValueOnce('/user')
+  ;(toolCache.downloadTool as jest.Mock) = jest.fn()
+  ;(toolCache.downloadTool as jest.Mock).mockReturnValueOnce('/path-to-bridge/bridge')
 
   const response = getRemoteFile(tempPath, '')
   expect(response).rejects.toThrowError()
 })
 
 test('Test extractZipped', () => {
-  toolCache.extractZip = jest.fn()
-
-  toolCache.extractZip.mockReturnValueOnce('/destination-directory')
+  ;(toolCache.extractZip as jest.Mock) = jest.fn()
+  ;(toolCache.extractZip as jest.Mock).mockReturnValueOnce('/destination-directory')
 
   extractZipped('file', '/destination-directory').then(data => {
     expect(data).toBe(true)
@@ -87,21 +84,17 @@ test('Test extractZipped', () => {
 })
 
 test('Test extractZipped for file name to be empty', () => {
-  toolCache.extractZip = jest.fn()
+  ;(toolCache.extractZip as jest.Mock) = jest.fn()
+  ;(toolCache.extractZip as jest.Mock).mockReturnValueOnce('/destination-directory')
 
-  toolCache.extractZip.mockReturnValueOnce('/destination-directory')
-
-  let returnedResponse
   const response = extractZipped('', '/destination-directory')
   expect(response).rejects.toThrowError()
 })
 
 test('Test extractZipped for destination path to be empty', () => {
-  toolCache.extractZip = jest.fn()
+  ;(toolCache.extractZip as jest.Mock) = jest.fn()
+  ;(toolCache.extractZip as jest.Mock).mockReturnValueOnce('/destination-directory')
 
-  toolCache.extractZip.mockReturnValueOnce('/destination-directory')
-
-  let returnedResponse
   const response = extractZipped('file', '')
   expect(response).rejects.toThrowError()
 })
