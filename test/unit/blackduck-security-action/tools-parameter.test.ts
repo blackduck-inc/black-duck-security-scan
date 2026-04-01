@@ -1533,10 +1533,11 @@ test('Test getFormattedCommandForPolaris - fix pr enabled', () => {
   expect(resp).toContain('--stage polaris')
   expect(jsonData.data.polaris.fixpr).toBeDefined()
   expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
-  expect(jsonData.data.polaris.fixpr.maxCount).toBe(5) // default value
-  expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toEqual(['SHORT_TERM', 'LONG_TERM']) // default
-  expect(jsonData.data.polaris.fixpr.filter.by).toBe('POLICY') // default
-  expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL', 'HIGH']) // default
+  // Defaults are applied by Bridge CLI when fields are omitted,
+  // so the action should not write them unless the user provides inputs.
+  expect(jsonData.data.polaris.fixpr.maxCount).toBeUndefined()
+  expect(jsonData.data.polaris.fixpr.useUpgradeGuidance).toBeUndefined()
+  expect(jsonData.data.polaris.fixpr.filter).toBeUndefined()
   expect(jsonData.data.github).toBeDefined()
 })
 
