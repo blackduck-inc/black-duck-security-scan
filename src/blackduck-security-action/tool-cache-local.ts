@@ -161,7 +161,7 @@ async function downloadWithCustomSSL(downloadUrl: string, dest: string, sslConfi
 
     if (auth) {
       if (requestOptions.headers) {
-        requestOptions.headers.authorization = auth
+        ;(requestOptions.headers as Record<string, string>).authorization = auth
       }
     }
 
