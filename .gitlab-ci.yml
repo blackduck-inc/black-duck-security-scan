@@ -84,17 +84,32 @@ polaris_bridge:
       apt-get install -y make
       export DETECT_ACCURACY_REQUIRED=NONE
 
-pop_blackduck:
-  image: us-docker.pkg.dev/cloudops-artifacts-prd/public/danlynn/ember-cli:5.9.0-node_20.14
+new_pop_blackduck:
+  stage: analysis
+  image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
+  dependencies:
+    - version
+    - build
+  variables:
+    DETECT_NPM_DEPENDENCY_TYPES_EXCLUDED: "DEV"
   extends:
+    - .retry
     - .new_pop_blackduck
+  tags:
+    - dind
   before_script:
     - |
-      rm -f /etc/apt/sources.list.d/google-chrome.list
-      echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
-      echo "deb http://archive.debian.org/debian-security buster/updates main" >> /etc/apt/sources.list
-      echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99archive
+      # Remove broken PPAs before updating
+      rm -f /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-focal.list
+      rm -f /etc/apt/sources.list.d/openjdk-r-ubuntu-ppa-focal.list
       apt-get update -y
       apt-get install -y rsync make jq python3 python3-pip
       pip3 install blackduck requests
-      export RELEASE_VERSION=$(cat package.json | grep version | head -1 | awk -F= "{ print $2 }" | sed 's/[version:,\",]//g' | tr -d '[[:space:]]')
+      echo "Installing node js 22."
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+      \. "$HOME/.nvm/nvm.sh"
+      nvm install 22
+      export RELEASE_VERSION=`cat ${CI_PROJECT_DIR}/version.txt`;
+  rules:
+    - if: ($CI_COMMIT_BRANCH == "main")
+      when: on_success
