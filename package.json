@@ -69,7 +69,7 @@
     "flatted": "3.4.2",
     "actions-artifact-v2": {
       "ajv": "8.18.0",
-      "lodash": "4.17.21"
+      "lodash": "4.18.1"
     },
     "actions-artifact-v1": {
       "ajv": "8.18.0"
