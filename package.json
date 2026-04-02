@@ -69,10 +69,7 @@
     "flatted": "3.4.2",
     "actions-artifact-v2": {
       "ajv": "8.18.0",
-      "lodash": "4.18.1",
-      "@octokit/request-error": "6.1.7",
-      "@octokit/request": "8.4.1",
-      "@octokit/plugin-paginate-rest": "11.4.1"
+      "lodash": "4.18.1"
     },
     "actions-artifact-v1": {
       "ajv": "8.18.0"
