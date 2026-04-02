@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set Node.js 20.x
+      - name: Set Node.js 24.x
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
@@ -37,9 +37,7 @@ jobs:
 
       # Check dist/
       - name: Rebuild the dist/ directory
-        run: |
-          export NODE_OPTIONS=--openssl-legacy-provider
-          npm run build && npm run package
+        run: npm run build && npm run package
 
       - name: Compare the expected and actual dist/ directories
         id: dist-check
