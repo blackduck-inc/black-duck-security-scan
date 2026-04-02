@@ -37,7 +37,7 @@ beforeEach(() => {
   })
 })
 
-test('Test executeBridgeCommand for MAC', () => {
+test('Test executeBridgeCommand for MAC', async () => {
   const sb = new Bridge()
 
   path.join = jest.fn()
@@ -55,10 +55,10 @@ test('Test executeBridgeCommand for MAC', () => {
 
   const response = sb.executeBridgeCommand('command', 'c:\\working_directory')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
 })
 
-test('Test executeBridgeCommand for Linux', () => {
+test('Test executeBridgeCommand for Linux', async () => {
   const sb = new Bridge()
 
   path.join = jest.fn()
@@ -76,10 +76,10 @@ test('Test executeBridgeCommand for Linux', () => {
 
   const response = sb.executeBridgeCommand('command', 'working_directory')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
 })
 
-test('Test executeBridgeCommand for Windows', () => {
+test('Test executeBridgeCommand for Windows', async () => {
   const sb = new Bridge()
 
   path.join = jest.fn()
@@ -97,10 +97,10 @@ test('Test executeBridgeCommand for Windows', () => {
 
   const response = sb.executeBridgeCommand('command', 'working_directory')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
 })
 
-test('Test executeBridgeCommand for bridge failure', () => {
+test('Test executeBridgeCommand for bridge failure', async () => {
   const sb = new Bridge()
 
   ioUtils.tryGetExecutablePath = jest.fn()
@@ -115,8 +115,7 @@ test('Test executeBridgeCommand for bridge failure', () => {
     value: 'linux'
   })
 
-  const response = sb.executeBridgeCommand('', 'working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.executeBridgeCommand('', 'working_directory')).rejects.toThrow()
 })
 
 test('Validate bridge URL Windows', () => {
@@ -137,17 +136,17 @@ test('Validate bridge URL MAC', () => {
   expect(resp).toBeTruthy()
 })
 
-test('Validate getBridgePath BRIDGE_CLI_INSTALL_DIRECTORY_KEY not empty', () => {
+test('Validate getBridgePath BRIDGE_CLI_INSTALL_DIRECTORY_KEY not empty', async () => {
   let sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
     value: '/users'
   })
 
   const resp = sb.getBridgePath()
-  expect(resp).resolves.toContain('users')
+  await expect(resp).resolves.toContain('users')
 })
 
-test('Validate getBridgePath BRIDGE_CLI_INSTALL_DIRECTORY_KEY if empty', () => {
+test('Validate getBridgePath BRIDGE_CLI_INSTALL_DIRECTORY_KEY if empty', async () => {
   let sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {
     value: ''
@@ -157,7 +156,7 @@ test('Validate getBridgePath BRIDGE_CLI_INSTALL_DIRECTORY_KEY if empty', () => {
   path.join.mockReturnValueOnce('/Users/user')
 
   const resp = sb.getBridgePath()
-  expect(resp).resolves.toContain('/Users/user')
+  await expect(resp).resolves.toContain('/Users/user')
 })
 
 test('Validate bridge URL Linux', () => {
@@ -330,43 +329,39 @@ test('Latest URL Version failure', async () => {
   expect(response).toContain('')
 })
 
-test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL for MAC', () => {
+test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL for MAC', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-0.1.1-macosx.zip'})
 
-  const response = sb.downloadBridge('/working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.downloadBridge('/working_directory')).rejects.toThrow()
 })
 
-test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Windows', () => {
+test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Windows', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-2.9.8-win64.zip'})
 
-  const response = sb.downloadBridge('/working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.downloadBridge('/working_directory')).rejects.toThrow()
 })
 
-test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux', () => {
+test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-2.9.8-linux64.zip'})
 
-  const response = sb.downloadBridge('/working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.downloadBridge('/working_directory')).rejects.toThrow()
 })
 
-test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux ARM', () => {
+test('Test fetch version details from BRIDGE_CLI_DOWNLOAD_URL For Linux ARM', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-2.9.8-linux_arm.zip'})
 
-  const response = sb.downloadBridge('/working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.downloadBridge('/working_directory')).rejects.toThrow()
 })
 
-test('Test without version details from BRIDGE_CLI_DOWNLOAD_URL', () => {
+test('Test without version details from BRIDGE_CLI_DOWNLOAD_URL', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_VERSION', {value: ''})
   Object.defineProperty(inputs, 'BRIDGE_CLI_DOWNLOAD_URL', {value: 'https://test-url/bridge-cli-bundle-macosx.zip'})
@@ -381,25 +376,24 @@ test('Test without version details from BRIDGE_CLI_DOWNLOAD_URL', () => {
   fs.renameSync.mockReturnValueOnce()
 
   try {
-    sb.downloadBridge('/working_directory')
+    await sb.downloadBridge('/working_directory')
   } catch (error: any) {
     expect(error.message).toContain('')
   }
 })
-test('Test invalid path for BRIDGE_CLI_INSTALL_DIRECTORY_KEY', () => {
+test('Test invalid path for BRIDGE_CLI_INSTALL_DIRECTORY_KEY', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test-dir'})
-  const response = sb.downloadBridge('/working_directory')
-  expect(response).rejects.toThrowError()
+  await expect(sb.downloadBridge('/working_directory')).rejects.toThrow()
 })
 
-test('Test version file not exist failure', () => {
+test('Test version file not exist failure', async () => {
   const sb = new Bridge()
   let response = sb.checkIfVersionExists('0.1.1', '')
-  expect(response).resolves.toEqual(false)
+  await expect(response).resolves.toEqual(false)
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test'})
@@ -427,12 +421,12 @@ test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC', () => {
 
   const response = sb.executeBridgeCommand('command', '/Users')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC when BRIDGE_INSTALL_DIRECTORY_KEY empty', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC when BRIDGE_INSTALL_DIRECTORY_KEY empty', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
@@ -458,12 +452,12 @@ test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC when BRID
   util.checkIfPathExists = jest.fn()
   util.checkIfPathExists.mockResolvedValue(true)
 
-  expect(sb.validateBridgePath()).resolves.not.toThrow()
+  await expect(sb.validateBridgePath()).resolves.not.toThrow()
 
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled when BRIDGE_INSTALL_DIRECTORY_KEY not  empty', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled when BRIDGE_INSTALL_DIRECTORY_KEY not  empty', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test'})
@@ -488,7 +482,7 @@ test('ENABLE_NETWORK_AIR_GAP enabled when BRIDGE_INSTALL_DIRECTORY_KEY not  empt
 
   util.checkIfPathExists = jest.fn()
   util.checkIfPathExists.mockResolvedValue(true)
-  expect(sb.validateBridgePath()).resolves.not.toThrow()
+  await expect(sb.validateBridgePath()).resolves.not.toThrow()
 
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
@@ -559,7 +553,7 @@ test('ENABLE_NETWORK_AIR_GAP enabled when BRIDGE_INSTALL_DIRECTORY_KEY not empty
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC without url and version', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC without url and version', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test'})
@@ -589,12 +583,12 @@ test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for MAC without u
 
   const response = sb.executeBridgeCommand('command', '/users')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Linux', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Linux', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test'})
@@ -622,12 +616,12 @@ test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Linux', () =>
 
   const response = sb.executeBridgeCommand('command', '/Users')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
 })
 
-test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Windows', () => {
+test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Windows', async () => {
   const sb = new Bridge()
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: true})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: '/test'})
@@ -655,7 +649,7 @@ test('ENABLE_NETWORK_AIR_GAP enabled:Test executeBridgeCommand for Windows', () 
 
   const response = sb.executeBridgeCommand('command', '/Users')
 
-  expect(response).resolves.toEqual(0)
+  await expect(response).resolves.toEqual(0)
   Object.defineProperty(inputs, 'ENABLE_NETWORK_AIR_GAP', {value: false})
   Object.defineProperty(inputs, 'BRIDGE_CLI_INSTALL_DIRECTORY_KEY', {value: ''})
 })

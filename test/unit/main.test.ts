@@ -662,7 +662,7 @@ test('Run Black Duck SCA flow for uploading sarif result as artifact', async () 
 
   let response = await run()
   expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(1)
 })
 
 test('Run Black Duck SCA flow for uploading sarif result to advance security and artifacts', async () => {
@@ -695,8 +695,8 @@ test('Run Black Duck SCA flow for uploading sarif result to advance security and
 
   let response = await run()
   expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(1)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(1)
+  expect(GithubClientServiceBase.prototype.uploadSarifReport).toHaveBeenCalledTimes(1)
 })
 
 test('should throw error while uploading Black Duck SCA sarif result to advance security', async () => {
@@ -807,7 +807,7 @@ test('should not execute black duck sca sarif create for pr context', async () =
   jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
   jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
   await run()
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(0)
 })
 
 test('should not upload black duck sca sarif for pr context', async () => {
@@ -830,7 +830,7 @@ test('should not upload black duck sca sarif for pr context', async () => {
   jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
   jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
   await run()
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(0)
+  expect(GithubClientServiceBase.prototype.uploadSarifReport).toHaveBeenCalledTimes(0)
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_REPORTS_SARIF_CREATE', {value: null})
   Object.defineProperty(inputs, 'BLACKDUCK_UPLOAD_SARIF_REPORT', {value: null})
@@ -864,7 +864,7 @@ test('Run Polaris flow for uploading sarif result as artifact', async () => {
   jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
   let response = await run()
   expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(1)
   jest.restoreAllMocks()
 })
 
@@ -929,8 +929,8 @@ test('Run Polaris flow for uploading sarif result to advance security and artifa
 
   let response = await run()
   expect(response).not.toBe(null)
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(1)
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(1)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(1)
+  expect(GithubClientServiceBase.prototype.uploadSarifReport).toHaveBeenCalledTimes(1)
 })
 
 test('should throw error while uploading Polaris sarif result to advance security', async () => {
@@ -1015,7 +1015,7 @@ test('should not execute polaris sarif create for pr context', async () => {
   jest.spyOn(Bridge.prototype, 'validateBridgeVersion').mockResolvedValueOnce(true)
   jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
   await run()
-  expect(diagnostics.uploadSarifReportAsArtifact).toBeCalledTimes(0)
+  expect(diagnostics.uploadSarifReportAsArtifact).toHaveBeenCalledTimes(0)
 })
 
 test('should not upload polaris sarif for pr context', async () => {
@@ -1041,7 +1041,7 @@ test('should not upload polaris sarif for pr context', async () => {
   jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(true)
   jest.spyOn(GithubClientServiceBase.prototype, 'uploadSarifReport').mockResolvedValueOnce()
   await run()
-  expect(GithubClientServiceBase.prototype.uploadSarifReport).toBeCalledTimes(0)
+  expect(GithubClientServiceBase.prototype.uploadSarifReport).toHaveBeenCalledTimes(0)
   Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: null})
   Object.defineProperty(inputs, 'POLARIS_REPORTS_SARIF_CREATE', {value: null})
   Object.defineProperty(inputs, 'POLARIS_UPLOAD_SARIF_REPORT', {value: null})
