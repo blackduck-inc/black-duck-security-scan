@@ -109,7 +109,7 @@ new_pop_blackduck:
       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
       \. "$HOME/.nvm/nvm.sh"
       nvm install 22
-      export RELEASE_VERSION=`cat ${CI_PROJECT_DIR}/version.txt`;
+      export RELEASE_VERSION=$(cat package.json | grep version | head -1 | awk -F= "{ print $2 }" | sed 's/[version:,\",]//g' | tr -d '[[:space:]]')
   rules:
     - if: ($CI_COMMIT_BRANCH == "main")
       when: on_success
