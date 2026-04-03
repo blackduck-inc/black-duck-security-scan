@@ -88,8 +88,7 @@ new_pop_blackduck:
   stage: analysis
   image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
   dependencies:
-    - version
-    - build
+    - build_unit_test_job
   variables:
     DETECT_NPM_DEPENDENCY_TYPES_EXCLUDED: "DEV"
   extends:
