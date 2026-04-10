@@ -5,7 +5,7 @@ include:
     file: pop_analysis.yaml
   - project: releng/common-gitlab-ci
     ref: master
-    file: report-generator.yaml
+    file: report-generator.yml
   - project: altair/altair-build-common
     ref: master
     file: gitlab/ci/altair_versioning.yml
