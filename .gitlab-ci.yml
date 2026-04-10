@@ -66,6 +66,7 @@ code_coverage_job:
     - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip"
 
 generate_sbom:
+  image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
   extends:
     - .export_sbom_variables
     - .run_sbom_generation
