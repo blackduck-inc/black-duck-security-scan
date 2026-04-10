@@ -5,7 +5,7 @@ include:
     file: pop_analysis.yaml
   - project: releng/common-gitlab-ci
     ref: master
-    file: sbom-generate.yml
+    file: report-generator.yaml
   - project: altair/altair-build-common
     ref: master
     file: gitlab/ci/altair_versioning.yml
@@ -63,7 +63,7 @@ code_coverage_job:
     - export PRODUCT=Integrations
     - export GENERATE_CONFIGURATION_FILE=1
     - export GENERATION_OPTIONS="--entry integrations/mirrored-repos/blackduck-security-action:blackduck-security-action-$PACKAGE_VERSION"
-    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION.zip"
+    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip"
 
 generate_sbom:
   extends:
