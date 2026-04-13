@@ -67,7 +67,7 @@ code_coverage_job:
     - export USER_DEFINED_VAULT_HOST=$VAULT_HOST
     - export USER_DEFINED_BLACKDUCK_HOST=$BLACKDUCK_HOST
     - export OUTPUT_RG_PROJECT_FILENAME_PATTERN="blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip.json"
-    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip"
+    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip --artifactory-repo integrations-sbom/blackduck-security-action"
 
 generate_sbom:
   image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
