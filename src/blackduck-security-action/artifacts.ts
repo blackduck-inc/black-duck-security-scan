@@ -10,7 +10,56 @@ import {DefaultArtifactClient} from 'actions-artifact-v2'
 import {exists} from '@actions/io/lib/io-util'
 import {getGitHubWorkspaceDir} from 'actions-artifact-v2/lib/internal/shared/config'
 import path from 'path'
-import {warning} from '@actions/core'
+import {debug, warning} from '@actions/core'
+
+// Domains that should bypass corporate proxy for artifact uploads.
+// Azure Blob Storage is used by @actions/artifact v2 for blob uploads.
+// GitHub Actions results service is used for artifact API calls.
+const ARTIFACT_NO_PROXY_DOMAINS = ['.blob.core.windows.net', '.actions.githubusercontent.com']
+
+/**
+ * Temporarily adds artifact-related domains to NO_PROXY to prevent
+ * corporate proxies from interfering with Azure Blob Storage uploads.
+ * Returns the original NO_PROXY value for restoration.
+ */
+export function addArtifactDomainsToNoProxy(): {originalNoProxy: string | undefined; originalNoProxyLower: string | undefined} {
+  const originalNoProxy = process.env.NO_PROXY
+  const originalNoProxyLower = process.env.no_proxy
+
+  // Only modify if proxy is configured
+  const hasProxy = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy
+  if (!hasProxy) {
+    return {originalNoProxy, originalNoProxyLower}
+  }
+
+  const domainsToAdd = ARTIFACT_NO_PROXY_DOMAINS.join(',')
+  const currentNoProxy = originalNoProxy || originalNoProxyLower || ''
+  const updatedNoProxy = currentNoProxy ? `${currentNoProxy},${domainsToAdd}` : domainsToAdd
+
+  process.env.NO_PROXY = updatedNoProxy
+  process.env.no_proxy = updatedNoProxy
+  debug(`Added artifact domains to NO_PROXY for proxy bypass: ${domainsToAdd}`)
+
+  return {originalNoProxy, originalNoProxyLower}
+}
+
+/**
+ * Restores NO_PROXY to its original value after artifact upload.
+ */
+export function restoreNoProxy(saved: {originalNoProxy: string | undefined; originalNoProxyLower: string | undefined}): void {
+  if (saved.originalNoProxy !== undefined) {
+    process.env.NO_PROXY = saved.originalNoProxy
+  } else {
+    delete process.env.NO_PROXY
+  }
+  if (saved.originalNoProxyLower !== undefined) {
+    process.env.no_proxy = saved.originalNoProxyLower
+  } else {
+    delete process.env.no_proxy
+  }
+  debug('Restored NO_PROXY to original value after artifact upload')
+}
+
 
 export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void> {
   let artifactClient
@@ -37,7 +86,12 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
     }
   }
   if (files.length > 0) {
-    return await artifactClient.uploadArtifact('bridge_diagnostics_'.concat(getRealSystemTime()), files, pwd, options)
+    const savedNoProxy = addArtifactDomainsToNoProxy()
+    try {
+      return await artifactClient.uploadArtifact('bridge_diagnostics_'.concat(getRealSystemTime()), files, pwd, options)
+    } finally {
+      restoreNoProxy(savedNoProxy)
+    }
   }
 }
 
@@ -91,6 +145,11 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
   }
 
   if ((await exists(rootDir)) && checkIfPathExists(sarifFilePath)) {
-    return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
+    const savedNoProxy = addArtifactDomainsToNoProxy()
+    try {
+      return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
+    } finally {
+      restoreNoProxy(savedNoProxy)
+    }
   }
 }
