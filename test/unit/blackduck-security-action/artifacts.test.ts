@@ -182,4 +182,28 @@ describe('addArtifactDomainsToNoProxy', () => {
     restoreNoProxy(saved)
     expect(process.env.no_proxy).toBe('internal.corp.com')
   })
+
+  it('should not add duplicate domains if already present in NO_PROXY', () => {
+    process.env.HTTPS_PROXY = 'http://proxy.example.com:8080'
+    process.env.NO_PROXY = 'localhost,.blob.core.windows.net'
+
+    const saved = addArtifactDomainsToNoProxy()
+
+    expect(process.env.NO_PROXY).toBe('localhost,.blob.core.windows.net,.actions.githubusercontent.com')
+
+    restoreNoProxy(saved)
+    expect(process.env.NO_PROXY).toBe('localhost,.blob.core.windows.net')
+  })
+
+  it('should handle whitespace and trailing commas in NO_PROXY', () => {
+    process.env.HTTPS_PROXY = 'http://proxy.example.com:8080'
+    process.env.NO_PROXY = 'localhost, 127.0.0.1 ,,'
+
+    const saved = addArtifactDomainsToNoProxy()
+
+    expect(process.env.NO_PROXY).toBe('localhost,127.0.0.1,.blob.core.windows.net,.actions.githubusercontent.com')
+
+    restoreNoProxy(saved)
+    expect(process.env.NO_PROXY).toBe('localhost, 127.0.0.1 ,,')
+  })
 })

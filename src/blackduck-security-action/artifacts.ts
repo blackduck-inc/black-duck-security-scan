@@ -32,13 +32,17 @@ export function addArtifactDomainsToNoProxy(): {originalNoProxy: string | undefi
     return {originalNoProxy, originalNoProxyLower}
   }
 
-  const domainsToAdd = ARTIFACT_NO_PROXY_DOMAINS.join(',')
   const currentNoProxy = originalNoProxy || originalNoProxyLower || ''
-  const updatedNoProxy = currentNoProxy ? `${currentNoProxy},${domainsToAdd}` : domainsToAdd
+  const existingEntries = currentNoProxy
+    .split(',')
+    .map(e => e.trim())
+    .filter(e => e.length > 0)
+  const newDomains = ARTIFACT_NO_PROXY_DOMAINS.filter(d => !existingEntries.includes(d))
+  const updatedNoProxy = [...existingEntries, ...newDomains].join(',')
 
   process.env.NO_PROXY = updatedNoProxy
   process.env.no_proxy = updatedNoProxy
-  debug(`Added artifact domains to NO_PROXY for proxy bypass: ${domainsToAdd}`)
+  debug(`Added artifact domains to NO_PROXY for proxy bypass: ${newDomains.join(',')}`)
 
   return {originalNoProxy, originalNoProxyLower}
 }
@@ -86,11 +90,13 @@ export async function uploadDiagnostics(): Promise<UploadArtifactResponse | void
     }
   }
   if (files.length > 0) {
-    const savedNoProxy = addArtifactDomainsToNoProxy()
+    const savedNoProxy = isGitHubCloud() ? addArtifactDomainsToNoProxy() : null
     try {
       return await artifactClient.uploadArtifact('bridge_diagnostics_'.concat(getRealSystemTime()), files, pwd, options)
     } finally {
-      restoreNoProxy(savedNoProxy)
+      if (savedNoProxy) {
+        restoreNoProxy(savedNoProxy)
+      }
     }
   }
 }
@@ -145,11 +151,13 @@ export async function uploadSarifReportAsArtifact(defaultSarifReportDirectory: s
   }
 
   if ((await exists(rootDir)) && checkIfPathExists(sarifFilePath)) {
-    const savedNoProxy = addArtifactDomainsToNoProxy()
+    const savedNoProxy = isGitHubCloud() ? addArtifactDomainsToNoProxy() : null
     try {
       return await artifactClient.uploadArtifact(artifactName, [sarifFilePath], rootDir, options)
     } finally {
-      restoreNoProxy(savedNoProxy)
+      if (savedNoProxy) {
+        restoreNoProxy(savedNoProxy)
+      }
     }
   }
 }
