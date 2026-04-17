@@ -36,7 +36,7 @@ export function getProxyConfig(targetUrl: string): ProxyConfig {
       proxyUrl: parsedProxyUrl
     }
   } catch (error) {
-    debug(`Invalid proxy URL format: ${proxyUrl}. Error: ${error}. Proxy will not be used.`)
+    debug(`Invalid proxy URL format. Error: ${error instanceof Error ? error.message : 'Unknown error'}. Proxy will not be used.`)
     return {useProxy: false}
   }
 }

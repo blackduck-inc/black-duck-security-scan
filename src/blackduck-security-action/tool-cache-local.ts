@@ -161,7 +161,7 @@ async function downloadWithCustomSSL(downloadUrl: string, dest: string, sslConfi
 
     if (auth) {
       if (requestOptions.headers) {
-        requestOptions.headers.authorization = auth
+        ;(requestOptions.headers as Record<string, string>).authorization = auth
       }
     }
 
@@ -256,8 +256,6 @@ async function downloadWithCustomSSL(downloadUrl: string, dest: string, sslConfi
 }
 
 function _getGlobal<T>(key: string, defaultValue: T): T {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   const value = (global as any)[key] as T | undefined
-  /* eslint-enable @typescript-eslint/no-explicit-any */
   return value !== undefined ? value : defaultValue
 }

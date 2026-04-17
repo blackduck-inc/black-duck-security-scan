@@ -5,7 +5,7 @@ include:
     file: pop_analysis.yaml
   - project: releng/common-gitlab-ci
     ref: master
-    file: sbom-generate.yml
+    file: report-generator.yml
   - project: altair/altair-build-common
     ref: master
     file: gitlab/ci/altair_versioning.yml
@@ -63,9 +63,10 @@ code_coverage_job:
     - export PRODUCT=Integrations
     - export GENERATE_CONFIGURATION_FILE=1
     - export GENERATION_OPTIONS="--entry integrations/mirrored-repos/blackduck-security-action:blackduck-security-action-$PACKAGE_VERSION"
-    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION.zip"
+    - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip --artifactory-repo integrations-sbom/blackduck-security-action"
 
 generate_sbom:
+  image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
   extends:
     - .export_sbom_variables
     - .run_sbom_generation
@@ -84,17 +85,31 @@ polaris_bridge:
       apt-get install -y make
       export DETECT_ACCURACY_REQUIRED=NONE
 
-pop_blackduck:
-  image: us-docker.pkg.dev/cloudops-artifacts-prd/polaris/ember_cli:3.28.5-node_16
+new_pop_blackduck:
+  stage: analysis
+  image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
+  dependencies:
+    - build_unit_test_job
+  variables:
+    DETECT_NPM_DEPENDENCY_TYPES_EXCLUDED: "DEV"
   extends:
+    - .retry
     - .new_pop_blackduck
+  tags:
+    - dind
   before_script:
     - |
-      rm -f /etc/apt/sources.list.d/google-chrome.list
-      echo "deb http://archive.debian.org/debian buster main" > /etc/apt/sources.list
-      echo "deb http://archive.debian.org/debian-security buster/updates main" >> /etc/apt/sources.list
-      echo "Acquire::Check-Valid-Until false;" > /etc/apt/apt.conf.d/99archive
+      # Remove broken PPAs before updating
+      rm -f /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-focal.list
+      rm -f /etc/apt/sources.list.d/openjdk-r-ubuntu-ppa-focal.list
       apt-get update -y
       apt-get install -y rsync make jq python3 python3-pip
       pip3 install blackduck requests
+      echo "Installing node js 22."
+      curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+      \. "$HOME/.nvm/nvm.sh"
+      nvm install 22
       export RELEASE_VERSION=$(cat package.json | grep version | head -1 | awk -F= "{ print $2 }" | sed 's/[version:,\",]//g' | tr -d '[[:space:]]')
+  rules:
+    - if: ($CI_COMMIT_BRANCH == "main")
+      when: on_success

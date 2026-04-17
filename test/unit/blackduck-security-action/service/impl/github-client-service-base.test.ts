@@ -169,7 +169,7 @@ it('should return rate limit error and no retry while upload sarif report', asyn
     await githubClientService.uploadSarifReport('test-dir', '/')
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('Uploading SARIF report to GitHub Advanced Security failed: Error: GitHub API rate limit has been exceeded, retry after 4 minutes.')
+    expect(error.message).toContain('Uploading SARIF report to GitHub Advanced Security failed: GitHub API rate limit has been exceeded, retry after 4 minutes.')
   }
 })
 

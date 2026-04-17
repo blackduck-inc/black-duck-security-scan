@@ -23,6 +23,17 @@ export interface CoverityArbitrary {
   args?: string
 }
 
+export interface PolarisFixPrData {
+  enabled?: boolean
+  maxCount?: number
+  useUpgradeGuidance?: string[]
+  filter?: PolarisFixPrFilterData
+}
+
+export interface PolarisFixPrFilterData {
+  severities?: string[]
+}
+
 export interface PolarisData extends Common {
   accesstoken: string
   serverUrl: string
@@ -31,6 +42,7 @@ export interface PolarisData extends Common {
   branch?: Branch
   assessment: {types: string[]}
   prComment?: PrComment
+  fixpr?: PolarisFixPrData
   test?: Test
   reports?: Reports
   policy?: Policy

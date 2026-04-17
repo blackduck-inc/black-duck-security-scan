@@ -3,7 +3,7 @@ import path from 'path'
 import {debug, info} from '@actions/core'
 import {isNullOrEmptyValue, validateBlackduckFailureSeverities, validateCoverityInstallDirectoryParam} from './validators'
 import * as inputs from './inputs'
-import {Polaris} from './input-data/polaris'
+import {Polaris, PolarisFixPrData, PolarisFixPrFilterData} from './input-data/polaris'
 import {InputData} from './input-data/input-data'
 import {Coverity, CoverityDetect} from './input-data/coverity'
 import {BlackDuckSCA, BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData} from './input-data/blackduck'
@@ -199,6 +199,25 @@ export class BridgeToolsParameter {
         info(constants.POLARIS_PR_COMMENT_LOG_INFO_FOR_NON_PR_SCANS)
       }
     }
+
+    // Polaris Fix PR
+    if (parseToBoolean(inputs.POLARIS_FIXPR_ENABLED)) {
+      if (!isPrEvent) {
+        /** Set Polaris Fix PR inputs in case of non PR context */
+        info('Polaris Fix PR is enabled')
+        polData.data.polaris.fixpr = this.setPolarisFixPrInputs()
+        polData.data.github = this.getGithubRepoInfo()
+        // Set project directory to current directory if not already set to help Bridge CLI resolve file paths correctly for FixPR
+        if (!inputs.PROJECT_DIRECTORY && !polData.data.project) {
+          polData.data.project = {directory: '.'}
+        } else if (!inputs.PROJECT_DIRECTORY && polData.data.project && !polData.data.project.directory) {
+          polData.data.project.directory = '.'
+        }
+      } else {
+        info(constants.POLARIS_FIXPR_LOG_INFO_FOR_PR_SCANS)
+      }
+    }
+
     // Github Issues Input parameters
     if (inputs.POLARIS_EXTERNALISSUES_CREATE || inputs.POLARIS_EXTERNALISSUES_TYPES || inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES || inputs.POLARIS_EXTERNALISSUES_SEVERITIES || inputs.POLARIS_EXTERNALISSUES_MAXCOUNT) {
       polData.data.polaris.externalIssues = {}
@@ -855,6 +874,52 @@ export class BridgeToolsParameter {
       blackDuckFixPrData.filter = {severities: fixPRFilterSeverities}
     }
     return blackDuckFixPrData
+  }
+
+  private setPolarisFixPrInputs(): PolarisFixPrData | undefined {
+    // Validate maxCount is a number
+    if (inputs.POLARIS_FIXPR_MAXCOUNT && isNaN(Number(inputs.POLARIS_FIXPR_MAXCOUNT))) {
+      throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.POLARIS_FIXPR_MAXCOUNT_KEY))
+    }
+
+    const polarisFixPrData: PolarisFixPrData = {
+      enabled: true
+    }
+
+    // Set maxCount only if provided by user (Bridge CLI default: 5)
+    if (inputs.POLARIS_FIXPR_MAXCOUNT) {
+      polarisFixPrData.maxCount = Number(inputs.POLARIS_FIXPR_MAXCOUNT)
+    }
+
+    // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
+    const useUpgradeGuidance: string[] = []
+    if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
+      const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',')
+      for (const guidance of upgradeGuidanceList) {
+        if (guidance && guidance.trim() !== '') {
+          useUpgradeGuidance.push(guidance.trim())
+        }
+      }
+      polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance
+    }
+
+    // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
+    if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
+      const severities: string[] = []
+      const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
+      for (const severity of filterSeverities) {
+        if (severity && severity.trim() !== '') {
+          severities.push(severity.trim())
+        }
+      }
+      if (severities.length > 0) {
+        polarisFixPrData.filter = {
+          severities: severities
+        }
+      }
+    }
+
+    return polarisFixPrData
   }
 
   private setCoverityDetectArgs(): CoverityDetect {
