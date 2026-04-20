@@ -156,8 +156,6 @@ jobs:
           polaris_prComment_severities: "Critical,High,Medium,Low"
           polaris_application_name: "integrations"
           polaris_project_name: "blackduck-security-action"
-          polaris_branch_name: ${{ github.head_ref || github.ref_name }}
-          polaris_branch_parent_name: ${{ github.base_ref || 'main' }}
           polaris_prComment_enabled: true
           github_token: ${{ secrets.GITHUB_TOKEN }}
      
