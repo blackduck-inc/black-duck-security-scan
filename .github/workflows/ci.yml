@@ -143,6 +143,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   polaris:
     needs: ci
-    uses: ./.github/workflows/polaris.yml
-
+    runs-on: [ ubuntu-latest ]
+    steps:
+      - name: Polaris Scan
+        id: polaris-scan
+        uses: blackduck-inc/black-duck-security-scan@v2
+        with:
+          polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+          polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+          polaris_assessment_types: "SCA,SAST"
+          polaris_prComment_severities: "Critical,High,Medium,Low,Informational"
+          polaris_application_name: "integrations-dev"
+          polaris_project_name: "blackduck-security-extension-dev"
+          polaris_branch_name: ${{ github.head_ref || github.ref_name }}
+          polaris_branch_parent_name: "main"
+          polaris_prComment_enabled: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
      
