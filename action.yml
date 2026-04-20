@@ -89,7 +89,7 @@ inputs:
   polaris_test_sca_type:
     description: 'Polaris SCA test type (SCA-SIGNATURE, SCA-PACKAGE, SCA-BINARY)'
     required: false
-  polaris_artifact_to_upload:
+  polaris_artifactToUpload:
     description: 'Path to binary or archive file for Polaris SCA Binary scan. Required when polaris_test_sca_type is set to SCA-BINARY.'
     required: false
   polaris_test_sast_type:
