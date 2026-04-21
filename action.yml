@@ -87,7 +87,10 @@ inputs:
     description: 'Polaris parent branch name'
     required: false
   polaris_test_sca_type:
-    description: 'Polaris test type to trigger signature scan or package manager scan'
+    description: 'Polaris SCA test type (SCA-SIGNATURE, SCA-PACKAGE, SCA-BINARY)'
+    required: false
+  polaris_artifactToUpload:
+    description: 'Path to binary or archive file for Polaris SCA Binary scan. Required when polaris_test_sca_type is set to SCA-BINARY.'
     required: false
   polaris_test_sast_type:
     description: 'Polaris test type to trigger sigma rapid scan or full scan'

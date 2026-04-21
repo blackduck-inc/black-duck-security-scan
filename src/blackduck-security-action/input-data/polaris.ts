@@ -47,6 +47,7 @@ export interface PolarisData extends Common {
   reports?: Reports
   policy?: Policy
   externalIssues?: ExternalIssues
+  artifactToUpload?: string
 }
 
 export interface Policy {
