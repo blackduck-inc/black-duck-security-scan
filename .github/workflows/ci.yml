@@ -31,6 +31,8 @@ jobs:
         with:
           node-version: 20.x
           cache: 'npm'
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
       - name: Install dependencies
         run: npm ci
@@ -142,6 +144,18 @@ jobs:
 
   polaris:
     needs: ci
-    uses: ./.github/workflows/polaris.yml
-    secrets:
-      POLARIS_ACCESS_TOKEN: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+    runs-on: [ ubuntu-latest ]
+    steps:
+      - name: Polaris Scan
+        id: polaris-scan
+        uses: blackduck-inc/black-duck-security-scan@v2
+        with:
+          polaris_server_url: ${{ vars.POLARIS_SERVER_URL }}
+          polaris_access_token: ${{ secrets.POLARIS_ACCESS_TOKEN }}
+          polaris_assessment_types: "SCA,SAST"
+          polaris_prComment_severities: "Critical,High,Medium,Low"
+          polaris_application_name: "integrations"
+          polaris_project_name: "blackduck-security-action"
+          polaris_prComment_enabled: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+     
