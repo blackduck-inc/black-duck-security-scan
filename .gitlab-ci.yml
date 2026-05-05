@@ -64,6 +64,7 @@ code_coverage_job:
     - export GENERATE_CONFIGURATION_FILE=1
     - export GENERATION_OPTIONS="--entry integrations/mirrored-repos/blackduck-security-action:blackduck-security-action-$PACKAGE_VERSION"
     - export PRODUCT_ADDON_SBOM_OPTIONS="--output-zipfile blackduck-security-action-$PACKAGE_VERSION-{report_type}.zip --artifactory-repo integrations-sbom/blackduck-security-action"
+    - export ENABLE_SBOM_DEBUG='--debug'
 
 generate_sbom:
   image: releng/base-gitlab-runner:jdk17-python3.11-git-docker
@@ -81,6 +82,9 @@ polaris_bridge:
   stage: analysis
   before_script:
     - |
+      # Remove broken PPAs before updating
+      rm -f /etc/apt/sources.list.d/deadsnakes-ubuntu-ppa-focal.list
+      rm -f /etc/apt/sources.list.d/openjdk-r-ubuntu-ppa-focal.list
       apt-get update -y
       apt-get install -y make
       export DETECT_ACCURACY_REQUIRED=NONE
