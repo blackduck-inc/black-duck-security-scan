@@ -109,7 +109,7 @@ new_pop_blackduck:
       apt-get update -y
       apt-get install -y rsync make jq python3 python3-pip
       export PIP_INDEX_URL=$BD_ARTIFACTORY_PYPI_URL # Add this variable in GitLab mirrored-repo CI/CD variables
-      pip install --no-cache-dir blackduck requests
+      pip3 install --no-cache-dir blackduck requests
       echo "Installing node js 22."
       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
       \. "$HOME/.nvm/nvm.sh"
