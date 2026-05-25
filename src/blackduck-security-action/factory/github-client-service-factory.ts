@@ -9,10 +9,10 @@ import {GithubClientServiceV1} from '../service/impl/enterprise/v1/github-client
 import {getSharedHttpClient} from '../utility'
 
 export const GitHubClientServiceFactory = {
-  DEFAULT_VERSION: '3.17',
+  DEFAULT_VERSION: '3.18',
   // V1 will have all currently supported versions
   // {V2, V3 ... Vn} will have breaking changes
-  SUPPORTED_VERSIONS_V1: ['3.15', '3.16', '3.17'],
+  SUPPORTED_VERSIONS_V1: ['3.16', '3.17', '3.18'],
   // Add new version here
 
   async fetchVersion(githubApiUrl: string): Promise<string> {
