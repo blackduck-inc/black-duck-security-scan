@@ -49,7 +49,11 @@ export const DETECT_EXECUTION_PATH_KEY = 'detect_execution_path'
 // Coverity
 export const COVERITY_URL_KEY = 'coverity_url'
 export const COVERITY_USER_KEY = 'coverity_user'
+/**
+ * @deprecated Use coverity_password instead. This can be removed in future release.
+ */
 export const COVERITY_PASSPHRASE_KEY = 'coverity_passphrase'
+export const COVERITY_PASSWORD_KEY = 'coverity_password'
 export const COVERITY_PROJECT_NAME_KEY = 'coverity_project_name'
 export const COVERITY_STREAM_NAME_KEY = 'coverity_stream_name'
 export const COVERITY_INSTALL_DIRECTORY_KEY = 'coverity_install_directory'

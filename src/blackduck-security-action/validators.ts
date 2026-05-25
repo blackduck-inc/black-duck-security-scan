@@ -49,7 +49,7 @@ export function validateCoverityInputs(): string[] {
   if (inputs.COVERITY_URL) {
     const paramsMap = new Map()
     paramsMap.set(constants.COVERITY_USER_KEY, inputs.COVERITY_USER)
-    paramsMap.set(constants.COVERITY_PASSPHRASE_KEY, inputs.COVERITY_PASSPHRASE)
+    paramsMap.set(constants.COVERITY_PASSWORD_KEY, inputs.COVERITY_PASSPHRASE)
     paramsMap.set(constants.COVERITY_URL_KEY, inputs.COVERITY_URL)
     errors = validateParameters(paramsMap, constants.COVERITY_KEY)
   }

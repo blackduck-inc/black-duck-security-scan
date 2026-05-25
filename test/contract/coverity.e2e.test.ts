@@ -12,6 +12,7 @@ import fs from 'fs'
 const coverityParamMap: Map<string, string> = new Map<string, string>()
 coverityParamMap.set('COVERITY_URL', 'https://testing.coverity.synopsys.com')
 coverityParamMap.set('COVERITY_USER', 'admin')
+// COVERITY_PASSPHRASE supports both 'coverity_password' (new) and 'coverity_passphrase' (deprecated) parameters
 coverityParamMap.set('COVERITY_PASSPHRASE', 'coverity')
 coverityParamMap.set('COVERITY_INSTALL_DIRECTORY', '/')
 coverityParamMap.set('COVERITY_POLICY_VIEW', 'policy')

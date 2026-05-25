@@ -62,7 +62,7 @@ export const POLARIS_FIXPR_FILTER_SEVERITIES = getInput(constants.POLARIS_FIXPR_
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''
 export const COVERITY_USER = getInput(constants.COVERITY_USER_KEY)?.trim() || ''
-export const COVERITY_PASSPHRASE = getInput(constants.COVERITY_PASSPHRASE_KEY)?.trim() || ''
+export const COVERITY_PASSPHRASE = getInput(constants.COVERITY_PASSWORD_KEY)?.trim() || getInput(constants.COVERITY_PASSPHRASE_KEY)?.trim() || ''
 export const COVERITY_PROJECT_NAME = getInput(constants.COVERITY_PROJECT_NAME_KEY)?.trim() || ''
 export const COVERITY_STREAM_NAME = getInput(constants.COVERITY_STREAM_NAME_KEY)?.trim() || ''
 export const COVERITY_INSTALL_DIRECTORY = getInput(constants.COVERITY_INSTALL_DIRECTORY_KEY)?.trim() || ''
