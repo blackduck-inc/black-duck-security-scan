@@ -4,8 +4,11 @@ module.exports = {
   moduleFileExtensions: ['js', 'ts'],
   testMatch: ['**/unit/**/*.test.ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest'
+    '^.+\\.(ts|js)$': 'ts-jest'
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!uuid)/'
+  ],
   verbose: true,
   "moduleDirectories": [
     "node_modules",

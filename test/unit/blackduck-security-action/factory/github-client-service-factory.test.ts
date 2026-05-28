@@ -143,20 +143,20 @@ describe('getGitHubClientServiceInstance()', () => {
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('Supported versions:'))
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.15'))
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.16'))
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.17'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.18'))
   })
 
   it('should extract only major.minor version and ignore patch version', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
-    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.17.999')
+    jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.18.7')
     const infoSpy = jest.spyOn(core, 'info').mockImplementation()
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
     // Should log full version (3.17.999)
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.17.999'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.18.7'))
     // Should be supported (because major.minor 3.17 is in the list)
     expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
   })
@@ -170,14 +170,14 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(service).toBeInstanceOf(GithubClientServiceV1)
   })
 
-  it('should use default version 3.17', () => {
-    expect(GitHubClientServiceFactory.DEFAULT_VERSION).toBe('3.17')
+  it('should use default version 3.18', () => {
+    expect(GitHubClientServiceFactory.DEFAULT_VERSION).toBe('3.18')
   })
 
   it('should have all supported versions in the list', () => {
-    expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.15')
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.16')
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.17')
+    expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.18')
   })
 
   it('should return GithubClientServiceCloud service for GHEC data residency domain', async () => {

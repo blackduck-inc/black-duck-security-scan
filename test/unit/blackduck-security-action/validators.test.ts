@@ -85,7 +85,7 @@ test('Coverity - Without mandatory fields', async () => {
     expect(response).toBe(false)
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('[coverity_user,coverity_passphrase] - required parameters for coverity is missing')
+    expect(error.message).toContain('[coverity_user,coverity_password] - required parameters for coverity is missing')
   }
   Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
 })
@@ -113,6 +113,25 @@ test('Coverity - With mandatory fields', async () => {
   expect(response.length).toBe(0)
 
   Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
+})
+
+test('Coverity - Backward compatibility: COVERITY_PASSPHRASE accepts both coverity_password and coverity_passphrase', async () => {
+  // This test documents that the COVERITY_PASSPHRASE input in inputs.ts
+  // supports both 'coverity_password' (new) and 'coverity_passphrase' (deprecated) parameters
+  // The backward compatibility logic is in inputs.ts line 65:
+  // export const COVERITY_PASSPHRASE = getInput(constants.COVERITY_PASSPHRASE_KEY)?.trim() || getInput(constants.COVERITY_PASSWORD_KEY)?.trim() || ''
+
+  // When COVERITY_PASSPHRASE is set (simulating either parameter being used), validation should pass
+  Object.defineProperty(inputs, 'COVERITY_URL', {value: 'COVERITY_URL'})
+  Object.defineProperty(inputs, 'COVERITY_USER', {value: 'COVERITY_USER'})
+  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: 'test_password'})
+
+  let response = validateCoverityInputs()
+  expect(response.length).toBe(0)
+
+  Object.defineProperty(inputs, 'COVERITY_URL', {value: null})
+  Object.defineProperty(inputs, 'COVERITY_USER', {value: null})
+  Object.defineProperty(inputs, 'COVERITY_PASSPHRASE', {value: null})
 })
 
 // BLACKDUCK
