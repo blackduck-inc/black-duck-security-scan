@@ -1,5 +1,7 @@
 import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
+import * as os from 'os'
+import * as path from 'path'
 test('cleanUrl() trailing slash', () => {
   const validUrl = 'https://my-domain.com'
   const testUrl = `${validUrl}/`
@@ -171,7 +173,7 @@ describe('SSL HTTP Client Functions', () => {
 
   describe('updateCoverityConfigForBridgeVersion', () => {
     test('should convert new format to legacy for Bridge CLI < 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input.json'
+      const tempFile = path.join(os.tmpdir(), `test_coverity_input_${Date.now()}.json`)
       const testData = {
         data: {
           coverity: {
@@ -201,7 +203,7 @@ describe('SSL HTTP Client Functions', () => {
     })
 
     test('should preserve new format for Bridge CLI >= 3.9.0', () => {
-      const tempFile = '/tmp/test_coverity_input2.json'
+      const tempFile = path.join(os.tmpdir(), `test_coverity_input2_${Date.now()}.json`)
       const testData = {
         data: {
           coverity: {
