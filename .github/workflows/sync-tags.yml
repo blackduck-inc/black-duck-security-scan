@@ -29,8 +29,10 @@ jobs:
 
       - name: Set version
         id: set-version
+        env:
+          VERSION_INPUT: ${{ github.event.inputs.version }}
         run: |
-          version="${{ github.event.inputs.version }}"
+          version="$VERSION_INPUT"
           if [ -z "$version" ]; then
             version=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n 1)
             [ -z "$version" ] && echo "Error: No version tags found. Ensure at least one valid version tag exists."  && exit 1
@@ -49,17 +51,17 @@ jobs:
 
       - name: Validate version tag exists
         run: |
-          if ! git tag --list | grep -q "^v${{ env.VERSION }}$"; then
-            echo "Error: Tag v${{ env.VERSION }} does not exist. Ensure the correct version is provided."
+          if ! git tag --list | grep -q "^v${VERSION}$"; then
+            echo "Error: Tag v${VERSION} does not exist. Ensure the correct version is provided."
             git tag --list | sort -V
             exit 1
           fi
-          echo "Tag v${{ env.VERSION }} exists"
+          echo "Tag v${VERSION} exists"
 
       - name: Update major version tag
         if: ${{ github.event.inputs.update_major_tag == 'true' }}
         run: |
-          major_tag="v${{ env.MAJOR }}"
+          major_tag="v${MAJOR}"
           echo "Updating major version tag: $major_tag"
 
           # Delete existing major tag if it exists
@@ -73,8 +75,8 @@ jobs:
           fi
 
           # Create new major tag
-          echo "Creating new major tag: $major_tag -> v${{ env.VERSION }}"
-          git tag $major_tag v${{ env.VERSION }}
+          echo "Creating new major tag: $major_tag -> v${VERSION}"
+          git tag $major_tag "v${VERSION}"
           git push origin $major_tag
 
       - name: Update latest tag
@@ -94,12 +96,12 @@ jobs:
           fi
 
           # Create new latest tag
-          echo "Creating new latest tag: $latest_tag -> v${{ env.VERSION }}"
-          git tag $latest_tag v${{ env.VERSION }}
+          echo "Creating new latest tag: $latest_tag -> v${VERSION}"
+          git tag $latest_tag "v${VERSION}"
           git push origin $latest_tag
 
       - name: Summary
         run: |
           echo "=== TAG SYNC SUMMARY ==="
-          echo "Current tags pointing to v${{ env.VERSION }}:"
-          git tag --points-at v${{ env.VERSION }} | sort
+          echo "Current tags pointing to v${VERSION}:"
+          git tag --points-at "v${VERSION}" | sort
