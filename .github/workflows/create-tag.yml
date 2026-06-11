@@ -79,9 +79,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.inputs.TAG }}
+          IS_DRAFT: ${{ github.event.inputs.IS_DRAFT }}
+          IS_PRERELEASE: ${{ github.event.inputs.IS_PRERELEASE }}
         run: |
           gh release create "$TAG" \
             -t "Black Duck Security Scan $TAG" \
             -n "$PROCESSED_BODY" \
-            --draft=${{ github.event.inputs.IS_DRAFT }} \
-            --prerelease=${{ github.event.inputs.IS_PRERELEASE }}
+            --draft="$IS_DRAFT" \
+            --prerelease="$IS_PRERELEASE"
