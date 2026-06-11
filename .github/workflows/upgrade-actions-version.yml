@@ -46,15 +46,15 @@ jobs:
         id: version-update
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          action_name=$(jq -r '.name' < package.json) 
+          action_name=$(jq -r '.name' < package.json)
           echo "ACTION_NAME=$action_name" >> $GITHUB_ENV
           echo "ACTION NAME: "$action_name
-          input_version=${{ github.event.inputs.version }}
-          current_version=$(echo "$input_version" | sed 's/^v//')
+          current_version=$(echo "$INPUT_VERSION" | sed 's/^v//')
           echo "CURRENT_VERSION=$current_version" >> $GITHUB_ENV
           echo "CURRENT ACTION VERSION: " $current_version
-          
+
           new_version=$current_version
           echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
           echo "New version to update: ${new_version}"
@@ -68,23 +68,23 @@ jobs:
           git config --local user.name "$(git log -n 1 --pretty=format:%an)"
           git config --local user.email "$(git log -n 1 --pretty=format:%ae)"
           git config set advice.addIgnoredFile false
-          
-          BRANCH_NAME="action_version_update_${{ env.NEW_VERSION }}"
+
+          BRANCH_NAME="action_version_update_${NEW_VERSION}"
           git checkout -b "$BRANCH_NAME"
-          
-          echo "Running npm version to update version to ${{ env.NEW_VERSION }}"
-          npm version ${{ env.NEW_VERSION }} --no-git-tag-version
-          
+
+          echo "Running npm version to update version to ${NEW_VERSION}"
+          npm version "${NEW_VERSION}" --no-git-tag-version
+
           echo "Rebuilding after version update"
           export NODE_OPTIONS=--openssl-legacy-provider
           npm run build && npm run package
-          
+
           echo "Adding updated files to git"
           git add package.json package-lock.json dist/
-          
-          git commit -am "upgrade action version to ${{ env.NEW_VERSION }} [skip ci]"
+
+          git commit -am "upgrade action version to ${NEW_VERSION} [skip ci]"
           git push origin "$BRANCH_NAME" --force
-          
-          gh pr create --base ${{ github.event.repository.default_branch }} --head "$BRANCH_NAME" --title "Action version upgrade to ${{ env.NEW_VERSION }}" --body "${{ env.ACTION_NAME }} version upgrade to ${{ env.NEW_VERSION }}" --fill
-          
+
+          gh pr create --base ${{ github.event.repository.default_branch }} --head "$BRANCH_NAME" --title "Action version upgrade to ${NEW_VERSION}" --body "${ACTION_NAME} version upgrade to ${NEW_VERSION}" --fill
+
           echo "Successfully updated action version in package.json and package-lock.json files..."

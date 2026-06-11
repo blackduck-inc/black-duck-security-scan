@@ -62,8 +62,10 @@ jobs:
 
       - name: Process tag body
         id: process_body
+        env:
+          TAG_BODY: ${{ github.event.inputs.TAG_BODY }}
         run: |
-          tag_body="${{ github.event.inputs.TAG_BODY }}"
+          tag_body="$TAG_BODY"
           echo "${tag_body}">>processed_body.txt
           sed -i 's/\\n/\n/g' processed_body.txt
           cat processed_body.txt
@@ -76,9 +78,12 @@ jobs:
         id: create_tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.TAG }}
+          IS_DRAFT: ${{ github.event.inputs.IS_DRAFT }}
+          IS_PRERELEASE: ${{ github.event.inputs.IS_PRERELEASE }}
         run: |
-          gh release create ${{ github.event.inputs.TAG }} \
-            -t "Black Duck Security Scan ${{ github.event.inputs.TAG }}" \
-            -n "${{ env.PROCESSED_BODY }}" \
-            --draft=${{ github.event.inputs.IS_DRAFT }} \
-            --prerelease=${{ github.event.inputs.IS_PRERELEASE }}
+          gh release create "$TAG" \
+            -t "Black Duck Security Scan $TAG" \
+            -n "$PROCESSED_BODY" \
+            --draft="$IS_DRAFT" \
+            --prerelease="$IS_PRERELEASE"
