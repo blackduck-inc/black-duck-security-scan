@@ -1,4 +1,5 @@
-name: 'Black Duck Security Scan'
+name: 'Black Duck Security Scan'- name: Black Duck Security Scan
+  uses: blackduck-inc/black-duck-security-scan@v2.9.0
 branding:
   icon: 'shield'
   color: 'purple'
