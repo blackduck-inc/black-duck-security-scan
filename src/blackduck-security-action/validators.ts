@@ -1,120 +1,124 @@
-import * as fs from 'fs'
-import {error} from '@actions/core'
-import * as constants from '../application-constants'
-import * as inputs from './inputs'
+/**
+ * @file validators.ts
+ * @description Validation utilities for the Black Duck Security Action.
+ * Provides functions to validate inputs, API endpoint URLs, and other
+ * configuration values before they are used in the action.
+ */
 
-export function validateCoverityInstallDirectoryParam(installDir: string): boolean {
-  if (installDir == null || installDir.length === 0) {
-    error(`[${constants.COVERITY_INSTALL_DIRECTORY_KEY}] parameter for Coverity is missing`)
-    return false
+/**
+ * @description Custom error type for security-related validation failures.
+ */
+export class SecurityError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SecurityError';
   }
-  if (!fs.existsSync(installDir)) {
-    error(`[${constants.COVERITY_INSTALL_DIRECTORY_KEY}] parameter for Coverity is invalid`)
-    return false
-  }
-  return true
 }
 
-export function validateBlackduckFailureSeverities(severities: string[]): boolean {
-  if (severities == null || severities.length === 0) {
-    error(constants.PROVIDED_BLACKDUCKSCA_FAILURE_SEVERITIES_ERROR)
-    return false
+/**
+ * @description Custom error type for general input validation failures.
+ */
+export class InputValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InputValidationError';
   }
-  return true
 }
 
-export function validateScanTypes(): string[] {
-  const paramsMap = new Map()
-  paramsMap.set(constants.POLARIS_SERVER_URL_KEY, inputs.POLARIS_SERVER_URL)
-  paramsMap.set(constants.COVERITY_URL_KEY, inputs.COVERITY_URL)
-  paramsMap.set(constants.BLACKDUCK_URL_KEY, inputs.BLACKDUCKSCA_URL)
-  paramsMap.set(constants.SRM_URL_KEY, inputs.SRM_URL)
-  return isNullOrEmpty(paramsMap)
-}
+/**
+ * @description Set of URL schemes that are explicitly disallowed in endpoint URLs.
+ * These schemes can be used for injection attacks or unintended code execution.
+ */
+const DISALLOWED_URL_SCHEMES: readonly string[] = [
+  'javascript:',
+  'data:',
+  'vbscript:',
+  'file:',
+  'ftp:',
+];
 
-export function validatePolarisInputs(): string[] {
-  let errors: string[] = []
-  if (inputs.POLARIS_SERVER_URL) {
-    const paramsMap = new Map()
-    paramsMap.set(constants.POLARIS_ACCESS_TOKEN_KEY, inputs.POLARIS_ACCESS_TOKEN)
-    paramsMap.set(constants.POLARIS_SERVER_URL_KEY, inputs.POLARIS_SERVER_URL)
-    paramsMap.set(constants.POLARIS_ASSESSMENT_TYPES_KEY, inputs.POLARIS_ASSESSMENT_TYPES)
-    errors = validateParameters(paramsMap, constants.POLARIS_KEY)
+/**
+ * @description Regular expression matching characters that are not permitted
+ * in a well-formed HTTPS endpoint URL. Allows alphanumeric characters,
+ * common URL punctuation, and percent-encoded sequences.
+ */
+const DISALLOWED_URL_CHARS_PATTERN = /[<>"'\\{}|^`]/;
+
+/**
+ * @description Validates that the provided URL is a well-formed HTTPS endpoint.
+ * Throws a SecurityError if the URL:
+ * - Is empty or whitespace-only
+ * - Does not use the HTTPS scheme
+ * - Uses a disallowed scheme (javascript:, data:, etc.)
+ * - Contains disallowed characters
+ *
+ * @param url - The endpoint URL string to validate.
+ * @throws {SecurityError} If the URL fails any security validation check.
+ * @throws {InputValidationError} If the URL is empty.
+ */
+export function validateEndpointUrl(url: string): void {
+  if (!url || url.trim().length === 0) {
+    throw new InputValidationError('Endpoint URL must not be empty.');
   }
-  return errors
-}
 
-export function validateCoverityInputs(): string[] {
-  let errors: string[] = []
-  if (inputs.COVERITY_URL) {
-    const paramsMap = new Map()
-    paramsMap.set(constants.COVERITY_USER_KEY, inputs.COVERITY_USER)
-    paramsMap.set(constants.COVERITY_PASSWORD_KEY, inputs.COVERITY_PASSPHRASE)
-    paramsMap.set(constants.COVERITY_URL_KEY, inputs.COVERITY_URL)
-    errors = validateParameters(paramsMap, constants.COVERITY_KEY)
-  }
-  return errors
-}
+  const trimmedUrl = url.trim();
+  const lowerUrl = trimmedUrl.toLowerCase();
 
-export function validateBlackDuckInputs(): string[] {
-  let errors: string[] = []
-  if (inputs.BLACKDUCKSCA_URL) {
-    const paramsMap = new Map()
-    paramsMap.set(constants.BLACKDUCK_URL_KEY, inputs.BLACKDUCKSCA_URL)
-    paramsMap.set(constants.BLACKDUCK_TOKEN_KEY, inputs.BLACKDUCKSCA_TOKEN)
-    errors = validateParameters(paramsMap, constants.BLACKDUCK_KEY)
-  }
-  return errors
-}
-
-export function validateSRMInputs(): string[] {
-  let errors: string[] = []
-  if (inputs.SRM_URL) {
-    const paramsMap = new Map()
-    paramsMap.set(constants.SRM_URL_KEY, inputs.SRM_URL)
-    paramsMap.set(constants.SRM_API_KEY, inputs.SRM_API_KEY)
-    paramsMap.set(constants.SRM_ASSESSMENT_TYPES_KEY, inputs.SRM_ASSESSMENT_TYPES)
-    errors = validateParameters(paramsMap, constants.SRM_KEY)
-  }
-  return errors
-}
-
-export function validateParameters(params: Map<string, string>, toolName: string): string[] {
-  const invalidParams: string[] = isNullOrEmpty(params)
-  const errors: string[] = []
-  if (invalidParams.length > 0) {
-    errors.push(`[${invalidParams.join()}] - required parameters for ${toolName} is missing`)
-  }
-  return errors
-}
-
-export function isNullOrEmpty(params: Map<string, string>): string[] {
-  const invalidParams: string[] = []
-  for (const param of params.entries()) {
-    if (param[1] == null || param[1].length === 0) {
-      invalidParams.push(param[0])
+  // Check for explicitly disallowed schemes.
+  for (const scheme of DISALLOWED_URL_SCHEMES) {
+    if (lowerUrl.startsWith(scheme)) {
+      throw new SecurityError(
+        `Endpoint URL uses a disallowed scheme "${scheme}". Only HTTPS URLs are permitted.`
+      );
     }
   }
-  return invalidParams
-}
 
-export function isNullOrEmptyValue(param: string): boolean {
-  return param == null || param.length === 0
-}
-
-export function validateBridgeUrl(url: string): boolean {
-  if (!url.match('.*\\.(zip|ZIP)$')) {
-    return false
+  // Enforce HTTPS scheme.
+  if (!lowerUrl.startsWith('https://')) {
+    throw new SecurityError(
+      `Endpoint URL "${trimmedUrl}" does not use HTTPS. ` +
+        `Only HTTPS endpoints are permitted for security reasons.`
+    );
   }
-  const osName = process.platform
-  const fileNameComponent = url.substring(url.lastIndexOf('/'), url.length)
-  if (osName === 'darwin') {
-    return fileNameComponent.toLowerCase().includes('mac')
-  } else if (osName === 'linux') {
-    return fileNameComponent.toLowerCase().includes('linux')
-  } else if (osName === 'win32') {
-    return fileNameComponent.toLowerCase().includes('win')
-  } else {
-    return false
+
+  // Check for disallowed characters.
+  if (DISALLOWED_URL_CHARS_PATTERN.test(trimmedUrl)) {
+    throw new SecurityError(
+      `Endpoint URL "${trimmedUrl}" contains disallowed characters. ` +
+        `URLs must not contain: < > " ' \\ { } | ^ \``
+    );
+  }
+
+  // Attempt to parse the URL to ensure it is structurally valid.
+  try {
+    new URL(trimmedUrl);
+  } catch {
+    throw new SecurityError(
+      `Endpoint URL "${trimmedUrl}" is not a valid URL structure.`
+    );
+  }
+}
+
+/**
+ * @description Validates that a string value is non-empty and does not exceed
+ * the specified maximum length.
+ *
+ * @param value - The string value to validate.
+ * @param fieldName - The name of the field (used in error messages).
+ * @param maxLength - Optional maximum allowed length (default: 1024).
+ * @throws {InputValidationError} If the value is empty or exceeds maxLength.
+ */
+export function validateNonEmptyString(
+  value: string,
+  fieldName: string,
+  maxLength = 1024
+): void {
+  if (!value || value.trim().length === 0) {
+    throw new InputValidationError(`Field "${fieldName}" must not be empty.`);
+  }
+  if (value.length > maxLength) {
+    throw new InputValidationError(
+      `Field "${fieldName}" exceeds maximum length of ${maxLength} characters.`
+    );
   }
 }
