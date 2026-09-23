@@ -13,6 +13,18 @@ import {isBoolean, isPullRequestEvent, parseToBoolean, isGitHubCloud} from './ut
 import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
+function parseCommaSeparatedList(value: string | undefined): string[] {
+  if (!value) return []
+  const result: string[] = []
+  for (const item of value.split(',')) {
+    const trimmed = item.trim()
+    if (trimmed !== '') {
+      result.push(trimmed)
+    }
+  }
+  return result
+}
+
 export class BridgeToolsParameter {
   tempDir: string
   private static STAGE_OPTION = '--stage'
@@ -199,9 +211,11 @@ export class BridgeToolsParameter {
             }
           }
         }
+        const prCommentFilterIssueTypes = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_FILTER_ISSUETYPES)
         polData.data.polaris.prComment = {
           enabled: true,
-          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities})
+          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities}),
+          ...(prCommentFilterIssueTypes.length > 0 && {filter: {issueTypes: prCommentFilterIssueTypes}})
         }
         polData.data.github = this.getGithubRepoInfo()
       } else {
@@ -914,18 +928,19 @@ export class BridgeToolsParameter {
     }
 
     // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
-    if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
-      const severities: string[] = []
-      const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
-      for (const severity of filterSeverities) {
-        if (severity && severity.trim() !== '') {
-          severities.push(severity.trim())
-        }
-      }
-      if (severities.length > 0) {
-        polarisFixPrData.filter = {
-          severities: severities
-        }
+    const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES)
+
+    // Set filter.issueTypes if provided by user (Bridge CLI defaults to polaris.assessment.types, case-insensitive)
+    const issueTypes = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_ISSUETYPES)
+
+    // Set filter.confidence if provided by user (Bridge CLI default: ["High"], SAST only, case-insensitive)
+    const confidence = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_CONFIDENCE)
+
+    if (severities.length > 0 || issueTypes.length > 0 || confidence.length > 0) {
+      polarisFixPrData.filter = {
+        ...(severities.length > 0 && {severities: severities}),
+        ...(issueTypes.length > 0 && {issueTypes: issueTypes}),
+        ...(confidence.length > 0 && {confidence: confidence})
       }
     }
 

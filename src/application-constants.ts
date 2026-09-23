@@ -89,6 +89,7 @@ export const POLARIS_SERVERURL_KEY = 'polaris_serverUrl'
 export const POLARIS_SERVER_URL_KEY = 'polaris_server_url'
 export const POLARIS_PRCOMMENT_ENABLED_KEY = 'polaris_prComment_enabled'
 export const POLARIS_PRCOMMENT_SEVERITIES_KEY = 'polaris_prComment_severities'
+export const POLARIS_PRCOMMENT_FILTER_ISSUETYPES_KEY = 'polaris_prComment_filter_issueTypes'
 export const POLARIS_BRANCH_NAME_KEY = 'polaris_branch_name'
 export const POLARIS_BRANCH_PARENT_NAME_KEY = 'polaris_branch_parent_name'
 export const POLARIS_TEST_SCA_TYPE_KEY = 'polaris_test_sca_type'
@@ -126,6 +127,8 @@ export const POLARIS_FIXPR_ENABLED_KEY = 'polaris_fixpr_enabled'
 export const POLARIS_FIXPR_MAXCOUNT_KEY = 'polaris_fixpr_maxCount'
 export const POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY = 'polaris_fixpr_useUpgradeGuidance'
 export const POLARIS_FIXPR_FILTER_SEVERITIES_KEY = 'polaris_fixpr_filter_severities'
+export const POLARIS_FIXPR_FILTER_ISSUETYPES_KEY = 'polaris_fixpr_filter_issueTypes'
+export const POLARIS_FIXPR_FILTER_CONFIDENCE_KEY = 'polaris_fixpr_filter_confidence'
 
 // Blackduck
 /**
