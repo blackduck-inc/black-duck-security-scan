@@ -14,15 +14,7 @@ import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
 function parseCommaSeparatedList(value: string | undefined): string[] {
-  if (!value) return []
-  const result: string[] = []
-  for (const item of value.split(',')) {
-    const trimmed = item.trim()
-    if (trimmed !== '') {
-      result.push(trimmed)
-    }
-  }
-  return result
+  return value ? value.split(',').map(s => s.trim()).filter(s => s !== '') : []
 }
 
 export class BridgeToolsParameter {
@@ -201,16 +193,7 @@ export class BridgeToolsParameter {
             }
           }
         }
-        const prCommentSeverities: string[] = []
-        const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES
-        if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
-          const severityValues = inputPrCommentSeverities.split(',')
-          for (const severity of severityValues) {
-            if (severity.trim()) {
-              prCommentSeverities.push(severity.trim())
-            }
-          }
-        }
+        const prCommentSeverities = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_SEVERITIES)
         const prCommentFilterIssueTypes = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_FILTER_ISSUETYPES)
         polData.data.polaris.prComment = {
           enabled: true,
@@ -916,15 +899,8 @@ export class BridgeToolsParameter {
     }
 
     // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
-    const useUpgradeGuidance: string[] = []
     if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
-      const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',')
-      for (const guidance of upgradeGuidanceList) {
-        if (guidance && guidance.trim() !== '') {
-          useUpgradeGuidance.push(guidance.trim())
-        }
-      }
-      polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance
+      polarisFixPrData.useUpgradeGuidance = parseCommaSeparatedList(inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE)
     }
 
     // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
@@ -938,9 +914,9 @@ export class BridgeToolsParameter {
 
     if (severities.length > 0 || issueTypes.length > 0 || confidence.length > 0) {
       polarisFixPrData.filter = {
-        ...(severities.length > 0 && {severities: severities}),
-        ...(issueTypes.length > 0 && {issueTypes: issueTypes}),
-        ...(confidence.length > 0 && {confidence: confidence})
+        ...(severities.length > 0 && {severities}),
+        ...(issueTypes.length > 0 && {issueTypes}),
+        ...(confidence.length > 0 && {confidence})
       }
     }
 

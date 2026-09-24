@@ -2285,16 +2285,7 @@ const blackduck_1 = __nccwpck_require__(51277);
 const constants = __importStar(__nccwpck_require__(95698));
 const utility_1 = __nccwpck_require__(17199);
 function parseCommaSeparatedList(value) {
-    if (!value)
-        return [];
-    const result = [];
-    for (const item of value.split(',')) {
-        const trimmed = item.trim();
-        if (trimmed !== '') {
-            result.push(trimmed);
-        }
-    }
-    return result;
+    return value ? value.split(',').map(s => s.trim()).filter(s => s !== '') : [];
 }
 class BridgeToolsParameter {
     constructor(tempDir) {
@@ -2425,16 +2416,7 @@ class BridgeToolsParameter {
                             name: inputs.POLARIS_PARENT_BRANCH_NAME
                         } });
                 }
-                const prCommentSeverities = [];
-                const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES;
-                if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
-                    const severityValues = inputPrCommentSeverities.split(',');
-                    for (const severity of severityValues) {
-                        if (severity.trim()) {
-                            prCommentSeverities.push(severity.trim());
-                        }
-                    }
-                }
+                const prCommentSeverities = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_SEVERITIES);
                 const prCommentFilterIssueTypes = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_FILTER_ISSUETYPES);
                 polData.data.polaris.prComment = Object.assign(Object.assign({ enabled: true }, (prCommentSeverities.length > 0 && { severities: prCommentSeverities })), (prCommentFilterIssueTypes.length > 0 && { filter: { issueTypes: prCommentFilterIssueTypes } }));
                 polData.data.github = this.getGithubRepoInfo();
@@ -3057,15 +3039,8 @@ class BridgeToolsParameter {
             polarisFixPrData.maxCount = Number(inputs.POLARIS_FIXPR_MAXCOUNT);
         }
         // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
-        const useUpgradeGuidance = [];
         if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
-            const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',');
-            for (const guidance of upgradeGuidanceList) {
-                if (guidance && guidance.trim() !== '') {
-                    useUpgradeGuidance.push(guidance.trim());
-                }
-            }
-            polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance;
+            polarisFixPrData.useUpgradeGuidance = parseCommaSeparatedList(inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE);
         }
         // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
         const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES);
@@ -3074,7 +3049,7 @@ class BridgeToolsParameter {
         // Set filter.confidence if provided by user (Bridge CLI default: ["High"], SAST only, case-insensitive)
         const confidence = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_CONFIDENCE);
         if (severities.length > 0 || issueTypes.length > 0 || confidence.length > 0) {
-            polarisFixPrData.filter = Object.assign(Object.assign(Object.assign({}, (severities.length > 0 && { severities: severities })), (issueTypes.length > 0 && { issueTypes: issueTypes })), (confidence.length > 0 && { confidence: confidence }));
+            polarisFixPrData.filter = Object.assign(Object.assign(Object.assign({}, (severities.length > 0 && { severities })), (issueTypes.length > 0 && { issueTypes })), (confidence.length > 0 && { confidence }));
         }
         return polarisFixPrData;
     }
