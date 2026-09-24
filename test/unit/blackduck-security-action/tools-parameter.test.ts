@@ -2098,6 +2098,33 @@ test('Test getFormattedCommandForPolaris - pr comment filter omitted when input 
   delete (inputs as any).POLARIS_PRCOMMENT_FILTER_ISSUETYPES
 })
 
+test('Test getFormattedCommandForPolaris - fix pr filter issueTypes and confidence dropped on PR event', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: 'sca,sast', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: 'High,Medium', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.fixpr).toBeUndefined()
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
 test('Polaris FixPR should set project.directory when not explicitly provided', () => {
   // Mock isPullRequestEvent to return false (non-PR context)
   const isPRSpy = jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)
