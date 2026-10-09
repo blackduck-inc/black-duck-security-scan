@@ -26,6 +26,7 @@ export const POLARIS_ASSESSMENT_TYPES = getInput(constants.POLARIS_ASSESSMENT_TY
 export const POLARIS_SERVER_URL = getInput(constants.POLARIS_SERVERURL_KEY)?.trim() || getInput(constants.POLARIS_SERVER_URL_KEY)?.trim() || ''
 export const POLARIS_PRCOMMENT_ENABLED = getInput(constants.POLARIS_PRCOMMENT_ENABLED_KEY)?.trim() || ''
 export const POLARIS_PRCOMMENT_SEVERITIES = getInput(constants.POLARIS_PRCOMMENT_SEVERITIES_KEY)?.trim() || ''
+export const POLARIS_PRCOMMENT_FILTER_ISSUETYPES = getInput(constants.POLARIS_PRCOMMENT_FILTER_ISSUETYPES_KEY)?.trim() || ''
 export const POLARIS_BRANCH_NAME = getInput(constants.POLARIS_BRANCH_NAME_KEY)?.trim() || ''
 export const POLARIS_PARENT_BRANCH_NAME = getInput(constants.POLARIS_BRANCH_PARENT_NAME_KEY)?.trim() || ''
 export const POLARIS_TEST_SCA_TYPE = getInput(constants.POLARIS_TEST_SCA_TYPE_KEY)?.trim() || ''
@@ -59,6 +60,8 @@ export const POLARIS_FIXPR_ENABLED = getInput(constants.POLARIS_FIXPR_ENABLED_KE
 export const POLARIS_FIXPR_MAXCOUNT = getInput(constants.POLARIS_FIXPR_MAXCOUNT_KEY)?.trim() || ''
 export const POLARIS_FIXPR_UPGRADE_GUIDANCE = getInput(constants.POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY)?.trim() || ''
 export const POLARIS_FIXPR_FILTER_SEVERITIES = getInput(constants.POLARIS_FIXPR_FILTER_SEVERITIES_KEY)?.trim() || ''
+export const POLARIS_FIXPR_FILTER_ISSUETYPES = getInput(constants.POLARIS_FIXPR_FILTER_ISSUETYPES_KEY)?.trim() || ''
+export const POLARIS_FIXPR_FILTER_CONFIDENCE = getInput(constants.POLARIS_FIXPR_FILTER_CONFIDENCE_KEY)?.trim() || ''
 
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''

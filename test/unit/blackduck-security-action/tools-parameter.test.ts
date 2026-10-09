@@ -1913,6 +1913,218 @@ test('Test getFormattedCommandForPolaris - fix pr boolean variations', () => {
   expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
 })
 
+test('Test getFormattedCommandForPolaris - fix pr with filter issueTypes and confidence', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: 'sca, sast', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: 'High, Medium', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+  expect(jsonData.data.polaris.fixpr.filter).toBeDefined()
+  expect(jsonData.data.polaris.fixpr.filter.issueTypes).toEqual(['sca', 'sast'])
+  expect(jsonData.data.polaris.fixpr.filter.confidence).toEqual(['High', 'Medium'])
+  expect(jsonData.data.polaris.fixpr.filter.severities).toBeUndefined()
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
+test('Test getFormattedCommandForPolaris - fix pr filter omitted when new filter inputs empty', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: '', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: '', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.polaris.fixpr.enabled).toBe(true)
+  expect(jsonData.data.polaris.fixpr.filter).toBeUndefined()
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
+test('Test getFormattedCommandForPolaris - fix pr filter combines severities issueTypes and confidence', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_SEVERITIES', {value: 'CRITICAL,HIGH', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: 'sast', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: 'High', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.fixpr.filter.severities).toEqual(['CRITICAL', 'HIGH'])
+  expect(jsonData.data.polaris.fixpr.filter.issueTypes).toEqual(['sast'])
+  expect(jsonData.data.polaris.fixpr.filter.confidence).toEqual(['High'])
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
+test('Test getFormattedCommandForPolaris - pr comment filter issueTypes set on PR event', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_ENABLED', {value: true, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_SEVERITIES', {value: 'CRITICAL,HIGH', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_FILTER_ISSUETYPES', {value: 'sast', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  const resp = stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(resp).not.toBeNull()
+  expect(jsonData.data.polaris.prComment).toBeDefined()
+  expect(jsonData.data.polaris.prComment.enabled).toBe(true)
+  expect(jsonData.data.polaris.prComment.filter).toBeDefined()
+  expect(jsonData.data.polaris.prComment.filter.issueTypes).toEqual(['sast'])
+
+  delete (inputs as any).POLARIS_PRCOMMENT_FILTER_ISSUETYPES
+})
+
+test('Test getFormattedCommandForPolaris - fix pr filter passes issueTypes and confidence through unchanged (Bridge CLI is case-insensitive)', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'push'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: 'SCA, Sast', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: 'HIGH, medium, LOW', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.fixpr.filter.issueTypes).toEqual(['SCA', 'Sast'])
+  expect(jsonData.data.polaris.fixpr.filter.confidence).toEqual(['HIGH', 'medium', 'LOW'])
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
+test('Test getFormattedCommandForPolaris - pr comment filter passes issueTypes through unchanged (Bridge CLI is case-insensitive)', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_ENABLED', {value: true, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_SEVERITIES', {value: 'CRITICAL,HIGH', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_FILTER_ISSUETYPES', {value: 'SAST, Sca', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.prComment.filter.issueTypes).toEqual(['SAST', 'Sca'])
+
+  delete (inputs as any).POLARIS_PRCOMMENT_FILTER_ISSUETYPES
+})
+
+test('Test getFormattedCommandForPolaris - pr comment filter omitted when input empty', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_ENABLED', {value: true, configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_SEVERITIES', {value: 'CRITICAL,HIGH', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PRCOMMENT_FILTER_ISSUETYPES', {value: '', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.prComment.enabled).toBe(true)
+  expect(jsonData.data.polaris.prComment.filter).toBeUndefined()
+
+  delete (inputs as any).POLARIS_PRCOMMENT_FILTER_ISSUETYPES
+})
+
+test('Test getFormattedCommandForPolaris - fix pr filter issueTypes and confidence dropped on PR event', () => {
+  process.env['GITHUB_EVENT_NAME'] = 'pull_request'
+  delete (inputs as any).POLARIS_FIXPR_MAXCOUNT
+  delete (inputs as any).POLARIS_FIXPR_UPGRADE_GUIDANCE
+  delete (inputs as any).POLARIS_FIXPR_FILTER_SEVERITIES
+  Object.defineProperty(inputs, 'POLARIS_SERVER_URL', {value: 'server_url', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ACCESS_TOKEN', {value: 'access_token', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_APPLICATION_NAME', {value: 'POLARIS_APPLICATION_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_PROJECT_NAME', {value: 'POLARIS_PROJECT_NAME', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_ASSESSMENT_TYPES', {value: 'SCA,SAST', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_ENABLED', {value: 'true', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_ISSUETYPES', {value: 'sca,sast', configurable: true})
+  Object.defineProperty(inputs, 'POLARIS_FIXPR_FILTER_CONFIDENCE', {value: 'High,Medium', configurable: true})
+  Object.defineProperty(inputs, 'GITHUB_TOKEN', {value: 'test-token', configurable: true})
+
+  const stp: BridgeToolsParameter = new BridgeToolsParameter(tempPath)
+  stp.getFormattedCommandForPolaris('blackduck-security-action')
+
+  const jsonString = fs.readFileSync(tempPath.concat(polaris_input_file), 'utf-8')
+  const jsonData = JSON.parse(jsonString)
+
+  expect(jsonData.data.polaris.fixpr).toBeUndefined()
+
+  delete (inputs as any).POLARIS_FIXPR_FILTER_ISSUETYPES
+  delete (inputs as any).POLARIS_FIXPR_FILTER_CONFIDENCE
+})
+
 test('Polaris FixPR should set project.directory when not explicitly provided', () => {
   // Mock isPullRequestEvent to return false (non-PR context)
   const isPRSpy = jest.spyOn(utility, 'isPullRequestEvent').mockReturnValue(false)

@@ -13,6 +13,10 @@ import {isBoolean, isPullRequestEvent, parseToBoolean, isGitHubCloud} from './ut
 import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
+function parseCommaSeparatedList(value: string | undefined): string[] {
+  return value ? value.split(',').map(s => s.trim()).filter(s => s !== '') : []
+}
+
 export class BridgeToolsParameter {
   tempDir: string
   private static STAGE_OPTION = '--stage'
@@ -189,19 +193,12 @@ export class BridgeToolsParameter {
             }
           }
         }
-        const prCommentSeverities: string[] = []
-        const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES
-        if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
-          const severityValues = inputPrCommentSeverities.split(',')
-          for (const severity of severityValues) {
-            if (severity.trim()) {
-              prCommentSeverities.push(severity.trim())
-            }
-          }
-        }
+        const prCommentSeverities = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_SEVERITIES)
+        const prCommentFilterIssueTypes = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_FILTER_ISSUETYPES)
         polData.data.polaris.prComment = {
           enabled: true,
-          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities})
+          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities}),
+          ...(prCommentFilterIssueTypes.length > 0 && {filter: {issueTypes: prCommentFilterIssueTypes}})
         }
         polData.data.github = this.getGithubRepoInfo()
       } else {
@@ -902,30 +899,24 @@ export class BridgeToolsParameter {
     }
 
     // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
-    const useUpgradeGuidance: string[] = []
     if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
-      const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',')
-      for (const guidance of upgradeGuidanceList) {
-        if (guidance && guidance.trim() !== '') {
-          useUpgradeGuidance.push(guidance.trim())
-        }
-      }
-      polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance
+      polarisFixPrData.useUpgradeGuidance = parseCommaSeparatedList(inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE)
     }
 
     // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
-    if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
-      const severities: string[] = []
-      const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
-      for (const severity of filterSeverities) {
-        if (severity && severity.trim() !== '') {
-          severities.push(severity.trim())
-        }
-      }
-      if (severities.length > 0) {
-        polarisFixPrData.filter = {
-          severities: severities
-        }
+    const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES)
+
+    // Set filter.issueTypes if provided by user (Bridge CLI defaults to polaris.assessment.types, case-insensitive)
+    const issueTypes = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_ISSUETYPES)
+
+    // Set filter.confidence if provided by user (Bridge CLI default: ["High"], SAST only, case-insensitive)
+    const confidence = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_CONFIDENCE)
+
+    if (severities.length > 0 || issueTypes.length > 0 || confidence.length > 0) {
+      polarisFixPrData.filter = {
+        ...(severities.length > 0 && {severities}),
+        ...(issueTypes.length > 0 && {issueTypes}),
+        ...(confidence.length > 0 && {confidence})
       }
     }
 
