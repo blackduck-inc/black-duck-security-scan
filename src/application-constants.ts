@@ -15,7 +15,7 @@ export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
 // Scan Types
 export const COVERITY_KEY = 'coverity'
 export const POLARIS_KEY = 'polaris'
-export const BLACKDUCK_KEY = 'blackduck'
+export const BLACKDUCKSCA_KEY = 'blackducksca'
 export const SRM_KEY = 'SRM'
 
 // Srm

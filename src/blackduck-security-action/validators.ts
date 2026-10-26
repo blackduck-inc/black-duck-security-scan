@@ -62,7 +62,7 @@ export function validateBlackDuckInputs(): string[] {
     const paramsMap = new Map()
     paramsMap.set(constants.BLACKDUCKSCA_URL_KEY, inputs.BLACKDUCKSCA_URL)
     paramsMap.set(constants.BLACKDUCKSCA_TOKEN_KEY, inputs.BLACKDUCKSCA_TOKEN)
-    errors = validateParameters(paramsMap, constants.BLACKDUCK_KEY)
+    errors = validateParameters(paramsMap, constants.BLACKDUCKSCA_KEY)
   }
   return errors
 }

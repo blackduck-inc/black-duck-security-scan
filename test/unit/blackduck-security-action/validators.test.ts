@@ -122,7 +122,7 @@ test('Blackduck SCA - Without mandatory fields', async () => {
     validateBlackDuckInputs()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('[blackduck_token,blackduck_scan_full] - required parameters for blackduck is missing')
+    expect(error.message).toContain('[blackduck_token,blackduck_scan_full] - required parameters for blackducksca is missing')
   }
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
 })
