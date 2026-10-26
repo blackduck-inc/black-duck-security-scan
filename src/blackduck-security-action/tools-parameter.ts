@@ -9,12 +9,14 @@ import {Coverity, CoverityDetect} from './input-data/coverity'
 import {BlackDuckSCA, BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES, BlackDuckDetect, BlackDuckFixPrData} from './input-data/blackduck'
 import {GithubData} from './input-data/github'
 import * as constants from '../application-constants'
-import {isBoolean, isPullRequestEvent, parseToBoolean, isGitHubCloud} from './utility'
+import {isBoolean, isPullRequestEvent, parseToBoolean, isGitHubCloud, parseCommaSeparatedList} from './utility'
 import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
 export class BridgeToolsParameter {
   tempDir: string
+  private githubRepoInfo: GithubData | undefined
+  private githubRepoInfoComputed = false
   private static STAGE_OPTION = '--stage'
   static DIAGNOSTICS_OPTION = '--diagnostics'
   private static INPUT_OPTION = '--input'
@@ -34,7 +36,6 @@ export class BridgeToolsParameter {
     this.tempDir = tempDir
   }
   getFormattedCommandForPolaris(githubRepoName: string): string {
-    let command = ''
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     const assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
@@ -160,20 +161,14 @@ export class BridgeToolsParameter {
           })
         }
       }
-      // Additional null check has been added to support avoid duplicate call to getGithubRepoInfo() when fix pr is enabled
-      if (polData.data.github == null) {
-        polData.data.github = this.getGithubRepoInfo()
-      }
+      polData.data.github = this.getGithubRepoInfo()
     } else if (inputs.POLARIS_POLICY_BADGES_CREATE !== '') {
       polData.data.polaris.policy = {
         badges: {
           create: false
         }
       }
-      // Additional null check has been added to support avoid duplicate call to getGithubRepoInfo() when fix pr is enabled
-      if (polData.data.github == null) {
-        polData.data.github = this.getGithubRepoInfo()
-      }
+      polData.data.github = this.getGithubRepoInfo()
     }
 
     const isPrEvent = isPullRequestEvent()
@@ -189,16 +184,7 @@ export class BridgeToolsParameter {
             }
           }
         }
-        const prCommentSeverities: string[] = []
-        const inputPrCommentSeverities = inputs.POLARIS_PRCOMMENT_SEVERITIES
-        if (inputPrCommentSeverities != null && inputPrCommentSeverities.length > 0) {
-          const severityValues = inputPrCommentSeverities.split(',')
-          for (const severity of severityValues) {
-            if (severity.trim()) {
-              prCommentSeverities.push(severity.trim())
-            }
-          }
-        }
+        const prCommentSeverities = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_SEVERITIES)
         polData.data.polaris.prComment = {
           enabled: true,
           ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities})
@@ -238,30 +224,10 @@ export class BridgeToolsParameter {
         polData.data.polaris.externalIssues.create = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_CREATE)
       }
       if (inputs.POLARIS_EXTERNALISSUES_SEVERITIES) {
-        const externalIssuesSeverities: string[] = []
-        const inputExternalIssuesSeverities = inputs.POLARIS_EXTERNALISSUES_SEVERITIES
-        if (inputExternalIssuesSeverities != null && inputExternalIssuesSeverities.length > 0) {
-          const severityValues = inputExternalIssuesSeverities.split(',')
-          for (const severity of severityValues) {
-            if (severity.trim()) {
-              externalIssuesSeverities.push(severity.trim())
-            }
-          }
-        }
-        polData.data.polaris.externalIssues.severities = externalIssuesSeverities
+        polData.data.polaris.externalIssues.severities = parseCommaSeparatedList(inputs.POLARIS_EXTERNALISSUES_SEVERITIES)
       }
       if (inputs.POLARIS_EXTERNALISSUES_TYPES) {
-        const externalIssuesTypes: string[] = []
-        const inputExternalIssuesTypes = inputs.POLARIS_EXTERNALISSUES_TYPES
-        if (inputExternalIssuesTypes != null && inputExternalIssuesTypes.length > 0) {
-          const typesValues = inputExternalIssuesTypes.split(',')
-          for (const type of typesValues) {
-            if (type.trim()) {
-              externalIssuesTypes.push(type.trim())
-            }
-          }
-        }
-        polData.data.polaris.externalIssues.types = externalIssuesTypes
+        polData.data.polaris.externalIssues.types = parseCommaSeparatedList(inputs.POLARIS_EXTERNALISSUES_TYPES)
       }
       if (inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
         polData.data.polaris.externalIssues.groupSCAIssues = parseToBoolean(inputs.POLARIS_EXTERNALISSUES_GROUPSCAISSUES)
@@ -273,25 +239,8 @@ export class BridgeToolsParameter {
     if (!isPrEvent) {
       if (parseToBoolean(inputs.POLARIS_REPORTS_SARIF_CREATE)) {
         /** Set Polaris SARIF inputs in case of non PR context */
-        const sarifReportFilterSeverities: string[] = []
-        const sarifReportFilterAssessmentIssuesType: string[] = []
-        if (inputs.POLARIS_REPORTS_SARIF_SEVERITIES) {
-          const filterSeverities = inputs.POLARIS_REPORTS_SARIF_SEVERITIES.split(',')
-          for (const sarifSeverity of filterSeverities) {
-            if (sarifSeverity) {
-              sarifReportFilterSeverities.push(sarifSeverity.trim())
-            }
-          }
-        }
-
-        if (inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES) {
-          const filterIssueTypes = inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES.split(',')
-          for (const issueType of filterIssueTypes) {
-            if (issueType) {
-              sarifReportFilterAssessmentIssuesType.push(issueType.trim())
-            }
-          }
-        }
+        const sarifReportFilterSeverities = parseCommaSeparatedList(inputs.POLARIS_REPORTS_SARIF_SEVERITIES)
+        const sarifReportFilterAssessmentIssuesType = parseCommaSeparatedList(inputs.POLARIS_REPORTS_SARIF_ISSUE_TYPES)
         polData.data.polaris.reports = {
           sarif: {
             create: true,
@@ -349,18 +298,10 @@ export class BridgeToolsParameter {
 
     polData.data.network = this.setNetworkObj()
 
-    const inputJson = JSON.stringify(polData, null, 2)
-    const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.POLARIS_STATE_FILE_NAME)
-    fs.writeFileSync(stateFilePath, inputJson)
-
-    debug('Generated state json file at - '.concat(stateFilePath))
-
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.POLARIS_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return this.writeStateFileAndBuildCommand(BridgeToolsParameter.POLARIS_STAGE, BridgeToolsParameter.POLARIS_STATE_FILE_NAME, polData, 2)
   }
 
   getFormattedCommandForCoverity(githubRepoName: string): string {
-    let command = ''
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let coverityStreamName = inputs.COVERITY_STREAM_NAME
     const isPrEvent = isPullRequestEvent()
@@ -455,36 +396,12 @@ export class BridgeToolsParameter {
 
     covData.data.coverity = Object.assign({}, this.setCoverityDetectArgs(), covData.data.coverity)
 
-    const inputJson = JSON.stringify(covData)
-
-    const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.COVERITY_STATE_FILE_NAME)
-    fs.writeFileSync(stateFilePath, inputJson)
-
-    debug('Generated state json file at - '.concat(stateFilePath))
-
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.COVERITY_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return this.writeStateFileAndBuildCommand(BridgeToolsParameter.COVERITY_STAGE, BridgeToolsParameter.COVERITY_STATE_FILE_NAME, covData)
   }
 
   getFormattedCommandForBlackduck(): string {
-    const failureSeverities: string[] = []
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
-    if (inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES != null && inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES.length > 0) {
-      try {
-        const failureSeveritiesInput = inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES
-        if (failureSeveritiesInput != null && failureSeveritiesInput.length > 0) {
-          const failureSeveritiesArray = failureSeveritiesInput.toUpperCase().split(',')
-          for (const failureSeverity of failureSeveritiesArray) {
-            if (failureSeverity.trim().length > 0) {
-              failureSeverities.push(failureSeverity.trim())
-            }
-          }
-        }
-      } catch (error) {
-        throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY))
-      }
-    }
-    let command = ''
+    const failureSeverities = parseCommaSeparatedList(inputs.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES?.toUpperCase())
     const blackduckData: InputData<BlackDuckSCA> = {
       data: {
         blackducksca: {
@@ -510,7 +427,7 @@ export class BridgeToolsParameter {
       if (inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'true' || inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'false') {
         scanFullValue = inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'true'
       } else {
-        throw new Error(constants.MISSING_BOOLEAN_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FULL_KEY))
+        throw new Error(constants.MISSING_BOOLEAN_VALUE_ERROR.concat(constants.BLACKDUCKSCA_SCAN_FULL_KEY))
       }
       blackduckData.data.blackducksca.scan = {full: scanFullValue}
     }
@@ -520,7 +437,7 @@ export class BridgeToolsParameter {
       const failureSeverityEnums: BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES[] = []
       for (const failureSeverity of failureSeverities) {
         if (!Object.values(BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES).includes(failureSeverity as BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES)) {
-          throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY))
+          throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES_KEY))
         } else {
           failureSeverityEnums.push(BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES[failureSeverity as keyof typeof BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES])
         }
@@ -567,15 +484,7 @@ export class BridgeToolsParameter {
     if (!isPrEvent) {
       if (parseToBoolean(inputs.BLACKDUCKSCA_REPORTS_SARIF_CREATE)) {
         /** Set Black Duck SARIF inputs in case of non PR context */
-        const sarifReportFilterSeverities: string[] = []
-        if (inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES) {
-          const filterSeverities = inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES.split(',')
-          for (const sarifSeverity of filterSeverities) {
-            if (sarifSeverity) {
-              sarifReportFilterSeverities.push(sarifSeverity.trim())
-            }
-          }
-        }
+        const sarifReportFilterSeverities = parseCommaSeparatedList(inputs.BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES)
         blackduckData.data.blackducksca.reports = {
           sarif: {
             create: true,
@@ -611,20 +520,14 @@ export class BridgeToolsParameter {
           })
         }
       }
-      // Additional null check has been added to support avoid duplicate call to getGithubRepoInfo() when fix pr is enabled
-      if (blackduckData.data.github == null) {
-        blackduckData.data.github = this.getGithubRepoInfo()
-      }
+      blackduckData.data.github = this.getGithubRepoInfo()
     } else if (inputs.BLACKDUCKSCA_POLICY_BADGES_CREATE !== '') {
       blackduckData.data.blackducksca.policy = {
         badges: {
           create: false
         }
       }
-      // Additional null check has been added to support avoid duplicate call to getGithubRepoInfo() when fix pr is enabled
-      if (blackduckData.data.github == null) {
-        blackduckData.data.github = this.getGithubRepoInfo()
-      }
+      blackduckData.data.github = this.getGithubRepoInfo()
     }
 
     blackduckData.data.network = this.setNetworkObj()
@@ -638,17 +541,7 @@ export class BridgeToolsParameter {
         blackduckData.data.blackducksca.externalIssues.create = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_CREATE)
       }
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES) {
-        const externalIssuesSeverities: string[] = []
-        const inputExternalIssuesSeverities = inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES
-        if (inputExternalIssuesSeverities != null && inputExternalIssuesSeverities.length > 0) {
-          const severityValues = inputExternalIssuesSeverities.split(',')
-          for (const severity of severityValues) {
-            if (severity.trim()) {
-              externalIssuesSeverities.push(severity.trim())
-            }
-          }
-        }
-        blackduckData.data.blackducksca.externalIssues.severities = externalIssuesSeverities
+        blackduckData.data.blackducksca.externalIssues.severities = parseCommaSeparatedList(inputs.BLACKDUCKSCA_EXTERNALISSUES_SEVERITIES)
       }
       if (inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== '' && inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES !== undefined) {
         blackduckData.data.blackducksca.externalIssues.groupSCAIssues = parseToBoolean(inputs.BLACKDUCKSCA_EXTERNALISSUES_GROUPSCAISSUES)
@@ -660,19 +553,10 @@ export class BridgeToolsParameter {
 
     blackduckData.data.detect = Object.assign({}, this.setDetectArgs(), blackduckData.data.detect)
 
-    const inputJson = JSON.stringify(blackduckData)
-
-    const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.BD_STATE_FILE_NAME)
-    fs.writeFileSync(stateFilePath, inputJson)
-
-    debug('Generated state json file at - '.concat(stateFilePath))
-
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.BLACKDUCK_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return this.writeStateFileAndBuildCommand(BridgeToolsParameter.BLACKDUCK_STAGE, BridgeToolsParameter.BD_STATE_FILE_NAME, blackduckData)
   }
 
   getFormattedCommandForSRM(githubRepoName: string): string {
-    let command = ''
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
@@ -751,18 +635,23 @@ export class BridgeToolsParameter {
       srmData.data.detect = {...srmData.data.detect, ...detectArgs}
     }
 
-    const inputJson = JSON.stringify(srmData)
+    return this.writeStateFileAndBuildCommand(BridgeToolsParameter.SRM_STAGE, BridgeToolsParameter.SRM_STATE_FILE_NAME, srmData)
+  }
 
-    const stateFilePath = path.join(this.tempDir, BridgeToolsParameter.SRM_STATE_FILE_NAME)
+  private writeStateFileAndBuildCommand(stage: string, stateFileName: string, data: unknown, indent?: number): string {
+    const inputJson = JSON.stringify(data, null, indent)
+    const stateFilePath = path.join(this.tempDir, stateFileName)
     fs.writeFileSync(stateFilePath, inputJson)
 
     debug('Generated state json file at - '.concat(stateFilePath))
 
-    command = BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.SRM_STAGE).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
-    return command
+    return BridgeToolsParameter.STAGE_OPTION.concat(BridgeToolsParameter.SPACE).concat(stage).concat(BridgeToolsParameter.SPACE).concat(BridgeToolsParameter.INPUT_OPTION).concat(BridgeToolsParameter.SPACE).concat(stateFilePath).concat(BridgeToolsParameter.SPACE)
   }
 
   private getGithubRepoInfo(): GithubData | undefined {
+    if (this.githubRepoInfoComputed) {
+      return this.githubRepoInfo
+    }
     const githubToken = inputs.GITHUB_TOKEN
     const githubRepo = process.env[constants.GITHUB_ENVIRONMENT_VARIABLES.GITHUB_REPOSITORY]
     const githubRepoName = githubRepo !== undefined ? githubRepo.substring(githubRepo.indexOf('/') + 1, githubRepo.length).trim() : ''
@@ -785,12 +674,13 @@ export class BridgeToolsParameter {
     if (isNullOrEmptyValue(githubToken)) {
       throw new Error(constants.MISSING_GITHUB_TOKEN_FOR_FIX_PR_AND_PR_COMMENT_ERROR)
     }
+    this.githubRepoInfoComputed = true
 
     // This condition is required as per ts-lint as these fields may have undefined as well
     if (githubRepoName != null && githubBranchName != null && githubRepoOwner != null) {
-      return this.setGithubData(githubToken, githubRepoName, githubRepoOwner, githubBranchName, githubPrNumber, githubHostUrl)
+      this.githubRepoInfo = this.setGithubData(githubToken, githubRepoName, githubRepoOwner, githubBranchName, githubPrNumber, githubHostUrl)
     }
-    return undefined
+    return this.githubRepoInfo
   }
 
   private getGithubBranchName(): string {
@@ -846,11 +736,11 @@ export class BridgeToolsParameter {
 
   private setBlackDuckFixPrInputs(): BlackDuckFixPrData | undefined {
     if (inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT && isNaN(Number(inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT))) {
-      throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_FIXPR_MAXCOUNT_KEY))
+      throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCKSCA_FIXPR_MAX_COUNT_KEY))
     }
     const createSinglePr = parseToBoolean(inputs.BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR)
     if (createSinglePr && inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT) {
-      throw new Error(constants.BLACKDUCK_FIXPR_MAXCOUNT_KEY.concat(' is not applicable with ').concat(constants.BLACKDUCK_FIXPR_CREATE_SINGLE_PR_KEY))
+      throw new Error(constants.BLACKDUCKSCA_FIXPR_MAX_COUNT_KEY.concat(' is not applicable with ').concat(constants.BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR_KEY))
     }
     const blackDuckFixPrData: BlackDuckFixPrData = {}
     blackDuckFixPrData.enabled = true
@@ -861,25 +751,10 @@ export class BridgeToolsParameter {
       blackDuckFixPrData.maxCount = Number(inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT)
     }
 
-    const useUpgradeGuidance: string[] = []
     if (inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE != null && inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE.length > 0) {
-      const useUpgradeGuidanceList = inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE.split(',')
-      for (const upgradeGuidance of useUpgradeGuidanceList) {
-        if (upgradeGuidance != null && upgradeGuidance !== '') {
-          useUpgradeGuidance.push(upgradeGuidance.trim())
-        }
-      }
-      blackDuckFixPrData.useUpgradeGuidance = useUpgradeGuidance
+      blackDuckFixPrData.useUpgradeGuidance = parseCommaSeparatedList(inputs.BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE)
     }
-    const fixPRFilterSeverities: string[] = []
-    if (inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES != null && inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES.length > 0) {
-      const filterSeverities = inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES.split(',')
-      for (const fixPrSeverity of filterSeverities) {
-        if (fixPrSeverity != null && fixPrSeverity !== '') {
-          fixPRFilterSeverities.push(fixPrSeverity.trim())
-        }
-      }
-    }
+    const fixPRFilterSeverities = parseCommaSeparatedList(inputs.BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES)
     if (fixPRFilterSeverities.length > 0) {
       blackDuckFixPrData.filter = {severities: fixPRFilterSeverities}
     }
@@ -902,26 +777,13 @@ export class BridgeToolsParameter {
     }
 
     // Set upgrade guidance only if provided by user (Bridge CLI default: SHORT_TERM,LONG_TERM)
-    const useUpgradeGuidance: string[] = []
     if (inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE) {
-      const upgradeGuidanceList = inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE.split(',')
-      for (const guidance of upgradeGuidanceList) {
-        if (guidance && guidance.trim() !== '') {
-          useUpgradeGuidance.push(guidance.trim())
-        }
-      }
-      polarisFixPrData.useUpgradeGuidance = useUpgradeGuidance
+      polarisFixPrData.useUpgradeGuidance = parseCommaSeparatedList(inputs.POLARIS_FIXPR_UPGRADE_GUIDANCE)
     }
 
     // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
     if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
-      const severities: string[] = []
-      const filterSeverities = inputs.POLARIS_FIXPR_FILTER_SEVERITIES.split(',')
-      for (const severity of filterSeverities) {
-        if (severity && severity.trim() !== '') {
-          severities.push(severity.trim())
-        }
-      }
+      const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES)
       if (severities.length > 0) {
         polarisFixPrData.filter = {
           severities: severities

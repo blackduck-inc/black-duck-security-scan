@@ -1,4 +1,4 @@
-import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual} from '../../../src/blackduck-security-action/utility'
+import {checkJobResult, cleanUrl, isBoolean, isPullRequestEvent, createSSLConfiguredHttpClient, clearHttpClientCache, updateCoverityConfigForBridgeVersion, isVersionLess, isVersionGreaterOrEqual, parseCommaSeparatedList} from '../../../src/blackduck-security-action/utility'
 import * as constants from '../../../src/application-constants'
 import * as os from 'os'
 import * as path from 'path'
@@ -310,5 +310,35 @@ describe('Version Comparison Helper Functions', () => {
       expect(isVersionGreaterOrEqual('invalid', '3.9.0')).toBe(false)
       expect(isVersionGreaterOrEqual('3.9.0', 'invalid')).toBe(false)
     })
+  })
+})
+
+describe('parseCommaSeparatedList', () => {
+  test('should split a comma separated string into a list', () => {
+    expect(parseCommaSeparatedList('HIGH,MEDIUM,LOW')).toEqual(['HIGH', 'MEDIUM', 'LOW'])
+  })
+
+  test('should trim whitespace around each value', () => {
+    expect(parseCommaSeparatedList('  HIGH , MEDIUM ,LOW  ')).toEqual(['HIGH', 'MEDIUM', 'LOW'])
+  })
+
+  test('should drop empty and whitespace-only entries', () => {
+    expect(parseCommaSeparatedList('HIGH,, ,MEDIUM,')).toEqual(['HIGH', 'MEDIUM'])
+  })
+
+  test('should return a single item list when there is no comma', () => {
+    expect(parseCommaSeparatedList('HIGH')).toEqual(['HIGH'])
+  })
+
+  test('should return an empty list for undefined', () => {
+    expect(parseCommaSeparatedList(undefined)).toEqual([])
+  })
+
+  test('should return an empty list for an empty string', () => {
+    expect(parseCommaSeparatedList('')).toEqual([])
+  })
+
+  test('should return an empty list when only separators and whitespace are provided', () => {
+    expect(parseCommaSeparatedList(' , ,, ')).toEqual([])
   })
 })
