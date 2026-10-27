@@ -31,24 +31,16 @@ export class BridgeToolsParameter {
   static SPACE = ' '
   // Blackduck parameters
   private static BLACKDUCK_STAGE = 'blackducksca'
+  private static ASSESSMENT_TYPE_REGEX = /^[a-zA-Z]+$/
 
   constructor(tempDir: string) {
     this.tempDir = tempDir
   }
   getFormattedCommandForPolaris(githubRepoName: string): string {
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
-    const assessmentTypeArray: string[] = []
+    let assessmentTypeArray: string[] = []
     if (inputs.POLARIS_ASSESSMENT_TYPES) {
-      // converting provided assessmentTypes to uppercase
-      const assessmentTypes = inputs.POLARIS_ASSESSMENT_TYPES.toUpperCase().split(',')
-      for (const assessmentType of assessmentTypes) {
-        const regEx = new RegExp('^[a-zA-Z]+$')
-        if (assessmentType.trim() && regEx.test(assessmentType.trim())) {
-          assessmentTypeArray.push(assessmentType.trim())
-        } else {
-          throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.POLARIS_ASSESSMENT_TYPES_KEY))
-        }
-      }
+      assessmentTypeArray = this.parseAssessmentTypes(inputs.POLARIS_ASSESSMENT_TYPES, constants.POLARIS_ASSESSMENT_TYPES_KEY)
     }
 
     let projectName = inputs.POLARIS_PROJECT_NAME
@@ -560,7 +552,7 @@ export class BridgeToolsParameter {
     const customHeader = isGitHubCloud() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE
     let assessmentTypes: string[] = []
     if (inputs.SRM_ASSESSMENT_TYPES) {
-      assessmentTypes = inputs.SRM_ASSESSMENT_TYPES.split(',')
+      assessmentTypes = this.parseAssessmentTypes(inputs.SRM_ASSESSMENT_TYPES, constants.SRM_ASSESSMENT_TYPES_KEY)
     }
 
     const srmData: InputData<SRM> = {
@@ -636,6 +628,19 @@ export class BridgeToolsParameter {
     }
 
     return this.writeStateFileAndBuildCommand(BridgeToolsParameter.SRM_STAGE, BridgeToolsParameter.SRM_STATE_FILE_NAME, srmData)
+  }
+
+  private parseAssessmentTypes(types: string, key: string): string[] {
+    const result: string[] = []
+    for (const type of types.split(',')) {
+      const trimmed = type.trim()
+      if (trimmed.length > 0 && BridgeToolsParameter.ASSESSMENT_TYPE_REGEX.test(trimmed)) {
+        result.push(trimmed)
+      } else {
+        throw new Error(constants.INVALID_VALUE_ERROR.concat(key))
+      }
+    }
+    return result
   }
 
   private writeStateFileAndBuildCommand(stage: string, stateFileName: string, data: unknown, indent?: number): string {

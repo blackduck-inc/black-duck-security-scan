@@ -2167,19 +2167,9 @@ class BridgeToolsParameter {
     }
     getFormattedCommandForPolaris(githubRepoName) {
         const customHeader = (0, utility_1.isGitHubCloud)() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE;
-        const assessmentTypeArray = [];
+        let assessmentTypeArray = [];
         if (inputs.POLARIS_ASSESSMENT_TYPES) {
-            // converting provided assessmentTypes to uppercase
-            const assessmentTypes = inputs.POLARIS_ASSESSMENT_TYPES.toUpperCase().split(',');
-            for (const assessmentType of assessmentTypes) {
-                const regEx = new RegExp('^[a-zA-Z]+$');
-                if (assessmentType.trim() && regEx.test(assessmentType.trim())) {
-                    assessmentTypeArray.push(assessmentType.trim());
-                }
-                else {
-                    throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.POLARIS_ASSESSMENT_TYPES_KEY));
-                }
-            }
+            assessmentTypeArray = this.parseAssessmentTypes(inputs.POLARIS_ASSESSMENT_TYPES, constants.POLARIS_ASSESSMENT_TYPES_KEY);
         }
         let projectName = inputs.POLARIS_PROJECT_NAME;
         if ((0, validators_1.isNullOrEmptyValue)(projectName)) {
@@ -2615,7 +2605,7 @@ class BridgeToolsParameter {
         const customHeader = (0, utility_1.isGitHubCloud)() ? constants.INTEGRATIONS_GITHUB_CLOUD : constants.INTEGRATIONS_GITHUB_EE;
         let assessmentTypes = [];
         if (inputs.SRM_ASSESSMENT_TYPES) {
-            assessmentTypes = inputs.SRM_ASSESSMENT_TYPES.split(',');
+            assessmentTypes = this.parseAssessmentTypes(inputs.SRM_ASSESSMENT_TYPES, constants.SRM_ASSESSMENT_TYPES_KEY);
         }
         const srmData = {
             data: {
@@ -2675,6 +2665,19 @@ class BridgeToolsParameter {
             srmData.data.detect = Object.assign(Object.assign({}, srmData.data.detect), detectArgs);
         }
         return this.writeStateFileAndBuildCommand(BridgeToolsParameter.SRM_STAGE, BridgeToolsParameter.SRM_STATE_FILE_NAME, srmData);
+    }
+    parseAssessmentTypes(types, key) {
+        const result = [];
+        for (const type of types.split(',')) {
+            const trimmed = type.trim();
+            if (trimmed.length > 0 && BridgeToolsParameter.ASSESSMENT_TYPE_REGEX.test(trimmed)) {
+                result.push(trimmed);
+            }
+            else {
+                throw new Error(constants.INVALID_VALUE_ERROR.concat(key));
+            }
+        }
+        return result;
     }
     writeStateFileAndBuildCommand(stage, stateFileName, data, indent) {
         const inputJson = JSON.stringify(data, null, indent);
@@ -2888,6 +2891,7 @@ BridgeToolsParameter.COVERITY_STAGE = 'connect';
 BridgeToolsParameter.SPACE = ' ';
 // Blackduck parameters
 BridgeToolsParameter.BLACKDUCK_STAGE = 'blackducksca';
+BridgeToolsParameter.ASSESSMENT_TYPE_REGEX = /^[a-zA-Z]+$/;
 
 
 /***/ }),
