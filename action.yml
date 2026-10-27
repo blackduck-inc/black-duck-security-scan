@@ -15,7 +15,10 @@ inputs:
     description: 'Coverity password'
     required: false
   coverity_passphrase:
-    description: 'Coverity password (deprecated, use coverity_password instead)'
+    description: '[DEPRECATED - use coverity_password instead] Coverity password'
+    required: false
+  coverity_automation_prcomment:
+    description: '[DEPRECATED - use coverity_prComment_enabled instead] Flag to enable pull request comments for new issues found in the Coverity scan'
     required: false
   coverity_project_name:
     description: 'Coverity Project Name'
@@ -309,7 +312,98 @@ inputs:
   mark_build_status:
     description: 'Specify the build status if policy violating issues are found.'
     required: false
-    default: 'failure'
+
+  # Deprecated parameters section
+  synopsys_bridge_install_directory:
+    description: '[DEPRECATED - use bridgecli_install_directory instead] Bridge CLI Install Directory'
+    required: false
+  synopsys_bridge_download_url:
+    description: '[DEPRECATED - use bridgecli_download_url instead] URL to download bridge from'
+    required: false
+  synopsys_bridge_download_version:
+    description: '[DEPRECATED - use bridgecli_download_version instead] Bridge CLI version'
+    required: false
+  blackduck_execution_path:
+    description: '[DEPRECATED - use detect_execution_path instead] Black Duck execution path'
+    required: false
+  polaris_accessToken:
+    description: '[DEPRECATED - use polaris_access_token instead] Polaris Access Token'
+    required: false
+  polaris_serverUrl:
+    description: '[DEPRECATED - use polaris_server_url instead] Polaris Server URL'
+    required: false
+  polaris_assessment_mode:
+    description: '[DEPRECATED - use polaris_test_sast_location and/or polaris_test_sca_location instead] The test mode type of this scan'
+    required: false
+  blackduck_url:
+    description: '[DEPRECATED - use blackducksca_url instead] URL for blackduck hub'
+    required: false
+  blackduck_token:
+    description: '[DEPRECATED - use blackducksca_token instead] API token to access blackduck'
+    required: false
+  blackduck_install_directory:
+    description: '[DEPRECATED - use detect_install_directory instead] Directory to find or install detect'
+    required: false
+  blackduck_scan_full:
+    description: '[DEPRECATED - use blackducksca_scan_full instead] Scan Mode. (true for intelligent scan & false for rapid scan)'
+    required: false
+  blackduck_scan_failure_severities:
+    description: '[DEPRECATED - use blackducksca_scan_failure_severities instead] If provided, Black Duck will break the build if any issues produced match one of the given severities'
+    required: false
+  blackduck_fixpr_enabled:
+    description: '[DEPRECATED - use blackducksca_fixpr_enabled instead] If set as true, separate Fix PRs will be created if vulnerability is found after scan'
+    required: false
+  blackduck_fixpr_maxCount:
+    description: '[DEPRECATED - use blackducksca_fixpr_maxCount instead] Maximum number of Pull Requests to be created that violate policies'
+    required: false
+  blackduck_fixpr_createSinglePR:
+    description: '[DEPRECATED - use blackducksca_fixpr_createSinglePR instead] Flag to create a single fix PR with all vulnerable dependencies'
+    required: false
+  blackduck_fixpr_filter_severities:
+    description: '[DEPRECATED - use blackducksca_fixpr_filter_severities instead] If provided, Fix PRs will be created only for given severities'
+    required: false
+  blackduck_fixpr_useUpgradeGuidance:
+    description: '[DEPRECATED - use blackducksca_fixpr_useUpgradeGuidance instead] Flag to enable long term upgrade guidance'
+    required: false
+  blackduck_prComment_enabled:
+    description: '[DEPRECATED - use blackducksca_prComment_enabled instead] Flag to enable pull request comments for new issues found in the Black Duck scan'
+    required: false
+  blackduck_reports_sarif_create:
+    description: '[DEPRECATED - use blackducksca_reports_sarif_create instead] Flag to enable/disable Black Duck SARIF report generation'
+    required: false
+  blackduck_reports_sarif_file_path:
+    description: '[DEPRECATED - use blackducksca_reports_sarif_file_path instead] File path including file name where Black Duck SARIF report should be created'
+    required: false
+  blackduck_reports_sarif_severities:
+    description: '[DEPRECATED - use blackducksca_reports_sarif_severities instead] Indicates what SAST/SCA issues severity categories to include in Black Duck SARIF file report'
+    required: false
+  blackduck_reports_sarif_groupSCAIssues:
+    description: '[DEPRECATED - use blackducksca_reports_sarif_groupSCAIssues instead] Flag to enable/disable Component-Version grouping for SCA Issues in Black Duck SARIF report rules section'
+    required: false
+  blackduck_upload_sarif_report:
+    description: '[DEPRECATED - use blackducksca_upload_sarif_report instead] Flag to enable/disable uploading of Black Duck SARIF report to GitHub Advanced Security'
+    required: false
+  blackduck_waitForScan:
+    description: '[DEPRECATED - use blackducksca_waitForScan instead] Specifies if the workflow should wait for the analysis to complete'
+    required: false
+  blackduck_search_depth:
+    description: '[DEPRECATED - use detect_search_depth instead] Number indicating the search depth in the source directory'
+    required: false
+  blackduck_config_path:
+    description: '[DEPRECATED - use detect_config_path instead] Black Duck config file path (.properties/.yml)'
+    required: false
+  blackduck_args:
+    description: '[DEPRECATED - use detect_args instead] Additional Black Duck Arguments separated by space'
+    required: false
+  blackduck_policy_badges_create:
+    description: '[DEPRECATED - use blackducksca_policy_badges_create instead] To enable creation of badges on the GitHub repository'
+    required: false
+  blackduck_policy_badges_maxCount:
+    description: '[DEPRECATED - use blackducksca_policy_badges_maxCount instead] To limit number of badges to be displayed on the GitHub repository'
+    required: false
+  bridge_network_airgap:
+    description: '[DEPRECATED - use network_airgap instead] If provided, Black Duck Security Action will be using local network to download and execute bridge'
+    required: false
   network_ssl_cert_file:
     description: 'File path to configure the HttpClient to accept a self-signed certificate.'
     required: false

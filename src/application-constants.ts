@@ -6,20 +6,8 @@ export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/bridge-cli-bundle'
 export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/'
 
 export const APPLICATION_NAME = 'blackduck-security-action'
-/**
- * @deprecated Use bridgecli_install_directory instead. This can be removed in future release.
- */
-export const BRIDGE_INSTALL_DIRECTORY_KEY = 'synopsys_bridge_install_directory'
 export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = 'bridgecli_install_directory'
-/**
- * @deprecated Use bridgecli_download_url instead. This can be removed in future release.
- */
-export const BRIDGE_DOWNLOAD_URL_KEY = 'synopsys_bridge_download_url'
 export const BRIDGE_CLI_DOWNLOAD_URL_KEY = 'bridgecli_download_url'
-/**
- * @deprecated Use bridgecli_download_version instead. This can be removed in future release.
- */
-export const BRIDGE_DOWNLOAD_VERSION_KEY = 'synopsys_bridge_download_version'
 export const BRIDGE_CLI_DOWNLOAD_VERSION_KEY = 'bridgecli_download_version'
 export const MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION = '2.1.0'
 export const MIN_SUPPORTED_BRIDGE_CLI_LINUX_ARM_VERSION = '3.5.1'
@@ -40,19 +28,11 @@ export const SRM_BRANCH_NAME_KEY = 'srm_branch_name'
 export const SRM_BRANCH_PARENT_KEY = 'srm_branch_parent'
 export const SRM_WAITFORSCAN_KEY = 'srm_waitForScan'
 export const COVERITY_EXECUTION_PATH_KEY = 'coverity_execution_path'
-/**
- * @deprecated Use detect_execution_path instead. This can be removed in future release.
- */
-export const BLACKDUCK_EXECUTION_PATH_KEY = 'blackduck_execution_path'
 export const DETECT_EXECUTION_PATH_KEY = 'detect_execution_path'
 
 // Coverity
 export const COVERITY_URL_KEY = 'coverity_url'
 export const COVERITY_USER_KEY = 'coverity_user'
-/**
- * @deprecated Use coverity_password instead. This can be removed in future release.
- */
-export const COVERITY_PASSPHRASE_KEY = 'coverity_passphrase'
 export const COVERITY_PASSWORD_KEY = 'coverity_password'
 export const COVERITY_PROJECT_NAME_KEY = 'coverity_project_name'
 export const COVERITY_STREAM_NAME_KEY = 'coverity_stream_name'
@@ -63,10 +43,6 @@ export const COVERITY_BUILD_COMMAND_KEY = 'coverity_build_command'
 export const COVERITY_CLEAN_COMMAND_KEY = 'coverity_clean_command'
 export const COVERITY_CONFIG_PATH_KEY = 'coverity_config_path'
 export const COVERITY_ARGS_KEY = 'coverity_args'
-/**
- * @deprecated Use coverity_prComment_enabled instead. This can be removed in future release.
- */
-export const COVERITY_AUTOMATION_PRCOMMENT_KEY = 'coverity_automation_prcomment'
 export const COVERITY_PRCOMMENT_ENABLED_KEY = 'coverity_prComment_enabled'
 export const COVERITY_PRCOMMENT_IMPACTS_KEY = 'coverity_prComment_impacts'
 export const COVERITY_LOCAL_KEY = 'coverity_local'
@@ -74,18 +50,10 @@ export const BRIDGE_COVERITY_VERSION_KEY = 'bridge_coverity_version'
 export const COVERITY_VERSION_KEY = 'coverity_version'
 
 // Polaris
-/**
- * @deprecated Use polaris_access_token instead. This can be removed in future release.
- */
-export const POLARIS_ACCESSTOKEN_KEY = 'polaris_accessToken'
 export const POLARIS_ACCESS_TOKEN_KEY = 'polaris_access_token'
 export const POLARIS_APPLICATION_NAME_KEY = 'polaris_application_name'
 export const POLARIS_PROJECT_NAME_KEY = 'polaris_project_name'
 export const POLARIS_ASSESSMENT_TYPES_KEY = 'polaris_assessment_types'
-/**
- * @deprecated Use polaris_server_url instead. This can be removed in future release.
- */
-export const POLARIS_SERVERURL_KEY = 'polaris_serverUrl'
 export const POLARIS_SERVER_URL_KEY = 'polaris_server_url'
 export const POLARIS_PRCOMMENT_ENABLED_KEY = 'polaris_prComment_enabled'
 export const POLARIS_PRCOMMENT_SEVERITIES_KEY = 'polaris_prComment_severities'
@@ -100,9 +68,6 @@ export const POLARIS_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY = 'polaris_reports_sarif
 export const POLARIS_REPORTS_SARIF_ISSUE_TYPES_KEY = 'polaris_reports_sarif_issue_types'
 export const POLARIS_UPLOAD_SARIF_REPORT_KEY = 'polaris_upload_sarif_report'
 export const POLARIS_WAITFORSCAN_KEY = 'polaris_waitForScan'
-/**
- * @deprecated Use polaris_test_sast_location instead. This can be removed in future release.
- */
 export const POLARIS_ASSESSMENT_MODE_KEY = 'polaris_assessment_mode'
 export const POLARIS_TEST_SAST_LOCATION_KEY = 'polaris_test_sast_location'
 
@@ -128,116 +93,27 @@ export const POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY = 'polaris_fixpr_useUpgradeGuida
 export const POLARIS_FIXPR_FILTER_SEVERITIES_KEY = 'polaris_fixpr_filter_severities'
 
 // Blackduck
-/**
- * @deprecated Use blackducksca_url instead. This can be removed in future release.
- */
-export const BLACKDUCK_URL_KEY = 'blackduck_url'
 export const BLACKDUCKSCA_URL_KEY = 'blackducksca_url'
-/**
- * @deprecated Use blackducksca_token instead. This can be removed in future release.
- */
-export const BLACKDUCK_TOKEN_KEY = 'blackduck_token'
 export const BLACKDUCKSCA_TOKEN_KEY = 'blackducksca_token'
-/**
- * @deprecated Use detect_install_directory instead. This can be removed in future release.
- */
-export const BLACKDUCK_INSTALL_DIRECTORY_KEY = 'blackduck_install_directory'
 export const DETECT_INSTALL_DIRECTORY_KEY = 'detect_install_directory'
-/**
- * @deprecated Use blackducksca_scan_full instead. This can be removed in future release.
- */
-export const BLACKDUCK_SCAN_FULL_KEY = 'blackduck_scan_full'
 export const BLACKDUCKSCA_SCAN_FULL_KEY = 'blackducksca_scan_full'
-/**
- * @deprecated Use blackducksca_scan_failure_severities instead. This can be removed in future release.
- */
-export const BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY = 'blackduck_scan_failure_severities'
 export const BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES_KEY = 'blackducksca_scan_failure_severities'
-/**
- * @deprecated Use blackducksca_fixpr_enabled instead. This can be removed in future release.
- */
-export const BLACKDUCK_FIXPR_ENABLED_KEY = 'blackduck_fixpr_enabled'
 export const BLACKDUCKSCA_FIXPR_ENABLED_KEY = 'blackducksca_fixpr_enabled'
-/**
- * @deprecated Use blackducksca_fixpr_maxCount instead. This can be removed in future release.
- */
-export const BLACKDUCK_FIXPR_MAXCOUNT_KEY = 'blackduck_fixpr_maxCount'
 export const BLACKDUCKSCA_FIXPR_MAX_COUNT_KEY = 'blackducksca_fixpr_maxCount'
-/**
- * @deprecated Use blackducksca_fixpr_createSinglePR instead. This can be removed in future release.
- */
-export const BLACKDUCK_FIXPR_CREATE_SINGLE_PR_KEY = 'blackduck_fixpr_createSinglePR'
 export const BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR_KEY = 'blackducksca_fixpr_createSinglePR'
-/**
- * @deprecated Use blackducksca_fixpr_filter_severities instead. This can be removed in future release.
- */
-export const BLACKDUCK_FIXPR_FILTER_SEVERITIES_KEY = 'blackduck_fixpr_filter_severities'
 export const BLACKDUCKSCA_FIXPR_FILTER_SEVERITIES_KEY = 'blackducksca_fixpr_filter_severities'
-/**
- * @deprecated Use blackducksca_fixpr_useUpgradeGuidance instead. This can be removed in future release.
- */
-export const BLACKDUCK_FIXPR_USE_UPGRADE_GUIDANCE_KEY = 'blackduck_fixpr_useUpgradeGuidance'
 export const BLACKDUCKSCA_FIXPR_UPGRADE_GUIDANCE_KEY = 'blackducksca_fixpr_useUpgradeGuidance'
-/**
- * @deprecated Use blackduck_automation_prcomment instead. This can be removed in future release.
- */
-export const BLACKDUCK_PRCOMMENT_ENABLED_KEY = 'blackduck_prComment_enabled'
 export const BLACKDUCKSCA_PRCOMMENT_ENABLED_KEY = 'blackducksca_prComment_enabled'
-/**
- * @deprecated Use blackducksca_reports_sarif_create instead. This can be removed in future release.
- */
-export const BLACKDUCK_REPORTS_SARIF_CREATE_KEY = 'blackduck_reports_sarif_create'
 export const BLACKDUCKSCA_REPORTS_SARIF_CREATE_KEY = 'blackducksca_reports_sarif_create'
-/**
- * @deprecated Use blackducksca_reports_sarif_file_path instead. This can be removed in future release.
- */
-export const BLACKDUCK_REPORTS_SARIF_FILE_PATH_KEY = 'blackduck_reports_sarif_file_path'
 export const BLACKDUCKSCA_REPORTS_SARIF_FILE_PATH_KEY = 'blackducksca_reports_sarif_file_path'
-/**
- * @deprecated Use blackducksca_reports_sarif_severities instead. This can be removed in future release.
- */
-export const BLACKDUCK_REPORTS_SARIF_SEVERITIES_KEY = 'blackduck_reports_sarif_severities'
 export const BLACKDUCKSCA_REPORTS_SARIF_SEVERITIES_KEY = 'blackducksca_reports_sarif_severities'
-/**
- * @deprecated Use blackducksca_reports_sarif_groupSCAIssues instead. This can be removed in future release.
- */
-export const BLACKDUCK_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY = 'blackduck_reports_sarif_groupSCAIssues'
 export const BLACKDUCKSCA_REPORTS_SARIF_GROUP_SCA_ISSUES_KEY = 'blackducksca_reports_sarif_groupSCAIssues'
-/**
- * @deprecated Use blackducksca_upload_sarif_report instead. This can be removed in future release.
- */
-export const BLACKDUCK_UPLOAD_SARIF_REPORT_KEY = 'blackduck_upload_sarif_report'
 export const BLACKDUCKSCA_UPLOAD_SARIF_REPORT_KEY = 'blackducksca_upload_sarif_report'
-/**
- * @deprecated Use blackducksca_waitForScan instead. This can be removed in future release.
- */
-export const BLACKDUCK_WAITFORSCAN_KEY = 'blackduck_waitForScan'
 export const BLACKDUCKSCA_WAITFORSCAN_KEY = 'blackducksca_waitForScan'
-/**
- * @deprecated Use detect_search_depth instead. This can be removed in future release.
- */
-export const BLACKDUCK_SEARCH_DEPTH_KEY = 'blackduck_search_depth'
 export const DETECT_SEARCH_DEPTH_KEY = 'detect_search_depth'
-/**
- * @deprecated Use detect_config_path instead. This can be removed in future release.
- */
-export const BLACKDUCK_CONFIG_PATH_KEY = 'blackduck_config_path'
 export const DETECT_CONFIG_PATH_KEY = 'detect_config_path'
-/**
- * @deprecated Use detect_args instead. This can be removed in future release.
- */
-export const BLACKDUCK_ARGS_KEY = 'blackduck_args'
 export const DETECT_ARGS_KEY = 'detect_args'
-
-/**
- * @deprecated Use blackduck_policy_badges_create instead. This can be removed in future release.
- */
-export const BLACKDUCK_POLICY_BADGES_CREATE_KEY = 'blackduck_policy_badges_create'
 export const BLACKDUCKSCA_POLICY_BADGES_CREATE_KEY = 'blackducksca_policy_badges_create'
-/**
- * @deprecated Use blackduck_policy_badges_maxCount instead. This can be removed in future release.
- */
-export const BLACKDUCK_POLICY_BADGES_MAX_COUNT_KEY = 'blackduck_policy_badges_maxCount'
 export const BLACKDUCKSCA_POLICY_BADGES_MAX_COUNT_KEY = 'blackducksca_policy_badges_maxCount'
 
 // Black Duck GitHub Issues fetch parameters
@@ -249,10 +125,6 @@ export const BLACKDUCKSCA_EXTERNALISSUES_MAXCOUNT_KEY = 'blackducksca_externalIs
 export const GITHUB_HOST_URL_KEY = 'github_host_url'
 export const GITHUB_TOKEN_KEY = 'github_token'
 export const INCLUDE_DIAGNOSTICS_KEY = 'include_diagnostics'
-/**
- * @deprecated Use network_airgap instead. This can be removed in future release.
- */
-export const BRIDGE_NETWORK_AIRGAP_KEY = 'bridge_network_airgap'
 export const NETWORK_AIRGAP_KEY = 'network_airgap'
 export const DIAGNOSTICS_RETENTION_DAYS_KEY = 'diagnostics_retention_days'
 export const NETWORK_SSL_CERT_FILE_KEY = 'network_ssl_cert_file'

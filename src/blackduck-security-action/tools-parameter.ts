@@ -481,7 +481,7 @@ export class BridgeToolsParameter {
           }
         }
       } catch (error) {
-        throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY))
+        throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES_KEY))
       }
     }
     let command = ''
@@ -510,7 +510,7 @@ export class BridgeToolsParameter {
       if (inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'true' || inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'false') {
         scanFullValue = inputs.BLACKDUCKSCA_SCAN_FULL.toLowerCase() === 'true'
       } else {
-        throw new Error(constants.MISSING_BOOLEAN_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FULL_KEY))
+        throw new Error(constants.MISSING_BOOLEAN_VALUE_ERROR.concat(constants.BLACKDUCKSCA_SCAN_FULL_KEY))
       }
       blackduckData.data.blackducksca.scan = {full: scanFullValue}
     }
@@ -520,7 +520,7 @@ export class BridgeToolsParameter {
       const failureSeverityEnums: BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES[] = []
       for (const failureSeverity of failureSeverities) {
         if (!Object.values(BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES).includes(failureSeverity as BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES)) {
-          throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_SCAN_FAILURE_SEVERITIES_KEY))
+          throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES_KEY))
         } else {
           failureSeverityEnums.push(BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES[failureSeverity as keyof typeof BLACKDUCKSCA_SCAN_FAILURE_SEVERITIES])
         }
@@ -846,11 +846,11 @@ export class BridgeToolsParameter {
 
   private setBlackDuckFixPrInputs(): BlackDuckFixPrData | undefined {
     if (inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT && isNaN(Number(inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT))) {
-      throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCK_FIXPR_MAXCOUNT_KEY))
+      throw new Error(constants.INVALID_VALUE_ERROR.concat(constants.BLACKDUCKSCA_FIXPR_MAX_COUNT_KEY))
     }
     const createSinglePr = parseToBoolean(inputs.BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR)
     if (createSinglePr && inputs.BLACKDUCKSCA_FIXPR_MAX_COUNT) {
-      throw new Error(constants.BLACKDUCK_FIXPR_MAXCOUNT_KEY.concat(' is not applicable with ').concat(constants.BLACKDUCK_FIXPR_CREATE_SINGLE_PR_KEY))
+      throw new Error(constants.BLACKDUCKSCA_FIXPR_MAX_COUNT_KEY.concat(' is not applicable with ').concat(constants.BLACKDUCKSCA_FIXPR_CREATE_SINGLE_PR_KEY))
     }
     const blackDuckFixPrData: BlackDuckFixPrData = {}
     blackDuckFixPrData.enabled = true
