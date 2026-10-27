@@ -14,6 +14,9 @@ inputs:
   coverity_password:
     description: 'Coverity password'
     required: false
+  coverity_passphrase:
+    description: 'Coverity password (deprecated, use coverity_password instead)'
+    required: false
   coverity_project_name:
     description: 'Coverity Project Name'
     required: false

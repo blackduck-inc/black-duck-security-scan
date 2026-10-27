@@ -12,7 +12,8 @@ import fs from 'fs'
 const coverityParamMap: Map<string, string> = new Map<string, string>()
 coverityParamMap.set('COVERITY_URL', 'https://testing.coverity.synopsys.com')
 coverityParamMap.set('COVERITY_USER', 'admin')
-coverityParamMap.set('COVERITY_PASSWORD', 'coverity')
+// COVERITY_PASSPHRASE supports both 'coverity_password' (new) and 'coverity_passphrase' (deprecated) parameters
+coverityParamMap.set('COVERITY_PASSPHRASE', 'coverity')
 coverityParamMap.set('COVERITY_INSTALL_DIRECTORY', '/')
 coverityParamMap.set('COVERITY_POLICY_VIEW', 'policy')
 coverityParamMap.set('COVERITY_PRCOMMENT_ENABLED', 'true')
@@ -53,7 +54,7 @@ describe('Coverity flow contract', () => {
 
   it('With missing mandatory fields coverity.connect.user.password', async () => {
     mockBridgeDownloadUrlAndBridgePath()
-    mockCoverityParamsExcept(['COVERITY_INSTALL_DIRECTORY', 'COVERITY_POLICY_VIEW', 'COVERITY_PASSWORD'])
+    mockCoverityParamsExcept(['COVERITY_INSTALL_DIRECTORY', 'COVERITY_POLICY_VIEW', 'COVERITY_PASSPHRASE'])
 
     setAllMocks()
 
