@@ -61,7 +61,6 @@ export const POLARIS_FIXPR_MAXCOUNT = getInput(constants.POLARIS_FIXPR_MAXCOUNT_
 export const POLARIS_FIXPR_UPGRADE_GUIDANCE = getInput(constants.POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY)?.trim() || ''
 export const POLARIS_FIXPR_FILTER_SEVERITIES = getInput(constants.POLARIS_FIXPR_FILTER_SEVERITIES_KEY)?.trim() || ''
 export const POLARIS_FIXPR_FILTER_ISSUETYPES = getInput(constants.POLARIS_FIXPR_FILTER_ISSUETYPES_KEY)?.trim() || ''
-export const POLARIS_FIXPR_FILTER_CONFIDENCE = getInput(constants.POLARIS_FIXPR_FILTER_CONFIDENCE_KEY)?.trim() || ''
 
 // Coverity related inputs
 export const COVERITY_URL = getInput(constants.COVERITY_URL_KEY)?.trim() || ''

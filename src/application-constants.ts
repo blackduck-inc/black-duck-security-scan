@@ -128,7 +128,6 @@ export const POLARIS_FIXPR_MAXCOUNT_KEY = 'polaris_fixpr_maxCount'
 export const POLARIS_FIXPR_UPGRADE_GUIDANCE_KEY = 'polaris_fixpr_useUpgradeGuidance'
 export const POLARIS_FIXPR_FILTER_SEVERITIES_KEY = 'polaris_fixpr_filter_severities'
 export const POLARIS_FIXPR_FILTER_ISSUETYPES_KEY = 'polaris_fixpr_filter_issueTypes'
-export const POLARIS_FIXPR_FILTER_CONFIDENCE_KEY = 'polaris_fixpr_filter_confidence'
 
 // Blackduck
 /**

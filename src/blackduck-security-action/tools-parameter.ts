@@ -14,7 +14,12 @@ import {SRM} from './input-data/srm'
 import {Network} from './input-data/common'
 
 function parseCommaSeparatedList(value: string | undefined): string[] {
-  return value ? value.split(',').map(s => s.trim()).filter(s => s !== '') : []
+  return value
+    ? value
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s !== '')
+    : []
 }
 
 export class BridgeToolsParameter {
@@ -909,14 +914,10 @@ export class BridgeToolsParameter {
     // Set filter.issueTypes if provided by user (Bridge CLI defaults to polaris.assessment.types, case-insensitive)
     const issueTypes = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_ISSUETYPES)
 
-    // Set filter.confidence if provided by user (Bridge CLI default: ["High"], SAST only, case-insensitive)
-    const confidence = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_CONFIDENCE)
-
-    if (severities.length > 0 || issueTypes.length > 0 || confidence.length > 0) {
+    if (severities.length > 0 || issueTypes.length > 0) {
       polarisFixPrData.filter = {
         ...(severities.length > 0 && {severities}),
-        ...(issueTypes.length > 0 && {issueTypes}),
-        ...(confidence.length > 0 && {confidence})
+        ...(issueTypes.length > 0 && {issueTypes})
       }
     }
 
