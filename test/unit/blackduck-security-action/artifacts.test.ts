@@ -92,3 +92,4 @@ describe('uploadSarifReport', () => {
     expect(mockUploadArtifact).toHaveBeenCalledWith(artifactName, [userSarifFilePath], '.', {})
   })
 })
+
