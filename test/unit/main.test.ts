@@ -783,7 +783,7 @@ test('should return black duck sca token missing on failure', async () => {
   try {
     await run()
   } catch (error: any) {
-    expect(error.message).toEqual('[blackduck_token] - required parameters for blackduck is missing')
+    expect(error.message).toEqual('[blackducksca_token] - required parameters for blackducksca is missing')
   }
 }, 10000)
 

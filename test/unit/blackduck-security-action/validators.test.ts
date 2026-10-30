@@ -135,18 +135,18 @@ test('Coverity - Backward compatibility: COVERITY_PASSPHRASE accepts both coveri
 })
 
 // BLACKDUCK
-test('Blackduck - Without mandatory fields', async () => {
+test('Blackduck SCA - Without mandatory fields', async () => {
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
   try {
     validateBlackDuckInputs()
   } catch (error: any) {
     expect(error).toBeInstanceOf(Error)
-    expect(error.message).toContain('[blackduck_token,blackduck_scan_full] - required parameters for blackduck is missing')
+    expect(error.message).toContain('[blackduck_token,blackduck_scan_full] - required parameters for blackducksca is missing')
   }
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
 })
 
-test('Blackduck - With one or more non-mandatory fields', async () => {
+test('Blackduck SCA - With one or more non-mandatory fields', async () => {
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
   Object.defineProperty(inputs, 'DETECT_INSTALL_DIRECTORY', {value: 'DETECT_INSTALL_DIRECTORY'})
@@ -159,7 +159,7 @@ test('Blackduck - With one or more non-mandatory fields', async () => {
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: null})
 })
 
-test('Blackduck - With mandatory fields', async () => {
+test('Blackduck SCA - With mandatory fields', async () => {
   Object.defineProperty(inputs, 'BLACKDUCKSCA_URL', {value: 'BLACKDUCKSCA_URL'})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_TOKEN', {value: 'BLACKDUCKSCA_TOKEN'})
   Object.defineProperty(inputs, 'BLACKDUCKSCA_SCAN_FULL', {value: 'TRUE'})

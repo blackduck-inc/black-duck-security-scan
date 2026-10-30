@@ -351,3 +351,12 @@ export function validateSourceUploadValue(bridgeVersion: string): void {
     info('polaris_assessment_mode is deprecated. Use polaris_test_sast_location=remote and/or polaris_test_sca_location=remote for source upload scans instead.')
   }
 }
+
+export function parseCommaSeparatedList(value: string | undefined): string[] {
+  return value
+    ? value
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s !== '')
+    : []
+}
