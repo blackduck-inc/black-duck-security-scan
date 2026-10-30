@@ -32,6 +32,11 @@ export interface PolarisFixPrData {
 
 export interface PolarisFixPrFilterData {
   severities?: string[]
+  issueTypes?: string[]
+}
+
+export interface PolarisPrCommentFilterData {
+  issueTypes?: string[]
 }
 
 export interface PolarisData extends Common {
@@ -76,6 +81,7 @@ export interface ProjectData {
 export interface PrComment {
   enabled?: boolean
   severities?: string[]
+  filter?: PolarisPrCommentFilterData
 }
 
 export interface Branch {

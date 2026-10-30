@@ -177,9 +177,11 @@ export class BridgeToolsParameter {
           }
         }
         const prCommentSeverities = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_SEVERITIES)
+        const prCommentFilterIssueTypes = parseCommaSeparatedList(inputs.POLARIS_PRCOMMENT_FILTER_ISSUETYPES)
         polData.data.polaris.prComment = {
           enabled: true,
-          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities})
+          ...(prCommentSeverities.length > 0 && {severities: prCommentSeverities}),
+          ...(prCommentFilterIssueTypes.length > 0 && {filter: {issueTypes: prCommentFilterIssueTypes}})
         }
         polData.data.github = this.getGithubRepoInfo()
       } else {
@@ -787,12 +789,15 @@ export class BridgeToolsParameter {
     }
 
     // Set filter.severities if provided by user (Bridge CLI default: CRITICAL,HIGH)
-    if (inputs.POLARIS_FIXPR_FILTER_SEVERITIES) {
-      const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES)
-      if (severities.length > 0) {
-        polarisFixPrData.filter = {
-          severities: severities
-        }
+    const severities = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_SEVERITIES)
+
+    // Set filter.issueTypes if provided by user (Bridge CLI defaults to polaris.assessment.types, case-insensitive)
+    const issueTypes = parseCommaSeparatedList(inputs.POLARIS_FIXPR_FILTER_ISSUETYPES)
+
+    if (severities.length > 0 || issueTypes.length > 0) {
+      polarisFixPrData.filter = {
+        ...(severities.length > 0 && {severities}),
+        ...(issueTypes.length > 0 && {issueTypes})
       }
     }
 
