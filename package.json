@@ -63,7 +63,7 @@
   "overrides": {
     "underscore": "1.13.8",
     "fast-xml-parser": "5.7.2",
-    "undici": "6.24.1",
+    "undici": "6.29.1",
     "qs": "6.15.0",
     "@actions/http-client": "3.0.2",
     "flatted": "3.4.2",
