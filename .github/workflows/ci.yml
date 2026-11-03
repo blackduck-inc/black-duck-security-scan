@@ -2,11 +2,10 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - 'SIGINT-**'
+    branches: [main]
     paths-ignore: ['**.md']
   pull_request:
+    branches: [main]
     paths-ignore: ['**.md']
   workflow_dispatch:
 
