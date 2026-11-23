@@ -1089,10 +1089,10 @@ const github_client_service_cloud_1 = __nccwpck_require__(5079);
 const github_client_service_v1_1 = __nccwpck_require__(19733);
 const utility_1 = __nccwpck_require__(17199);
 exports.GitHubClientServiceFactory = {
-    DEFAULT_VERSION: '3.18',
+    DEFAULT_VERSION: '3.22',
     // V1 will have all currently supported versions
     // {V2, V3 ... Vn} will have breaking changes
-    SUPPORTED_VERSIONS_V1: ['3.16', '3.17', '3.18'],
+    SUPPORTED_VERSIONS_V1: ['3.18', '3.21', '3.22'],
     // Add new version here
     fetchVersion(githubApiUrl) {
         return __awaiter(this, void 0, void 0, function* () {
