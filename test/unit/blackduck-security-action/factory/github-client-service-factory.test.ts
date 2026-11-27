@@ -106,14 +106,14 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
   })
 
-  it('should return GithubClientServiceV1 service for unsupported version', async () => {
+  it('should return GithubClientServiceV1 service for version not in the verified list', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.19.0')
 
     expect(await GitHubClientServiceFactory.getGitHubClientServiceInstance()).toBeInstanceOf(GithubClientServiceV1)
   })
 
-  it('should log supported version message when version is supported', async () => {
+  it('should log verified version message when version is verified', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.21.2')
     const infoSpy = jest.spyOn(core, 'info').mockImplementation()
@@ -121,28 +121,29 @@ describe('getGitHubClientServiceInstance()', () => {
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.21.2'))
-    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
+    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Server version 3.21.2 is verified')
   })
 
-  it('should log unsupported version message when version is not supported', async () => {
+  it('should log warning when version is not in the verified list', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.20.1')
     const infoSpy = jest.spyOn(core, 'info').mockImplementation()
+    const warningSpy = jest.spyOn(core, 'warning').mockImplementation()
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.20.1'))
-    expect(infoSpy).toHaveBeenCalledWith('Proceeding with default REST API version')
+    expect(warningSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise Server version 3.20.1 is not in the verified version list'))
   })
 
-  it('should always log supported versions list', async () => {
+  it('should always log verified versions list', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.21.0')
     const infoSpy = jest.spyOn(core, 'info').mockImplementation()
 
     await GitHubClientServiceFactory.getGitHubClientServiceInstance()
 
-    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('Supported versions:'))
+    expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('Verified versions:'))
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.18'))
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.21'))
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('3.22'))
@@ -157,11 +158,11 @@ describe('getGitHubClientServiceInstance()', () => {
 
     // Should log full version (3.22.7)
     expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('GitHub Enterprise version: 3.22.7'))
-    // Should be supported (because major.minor 3.22 is in the list)
-    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Version is supported')
+    // Should be verified (because major.minor 3.22 is in the list)
+    expect(infoSpy).toHaveBeenCalledWith('GitHub Enterprise Server version 3.22.7 is verified')
   })
 
-  it('should return GithubClientServiceV1 for version 3.15.0 (supported)', async () => {
+  it('should return GithubClientServiceV1 for version 3.15.0 (not verified)', async () => {
     process.env['GITHUB_API_URL'] = 'https://api.example.com'
     jest.spyOn(GitHubClientServiceFactory, 'fetchVersion').mockResolvedValueOnce('3.15.0')
 
@@ -174,7 +175,7 @@ describe('getGitHubClientServiceInstance()', () => {
     expect(GitHubClientServiceFactory.DEFAULT_VERSION).toBe('3.22')
   })
 
-  it('should have all supported versions in the list', () => {
+  it('should have all verified versions in the list', () => {
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.18')
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.21')
     expect(GitHubClientServiceFactory.SUPPORTED_VERSIONS_V1).toContain('3.22')

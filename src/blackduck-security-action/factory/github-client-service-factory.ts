@@ -1,7 +1,7 @@
 import * as constants from '../../application-constants'
 import * as inputs from '../inputs'
 
-import {debug, info} from '@actions/core'
+import {debug, info, warning} from '@actions/core'
 
 import {GithubClientServiceCloud} from '../service/impl/cloud/github-client-service-cloud'
 import {GithubClientServiceInterface} from '../service/github-client-service-interface'
@@ -10,7 +10,7 @@ import {getSharedHttpClient} from '../utility'
 
 export const GitHubClientServiceFactory = {
   DEFAULT_VERSION: '3.22',
-  // V1 will have all currently supported versions
+  // V1 lists the versions verified with this plugin; other versions are not blocked
   // {V2, V3 ... Vn} will have breaking changes
   SUPPORTED_VERSIONS_V1: ['3.18', '3.21', '3.22'],
   // Add new version here
@@ -54,12 +54,12 @@ export const GitHubClientServiceFactory = {
       const version = await this.fetchVersion(githubApiUrl)
       const [major, minor] = version.split('.').slice(0, 2)
       const majorMinorVersion = major.concat('.').concat(minor)
-      info(`GitHub Enterprise version: ${version}, Supported versions: ${this.SUPPORTED_VERSIONS_V1}`)
+      info(`GitHub Enterprise version: ${version}, Verified versions: ${this.SUPPORTED_VERSIONS_V1}`)
       // When there is contract change use if-else/switch-case and handle v1/v2 based on supported versions
       if (this.SUPPORTED_VERSIONS_V1.includes(majorMinorVersion)) {
-        info(`GitHub Enterprise Version is supported`)
+        info(`GitHub Enterprise Server version ${version} is verified`)
       } else {
-        info(`Proceeding with default REST API version`)
+        warning(`GitHub Enterprise Server version ${version} is not in the verified version list ${this.SUPPORTED_VERSIONS_V1}, proceeding with default REST API version, expected response can vary`)
       }
       return new GithubClientServiceV1()
     }
