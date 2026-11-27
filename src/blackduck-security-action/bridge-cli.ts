@@ -12,6 +12,7 @@ import {DownloadFileResponse, extractZipped, getRemoteFile} from './download-uti
 import fs, {readFileSync} from 'fs'
 import {validateBlackDuckInputs, validateCoverityInputs, validatePolarisInputs, validateSRMInputs, validateScanTypes} from './validators'
 import {BridgeToolsParameter} from './tools-parameter'
+import {downloadSignatureFile, readManifest, verifyBridgeBinary, verifyBundleFiles, verifyBundleSignature} from './bridge-integrity'
 import * as constants from '../application-constants'
 import DomParser from 'dom-parser'
 import os from 'os'
@@ -33,21 +34,35 @@ export class Bridge {
   constructor() {
     this.bridgeExecutablePath = ''
     this.bridgePath = ''
-    this.bridgeArtifactoryURL = constants.BRIDGE_CLI_ARTIFACTORY_URL
-    this.bridgeUrlPattern = this.bridgeArtifactoryURL.concat('$version/bridge-cli-bundle-$version-$platform.zip')
-    this.bridgeUrlLatestPattern = this.bridgeArtifactoryURL.concat('latest/bridge-cli-bundle-$platform.zip')
+    this.bridgeArtifactoryURL = this.getArtifactoryBaseUrl()
+    this.bridgeUrlPattern = this.bridgeArtifactoryURL.concat(`$version/${this.getBundleName()}-$version-$platform.zip`)
+    this.bridgeUrlLatestPattern = this.bridgeArtifactoryURL.concat(`latest/${this.getBundleName()}-$platform.zip`)
+  }
+
+  // FIPS-compliant bundle when FedRAMP mode is enabled, standard bundle otherwise
+  getBundleName(): string {
+    return parseToBoolean(inputs.FEDRAMP_MODE) ? constants.BRIDGE_CLI_FIPS_BUNDLE_NAME : constants.BRIDGE_CLI_BUNDLE_NAME
+  }
+
+  getArtifactoryBaseUrl(): string {
+    return constants.BRIDGE_CLI_ARTIFACTORY_BASE_URL.concat(this.getBundleName(), '/')
+  }
+
+  // Default install root (e.g. <home>/bridge-cli-bundle or <home>/bridge-cli-fips-bundle)
+  private getDefaultPathForBundle(defaultPath: string): string {
+    return defaultPath.replace(constants.BRIDGE_CLI_BUNDLE_NAME, this.getBundleName())
   }
 
   private getBridgeDefaultPath(): string {
     let bridgeDefaultPath = ''
-    const subFolder = 'bridge-cli-bundle-'.concat(this.getOSPlatform())
+    const subFolder = this.getBundleName().concat('-', this.getOSPlatform())
     const osName = process.platform
     if (osName === MAC_PLATFORM_NAME) {
-      bridgeDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_MAC, subFolder)
+      bridgeDefaultPath = path.join(process.env['HOME'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_MAC), subFolder)
     } else if (osName === LINUX_PLATFORM_NAME) {
-      bridgeDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_LINUX, subFolder)
+      bridgeDefaultPath = path.join(process.env['HOME'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_LINUX), subFolder)
     } else if (osName === WINDOWS_PLATFORM_NAME) {
-      bridgeDefaultPath = path.join(process.env['USERPROFILE'] as string, BRIDGE_CLI_DEFAULT_PATH_WINDOWS, subFolder)
+      bridgeDefaultPath = path.join(process.env['USERPROFILE'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_WINDOWS), subFolder)
     }
 
     return bridgeDefaultPath
@@ -56,11 +71,11 @@ export class Bridge {
     let bridgeCLIDefaultPath = ''
     const osName = process.platform
     if (osName === MAC_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_MAC)
+      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_MAC))
     } else if (osName === LINUX_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, BRIDGE_CLI_DEFAULT_PATH_LINUX)
+      bridgeCLIDefaultPath = path.join(process.env['HOME'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_LINUX))
     } else if (osName === WINDOWS_PLATFORM_NAME) {
-      bridgeCLIDefaultPath = path.join(process.env['USERPROFILE'] as string, BRIDGE_CLI_DEFAULT_PATH_WINDOWS)
+      bridgeCLIDefaultPath = path.join(process.env['USERPROFILE'] as string, this.getDefaultPathForBundle(BRIDGE_CLI_DEFAULT_PATH_WINDOWS))
     }
 
     return bridgeCLIDefaultPath
@@ -116,11 +131,11 @@ export class Bridge {
       let bridgeVersion = ''
       if (inputs.BRIDGE_CLI_DOWNLOAD_URL) {
         bridgeUrl = BRIDGE_CLI_DOWNLOAD_URL
-        const versionInfo = bridgeUrl.match('.*bridge-cli-bundle-([0-9.]+[a-zA-Z0-9]*).*')
+        const versionInfo = bridgeUrl.match(`.*${this.getBundleName()}-([0-9.]+[a-zA-Z0-9]*).*`)
         if (versionInfo != null) {
           bridgeVersion = versionInfo[1]
           if (!bridgeVersion) {
-            const regex = /\w*(bridge-cli-bundle-(win64|linux64|linux_arm|macosx|macos_arm).zip)/
+            const regex = new RegExp(`\\w*(${this.getBundleName()}-(win64|linux64|linux_arm|macosx|macos_arm).zip)`)
             bridgeVersion = await this.getBridgeVersionFromLatestURL(bridgeUrl.replace(regex, 'versions.txt'))
           }
         }
@@ -140,6 +155,11 @@ export class Bridge {
       if (!(await this.checkIfBridgeExists(bridgeVersion))) {
         info('Downloading and configuring Bridge from URL - '.concat(bridgeUrl))
         const downloadResponse: DownloadFileResponse = await getRemoteFile(tempDir, bridgeUrl)
+        // FedRAMP CHECK 1: verify the downloaded ZIP signature before extraction (fail closed)
+        if (parseToBoolean(inputs.FEDRAMP_MODE)) {
+          const signatureFilePath = await downloadSignatureFile(bridgeUrl, tempDir)
+          await verifyBundleSignature(downloadResponse.filePath, signatureFilePath)
+        }
         let pathSeprator = ''
         if (process.platform === WINDOWS_PLATFORM_NAME) {
           pathSeprator = `\\`
@@ -147,7 +167,7 @@ export class Bridge {
           pathSeprator = `/`
         }
         const extractZippedFilePath: string = BRIDGE_CLI_INSTALL_DIRECTORY_KEY || this.getBridgeCLIDownloadDefaultPath()
-        this.bridgePath = path.join(extractZippedFilePath, 'bridge-cli-bundle-'.concat(this.getOSPlatform()))
+        this.bridgePath = path.join(extractZippedFilePath, this.getBundleName().concat('-', this.getOSPlatform()))
         // Clear the existing bridge, if available so we will not have duplicate or extra bridge folder
         info('Clear the existing bridge folder, if available from '.concat(this.bridgePath))
         if (fs.existsSync(this.bridgePath)) {
@@ -315,6 +335,13 @@ export class Bridge {
     return isARM && isValidVersionForARM ? armPlatform : defaultPlatform
   }
 
+  // FedRAMP: the FIPS bundle has no macOS Intel (macosx) build, so never build a URL for it
+  private assertFipsPlatformSupported(platform: string): void {
+    if (parseToBoolean(inputs.FEDRAMP_MODE) && platform === this.MAC_PLATFORM) {
+      throw new Error(constants.FEDRAMP_MAC_INTEL_UNSUPPORTED_ERROR)
+    }
+  }
+
   getVersionUrl(version: string): string {
     const osName = process.platform
 
@@ -324,6 +351,7 @@ export class Bridge {
       const isARM = !os.cpus()[0].model.includes('Intel')
       const isValidVersionForARM = semver.gte(version, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
       const platform = this.selectPlatform(version, isARM, isValidVersionForARM, this.MAC_ARM_PLATFORM, this.MAC_PLATFORM, constants.MIN_SUPPORTED_BRIDGE_CLI_MAC_ARM_VERSION)
+      this.assertFipsPlatformSupported(platform)
       bridgeDownloadUrl = bridgeDownloadUrl.replace('$platform', platform)
     } else if (osName === LINUX_PLATFORM_NAME) {
       const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
@@ -342,7 +370,9 @@ export class Bridge {
     let bridgeDownloadUrl = this.bridgeUrlLatestPattern
     if (osName === MAC_PLATFORM_NAME) {
       const isARM = !os.cpus()[0].model.includes('Intel')
-      bridgeDownloadUrl = bridgeDownloadUrl.replace('$platform', isARM ? this.MAC_ARM_PLATFORM : this.MAC_PLATFORM)
+      const latestMacPlatform = isARM ? this.MAC_ARM_PLATFORM : this.MAC_PLATFORM
+      this.assertFipsPlatformSupported(latestMacPlatform)
+      bridgeDownloadUrl = bridgeDownloadUrl.replace('$platform', latestMacPlatform)
     } else if (osName === LINUX_PLATFORM_NAME) {
       const isARM = /^(arm.*|aarch.*)$/.test(process.arch)
       bridgeDownloadUrl = bridgeDownloadUrl.replace('$platform', isARM ? this.LINUX_ARM_PLATFORM : this.LINUX_PLATFORM)
@@ -371,7 +401,7 @@ export class Bridge {
   async checkIfVersionExists(bridgeVersion: string, bridgeVersionFilePath: string): Promise<boolean> {
     try {
       const contents = readFileSync(bridgeVersionFilePath, 'utf-8')
-      return contents.includes('bridge-cli-bundle: '.concat(bridgeVersion))
+      return contents.includes(`${this.getBundleName()}: `.concat(bridgeVersion))
     } catch (e) {
       info('Error reading version file content: '.concat((e as Error).message))
     }
@@ -404,7 +434,7 @@ export class Bridge {
             const htmlResponse = response.body.trim()
             const lines = htmlResponse.split('\n')
             for (const line of lines) {
-              if (line.includes('bridge-cli-bundle')) {
+              if (line.includes(this.getBundleName())) {
                 return line.split(':')[1].trim()
               }
             }
@@ -431,7 +461,7 @@ export class Bridge {
       if (!checkIfPathExists(this.bridgePath)) {
         throw new Error(constants.BRIDGE_INSTALL_DIRECTORY_NOT_FOUND_ERROR)
       }
-      let folderName = 'bridge-cli-bundle-'.concat(this.getOSPlatform())
+      let folderName = this.getBundleName().concat('-', this.getOSPlatform())
       if (process.platform === WINDOWS_PLATFORM_NAME) {
         folderName = `\\${folderName}`
       } else if (process.platform === MAC_PLATFORM_NAME || process.platform === LINUX_PLATFORM_NAME) {
@@ -445,6 +475,46 @@ export class Bridge {
         throw new Error(constants.BRIDGE_DEFAULT_DIRECTORY_NOT_FOUND_ERROR)
       }
     }
+  }
+
+  // FedRAMP: the resolved Bridge CLI (air-gap, install directory, cached or freshly downloaded) must be the FIPS bundle.
+  // The FIPS bundle is identified by its bridge-cli-fips-bundle entry in versions.txt. Fails closed.
+  async verifyFipsBridge(): Promise<void> {
+    if (!parseToBoolean(inputs.FEDRAMP_MODE)) {
+      return
+    }
+    const versionFilePath = path.join(this.bridgePath, 'versions.txt')
+    if (!this.bridgePath || !checkIfPathExists(versionFilePath)) {
+      throw new Error(constants.FEDRAMP_BRIDGE_NOT_FIPS_ERROR)
+    }
+    let contents = ''
+    try {
+      contents = readFileSync(versionFilePath, 'utf-8')
+    } catch (e) {
+      debug('Unable to read the Bridge CLI version file for FIPS verification: '.concat((e as Error).message))
+      throw new Error(constants.FEDRAMP_BRIDGE_NOT_FIPS_ERROR)
+    }
+    const fipsEntry = new RegExp(`^\\s*${constants.BRIDGE_CLI_FIPS_BUNDLE_NAME}\\s*:`, 'm')
+    if (!fipsEntry.test(contents)) {
+      throw new Error(constants.FEDRAMP_BRIDGE_NOT_FIPS_ERROR)
+    }
+    info('Verified that the Bridge CLI is the FIPS-compliant bundle')
+  }
+
+  // FedRAMP CHECK 2: all files of the resolved bundle (downloaded, cached, air-gap or pre-installed) must match manifest.json
+  async verifyBundleIntegrity(): Promise<void> {
+    if (!parseToBoolean(inputs.FEDRAMP_MODE)) {
+      return
+    }
+    await verifyBundleFiles(this.bridgePath, readManifest(this.bridgePath))
+  }
+
+  // FedRAMP CHECK 3: re-verify the bridge-cli binary immediately before execution
+  async verifyBinaryIntegrity(): Promise<void> {
+    if (!parseToBoolean(inputs.FEDRAMP_MODE)) {
+      return
+    }
+    await verifyBridgeBinary(this.bridgePath, readManifest(this.bridgePath))
   }
 
   private async setBridgeExecutablePath(): Promise<void> {

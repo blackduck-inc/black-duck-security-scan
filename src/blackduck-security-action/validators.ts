@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import * as os from 'os'
 import {error} from '@actions/core'
 import * as constants from '../application-constants'
 import * as inputs from './inputs'
@@ -21,6 +22,64 @@ export function validateBlackduckFailureSeverities(severities: string[]): boolea
     return false
   }
   return true
+}
+
+export function validateFedRAMPMode(): string[] {
+  const errors: string[] = []
+  if (inputs.FEDRAMP_MODE.toLowerCase() !== 'true') {
+    return errors
+  }
+  // No macOS Intel support for the FIPS Bridge CLI
+  if (process.platform === constants.MAC_PLATFORM_NAME && os.arch() !== 'arm64') {
+    errors.push(constants.FEDRAMP_MAC_INTEL_UNSUPPORTED_ERROR)
+  }
+  const polarisUrl = inputs.POLARIS_SERVER_URL
+  if (!polarisUrl) {
+    errors.push(constants.FEDRAMP_POLARIS_URL_MISSING_ERROR)
+  } else if (!isFedRAMPUrlValid(polarisUrl, constants.FEDRAMP_ALLOWED_POLARIS_DOMAIN_PATTERNS, false)) {
+    errors.push(constants.FEDRAMP_POLARIS_URL_INVALID_ERROR.replace('{0}', constants.FEDRAMP_ALLOWED_POLARIS_DOMAIN_PATTERNS.join(', ')))
+  }
+  // Custom Bridge CLI download URL (optional): must be https, on an approved host, and point to the FIPS bundle
+  const bridgeUrl = inputs.BRIDGE_CLI_DOWNLOAD_URL
+  if (bridgeUrl && !isFedRAMPUrlValid(bridgeUrl, constants.FEDRAMP_ALLOWED_BRIDGE_DOMAINS, true)) {
+    errors.push(constants.FEDRAMP_BRIDGE_URL_INVALID_ERROR.replace('{0}', constants.FEDRAMP_ALLOWED_BRIDGE_DOMAINS.join(', ')))
+  }
+  return errors
+}
+
+// Hostname-only match (exact or subdomain), https required; never logs the URL
+function isFedRAMPUrlValid(url: string, allowedDomains: string[], requireFipsBundlePath: boolean): boolean {
+  try {
+    const parsed = new URL(url)
+    const hostname = parsed.hostname.toLowerCase()
+    const hostAllowed = allowedDomains.some(domain => hostname === domain || hostname.endsWith(`.${domain}`))
+    if (parsed.protocol !== 'https:' || !hostAllowed) {
+      return false
+    }
+    if (requireFipsBundlePath) {
+      const lastSegment = parsed.pathname.split('/').pop() || ''
+      const hasFipsSegment = parsed.pathname.split('/').some(segment => segment === constants.FEDRAMP_BRIDGE_FIPS_BUNDLE_NAME || segment.startsWith(`${constants.FEDRAMP_BRIDGE_FIPS_BUNDLE_NAME}-`))
+      // No macOS Intel build exists for the FIPS bundle
+      return hasFipsSegment && !lastSegment.includes('-macosx.')
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+// In FedRAMP mode the Bridge command may only contain non-secret flags; tokens must go via the input JSON file
+export function validateFedRAMPCommand(command: string): string[] {
+  const errors: string[] = []
+  if (inputs.FEDRAMP_MODE.toLowerCase() !== 'true') {
+    return errors
+  }
+  const flags = command.match(/(?:^|\s)--[A-Za-z0-9_-]+/g) || []
+  const hasDisallowedFlag = flags.some(flag => !constants.FEDRAMP_ALLOWED_COMMAND_FLAGS.includes(flag.trim()))
+  if (hasDisallowedFlag) {
+    errors.push(constants.FEDRAMP_TOKEN_ARGUMENT_ERROR)
+  }
+  return errors
 }
 
 export function validateScanTypes(): string[] {

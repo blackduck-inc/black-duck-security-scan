@@ -8,7 +8,7 @@ import {uploadDiagnostics, uploadSarifReportAsArtifact} from './blackduck-securi
 import * as util from './blackduck-security-action/utility'
 import {readFileSync} from 'fs'
 import {join, basename} from 'path'
-import {isNullOrEmptyValue} from './blackduck-security-action/validators'
+import {isNullOrEmptyValue, validateFedRAMPCommand, validateFedRAMPMode} from './blackduck-security-action/validators'
 import {GitHubClientServiceFactory} from './blackduck-security-action/factory/github-client-service-factory'
 
 export async function run() {
@@ -22,9 +22,18 @@ export async function run() {
   let productInputFilPath = ''
 
   try {
+    // FedRAMP fail-fast validation before anything else runs
+    const fedRampErrors = validateFedRAMPMode()
+    if (fedRampErrors.length > 0) {
+      return Promise.reject(new Error(fedRampErrors.join(',')))
+    }
     const sb = new Bridge()
     // Prepare bridge command
     formattedCommand = await sb.prepareCommand(tempDir)
+    const commandErrors = validateFedRAMPCommand(formattedCommand)
+    if (commandErrors.length > 0) {
+      return Promise.reject(new Error(commandErrors.join(',')))
+    }
 
     // Download bridge
     if (!inputs.ENABLE_NETWORK_AIR_GAP) {
@@ -34,7 +43,15 @@ export async function run() {
       await sb.validateBridgePath()
     }
     // Get Bridge version from bridge Path
+    // FedRAMP: never execute a local, cached or downloaded Bridge CLI unless it is the FIPS bundle
+    await sb.verifyFipsBridge()
+    // FedRAMP CHECK 2: verify all Bridge CLI files against the manifest
+    await sb.verifyBundleIntegrity()
     bridgeVersion = getBridgeVersion(sb.bridgePath)
+    // FedRAMP: an unknown version must not silently select default SARIF paths or skip source upload validation
+    if (parseToBoolean(inputs.FEDRAMP_MODE) && isNullOrEmptyValue(bridgeVersion)) {
+      return Promise.reject(new Error(constants.FEDRAMP_BRIDGE_VERSION_NOT_FOUND_ERROR))
+    }
     util.validateSourceUploadValue(bridgeVersion)
     //Extract input.json file and update sarif default file path based on bridge version
     productInputFilPath = util.extractInputJsonFilename(formattedCommand)
@@ -44,6 +61,8 @@ export async function run() {
     util.updateSarifFilePaths(productInputFileName, bridgeVersion, productInputFilPath)
     // Based on bridge version update Coverity configuration for backward compatibility
     util.updateCoverityConfigForBridgeVersion(productInputFileName, bridgeVersion, productInputFilPath)
+    // FedRAMP CHECK 3: re-verify the binary immediately before execution
+    await sb.verifyBinaryIntegrity()
     // Execute bridge command
     exitCode = await sb.executeBridgeCommand(formattedCommand, getGitHubWorkspaceDirV2())
     if (exitCode === 0) {
@@ -159,7 +178,8 @@ function getBridgeVersion(bridgePath: string): string {
   try {
     const versionFilePath = join(bridgePath, 'versions.txt')
     const content = readFileSync(versionFilePath, 'utf-8')
-    const match = content.match(/bridge-cli-bundle:\s*([0-9.]+[a-zA-Z0-9]*)/)
+    const bundleName = parseToBoolean(inputs.FEDRAMP_MODE) ? constants.BRIDGE_CLI_FIPS_BUNDLE_NAME : constants.BRIDGE_CLI_BUNDLE_NAME
+    const match = content.match(new RegExp(`${bundleName}:\\s*([0-9.]+[a-zA-Z0-9]*)`))
     if (match && match[1]) {
       return match[1]
     }

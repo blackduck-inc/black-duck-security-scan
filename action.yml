@@ -285,6 +285,9 @@ inputs:
   network_airgap:
     description: 'If provided, Black Duck Security Action will be using local network to download and execute bridge .'
     required: false
+  fedramp_mode:
+    description: 'If true, enables FIPS-compliant Bridge CLI usage and FedRAMP endpoint validation (Polaris server URL must be an approved FedRAMP URL).'
+    required: false
   polaris_policy_badges_create:
     description: 'To enable creation of badges on the GitHub repository for polaris'
     required: false

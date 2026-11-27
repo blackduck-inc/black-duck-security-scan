@@ -3,6 +3,7 @@ import * as constants from '../application-constants'
 
 export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = getInput(constants.BRIDGE_CLI_INSTALL_DIRECTORY_KEY)?.trim() || ''
 export const ENABLE_NETWORK_AIR_GAP = getInput(constants.NETWORK_AIRGAP_KEY)?.trim() || ''
+export const FEDRAMP_MODE = getInput(constants.FEDRAMP_MODE_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_URL = getInput(constants.BRIDGE_CLI_DOWNLOAD_URL_KEY)?.trim() || ''
 export const BRIDGE_CLI_DOWNLOAD_VERSION = getInput(constants.BRIDGE_CLI_DOWNLOAD_VERSION_KEY)?.trim() || ''
 

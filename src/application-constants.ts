@@ -1,9 +1,13 @@
 import path from 'path'
 
-export const BRIDGE_CLI_DEFAULT_PATH_MAC = '/bridge-cli-bundle' //Path will be in home
-export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = '\\bridge-cli-bundle'
-export const BRIDGE_CLI_DEFAULT_PATH_LINUX = '/bridge-cli-bundle'
-export const BRIDGE_CLI_ARTIFACTORY_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/bridge-cli-bundle/'
+export const BRIDGE_CLI_BUNDLE_NAME = 'bridge-cli-bundle'
+export const BRIDGE_CLI_FIPS_BUNDLE_NAME = 'bridge-cli-fips-bundle'
+// Default install locations are built from the bundle name; Bridge.getBundleName() selects the standard or FIPS bundle
+export const BRIDGE_CLI_DEFAULT_PATH_MAC = `/${BRIDGE_CLI_BUNDLE_NAME}` //Path will be in home
+export const BRIDGE_CLI_DEFAULT_PATH_WINDOWS = `\\${BRIDGE_CLI_BUNDLE_NAME}`
+export const BRIDGE_CLI_DEFAULT_PATH_LINUX = `/${BRIDGE_CLI_BUNDLE_NAME}`
+// Base URL without the bundle segment; Bridge.getArtifactoryBaseUrl() appends the bundle name
+export const BRIDGE_CLI_ARTIFACTORY_BASE_URL = 'https://repo.blackduck.com/bds-integrations-release/com/blackduck/integration/bridge/binaries/'
 
 export const APPLICATION_NAME = 'blackduck-security-action'
 export const BRIDGE_CLI_INSTALL_DIRECTORY_KEY = 'bridgecli_install_directory'
@@ -142,6 +146,35 @@ export const NETWORK_AIRGAP_KEY = 'network_airgap'
 export const DIAGNOSTICS_RETENTION_DAYS_KEY = 'diagnostics_retention_days'
 export const NETWORK_SSL_CERT_FILE_KEY = 'network_ssl_cert_file'
 export const NETWORK_SSL_TRUST_ALL_KEY = 'network_ssl_trustAll'
+
+// FedRAMP
+export const FEDRAMP_MODE_KEY = 'fedramp_mode'
+// TODO: confirm the approved FedRAMP Polaris hostname allowlist (SIGINT-6611, open question 11.2)
+export const FEDRAMP_ALLOWED_POLARIS_DOMAIN_PATTERNS = ['polaris.blackduck-fedramp.com']
+export const FEDRAMP_MAC_INTEL_UNSUPPORTED_ERROR = 'FedRAMP mode is enabled: macOS Intel runners are not supported by the FIPS Bridge CLI. Use a macOS ARM, Linux or Windows runner.'
+export const FEDRAMP_ALLOWED_COMMAND_FLAGS = ['--stage', '--input', '--diagnostics']
+export const FEDRAMP_TOKEN_ARGUMENT_ERROR = 'FedRAMP mode is enabled: tokens must not be passed as Bridge CLI command-line arguments. Only --stage, --input and --diagnostics are allowed.'
+export const FEDRAMP_BRIDGE_FIPS_BUNDLE_NAME = BRIDGE_CLI_FIPS_BUNDLE_NAME
+// TODO: confirm the approved Bridge CLI FIPS bundle download host(s)
+export const FEDRAMP_ALLOWED_BRIDGE_DOMAINS = ['repo.blackduck.com']
+export const FEDRAMP_BRIDGE_URL_INVALID_ERROR = 'FedRAMP mode is enabled: bridgecli_download_url must be an https URL on an approved host ({0}) that points to the bridge-cli-fips-bundle (macOS Intel is not supported).'
+export const FEDRAMP_BRIDGE_NOT_FIPS_ERROR = 'FedRAMP mode is enabled: the Bridge CLI found at the resolved location is not the FIPS-compliant bundle (versions.txt must contain the bridge-cli-fips-bundle entry). Provide the FIPS bundle for air-gap or bridgecli_install_directory usage. Bridge CLI will not be executed.'
+export const FEDRAMP_BRIDGE_VERSION_NOT_FOUND_ERROR = 'FedRAMP mode is enabled: the Bridge CLI FIPS bundle version could not be determined from versions.txt (expected key: bridge-cli-fips-bundle). Bridge CLI will not be executed.'
+export const FEDRAMP_POLARIS_URL_MISSING_ERROR = 'FedRAMP mode is enabled but polaris_server_url is not provided. Provide an approved FedRAMP Polaris URL.'
+export const FEDRAMP_POLARIS_URL_INVALID_ERROR = 'FedRAMP mode is enabled: polaris_server_url must be an https URL whose host is one of the approved FedRAMP Polaris domains: {0}'
+
+// FedRAMP Bridge CLI integrity checks (SI-7). The items below are ASSUMPTIONS from the plugin integrity spike
+// and must be confirmed with the Bridge team: signature file naming/format, public key, and manifest schema.
+export const BRIDGE_CLI_SIGNATURE_FILE_SUFFIX = '.sig' // <bundle>.zip.sig, base64-encoded DER ECDSA P-256 / SHA-256 signature
+export const BRIDGE_CLI_MANIFEST_FILE_NAME = 'manifest.json' // {"files":[{"path":"bridge-cli","sha256":"<hex>","executable":true}]}
+// TODO: embed the Black Duck Bridge CLI signing public key (PEM). While empty, FedRAMP integrity verification fails closed.
+export const BRIDGE_CLI_SIGNING_PUBLIC_KEY_PEM = ''
+export const FEDRAMP_INTEGRITY_PUBLIC_KEY_MISSING_ERROR = 'FedRAMP integrity check failed: the Bridge CLI signing public key is not configured. Bridge CLI will not be executed.'
+export const FEDRAMP_INTEGRITY_SIGNATURE_DOWNLOAD_ERROR = 'FedRAMP integrity check failed: the Bridge CLI signature file could not be downloaded. Bridge CLI will not be executed.'
+export const FEDRAMP_INTEGRITY_SIGNATURE_INVALID_ERROR = 'FedRAMP integrity check failed: the Bridge CLI bundle signature is invalid. Bridge CLI will not be executed.'
+export const FEDRAMP_INTEGRITY_MANIFEST_INVALID_ERROR = 'FedRAMP integrity check failed: the Bridge CLI manifest.json is missing or invalid. Bridge CLI will not be executed.'
+export const FEDRAMP_INTEGRITY_FILE_MISMATCH_ERROR = 'FedRAMP integrity check failed: Bridge CLI files do not match the manifest ({0}). Bridge CLI will not be executed.'
+export const FEDRAMP_INTEGRITY_BINARY_MISMATCH_ERROR = 'FedRAMP integrity check failed: the Bridge CLI binary does not match the manifest. Bridge CLI will not be executed.'
 
 // Bridge Exit Codes
 export const EXIT_CODE_MAP = new Map<string, string>([
